@@ -20,3 +20,6 @@ classifiers = [
 [project.urls]
 "Homepage" = "https://github.com/Purdue-EBEC/generic-grader"
 "Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"
+
+[project.optional-dependencies]
+dev = ["build", "twine", "pre-commit~=3.0"]
