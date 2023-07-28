@@ -1,0 +1,22 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "generic-grader"
+version = "0.0.1"
+authors = [
+  { name="John Cole", email="jhcole@purdue.edu" },
+]
+description = "A collection of parameterizable tests for automatic grading."
+readme = "README.md"
+requires-python = ">=3.11"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: GNU GPLv3,
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/Purdue-EBEC/generic-grader"
+"Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"

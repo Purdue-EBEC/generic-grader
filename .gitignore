@@ -1,0 +1,12 @@
+# virtual environment
+.env*
+
+# python cache
+__pycache__/
+
+# temporary files
+*.swp
+*.swo
+
+# distribution / packaging
+dist/
