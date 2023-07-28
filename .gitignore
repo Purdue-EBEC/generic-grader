@@ -10,3 +10,7 @@ __pycache__/
 
 # distribution / packaging
 dist/
+
+# IDEs
+.vscode/
+
