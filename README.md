@@ -77,7 +77,7 @@ Don't use this yet. It's not ready.
    edits will be automatically reflected in the installed package.
 
    ``` bash
-   pip install -e .[code_style]
+   pip install -e .[dev]
    ```
 
 8. Run the tests.
