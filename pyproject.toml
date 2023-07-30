@@ -33,4 +33,4 @@ classifiers = [
 "Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"
 
 [project.optional-dependencies]
-dev = ["build", "twine", "pre-commit~=3.0"]
+dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine"]
