@@ -66,7 +66,9 @@ def test_file_presence_method_none(built_instance):
 # Consider adding a test with two extra files.
 # | foo, foot, bar, barf | foo, bar |       - | fail: an extra file is present        |
 #
-# Passing should also produce symlinks to the required files with the correct name.
+# TODO:
+#  - Test that successful tests produce symlinks to required files with correct names.
+#  - Test that pre-existing symlinks are removed.
 #
 
 cases = [
@@ -75,80 +77,87 @@ cases = [
         "required": (),
         "ignored": (),
         # TODO: This should fail when no files are present.
-        # "pass": False,
+        # "result": AssertionError,
         # "message": "Submissions must contain at least one file.",
-        "pass": True,
+        "result": "pass",
         "message": "Found all required files.",
     },
     {
         "present": ("foo_login.py",),
         "required": ("foo*.py",),
         "ignored": (),
-        "pass": True,
+        "result": "pass",
         "message": "Found all required files.",
     },
     {
         "present": ("foo_login.py",),
         "required": ("bar*.py",),
         "ignored": (),
-        "pass": False,
+        "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "bar*.py".',
     },
     {
         "present": ("foo_login.py", "foot_login.py"),
         "required": ("foo*.py",),
         "ignored": (),
-        "pass": False,
+        "result": AssertionError,
         "message": 'Submission contains too many files matching the pattern "foo*.py".',
     },
     {
         "present": ("foo_login.py", "foot_login.py"),
         "required": ("foo*.py",),
         "ignored": ("foot*.py",),
-        "pass": True,
+        "result": "pass",
         "message": "Found all required files.",
     },
     {
         "present": ("foo_login.py", "bar_login.py"),
         "required": ("foo*.py", "bar*.py"),
         "ignored": (),
-        "pass": True,
+        "result": "pass",
         "message": "Found all required files.",
     },
     {
         "present": ("bar_login.py",),
         "required": ("foo*.py", "bar*.py"),
         "ignored": (),
-        "pass": False,
+        "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "foo*.py".',
     },
     {
         "present": ("foo_login.py",),
         "required": ("foo*.py", "bar*.py"),
         "ignored": (),
-        "pass": False,
+        "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "bar*.py".',
     },
     # { # TODO this should have a better error message.
     #    "present": (),
     #    "required": ("foo*.py", "bar*.py"),
     #    "ignored": (),
-    #    "pass": False,
+    #    "result": AssertionError,
     #    "message": 'Cannot find files matching the patterns "foo*.py", or "bar*.py".',
     # },
     {
         "present": ("foo_login.py", "bar_login.py", "barf_login.py"),
         "required": ("foo*.py", "bar*.py"),
         "ignored": (),
-        "pass": False,
+        "result": AssertionError,
         "message": 'Submission contains too many files matching the pattern "bar*.py".',
     },
     {
         "present": ("foo_login.py", "bar_login.py", "barf_login.py"),
         "required": ("foo*.py", "bar*.py"),
         "ignored": ("barf*.py",),
-        "pass": True,
+        "result": "pass",
         "message": "Found all required files.",
+    },
+    {
+        "present": ("foo.py",),
+        "required": ("foo*.py",),
+        "ignored": (),
+        "result": AssertionError,
+        "message": 'The file "foo.py" is missing the required suffix',
     },
 ]
 
@@ -180,10 +189,11 @@ def case_test_method(request, tmp_path, monkeypatch):
 def test_file_presence(case_test_method, capsys):
     """Test response of test_submitted_files function."""
     case, test_method = case_test_method
-    if case["pass"]:
+    if case["result"] == "pass":
         test_method()
         assert case["message"] in capsys.readouterr().out.rstrip()
     else:
-        with pytest.raises(AssertionError) as exc_info:
+        error = case["result"]
+        with pytest.raises(error) as exc_info:
             test_method()
         assert case["message"] in str(exc_info.value)

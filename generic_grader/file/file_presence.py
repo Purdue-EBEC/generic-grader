@@ -42,6 +42,7 @@ def build(the_params):
 
             o = options
 
+            # TODO: this need to be generalized for all symlinks that will be created.
             # Remove the symlink if it exists.
             link_file = o.sub_module + ".py"
             if os.path.islink(link_file):
@@ -69,15 +70,18 @@ def build(the_params):
                     # with the same name, but minus the username suffix.
                     src = files[0]  # The only file found.
                     dst = file_pattern.replace("*", "")  # deglobbed file pattern
-                    if src != dst:
-                        try:
-                            os.symlink(src, dst)
-                        except FileExistsError:
-                            error_msg += (
-                                f"The file {dst}"
-                                + " is missing the required suffix"
-                                + " (typically your username)."
-                            )
+
+                    # TODO: Removing this check, will affect any exercses that required
+                    # files without a * in their name.  Check if this is a problem.
+                    # if src != dst:
+                    try:
+                        os.symlink(src, dst)
+                    except FileExistsError:
+                        error_msg += (
+                            f'The file "{dst}"'
+                            + " is missing the required suffix"
+                            + " (typically your username)."
+                        )
 
             for file_pattern in missing_files:
                 error_msg += (
