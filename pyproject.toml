@@ -34,3 +34,11 @@ classifiers = [
 
 [project.optional-dependencies]
 dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine"]
+
+# pyproject.toml
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = "-ra --quiet --cov=generic_grader --cov-report=term-missing --cov-report=xml --cov-report=html"
+testpaths = [
+    "tests",
+]

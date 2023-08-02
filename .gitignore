@@ -16,3 +16,4 @@ dist/
 
 # code coverage
 .coverage
+coverage.xml
