@@ -65,11 +65,6 @@ def test_file_presence_method_none(built_instance):
 #
 # Consider adding a test with two extra files.
 # | foo, foot, bar, barf | foo, bar |       - | fail: an extra file is present        |
-#
-# TODO:
-#  - Test that successful tests produce symlinks to required files with correct names.
-#  - Test that pre-existing symlinks are removed.
-#
 
 cases = [
     {
@@ -101,7 +96,7 @@ cases = [
         "required": ("foo*.py",),
         "ignored": (),
         "result": AssertionError,
-        "message": 'Submission contains too many files matching the pattern "foo*.py".',
+        "message": 'too many files matching the pattern "foo*.py".',
     },
     {
         "present": ("foo_login.py", "foot_login.py"),
@@ -143,7 +138,7 @@ cases = [
         "required": ("foo*.py", "bar*.py"),
         "ignored": (),
         "result": AssertionError,
-        "message": 'Submission contains too many files matching the pattern "bar*.py".',
+        "message": 'too many files matching the pattern "bar*.py".',
     },
     {
         "present": ("foo_login.py", "bar_login.py", "barf_login.py"),
@@ -157,7 +152,7 @@ cases = [
         "required": ("foo*.py",),
         "ignored": (),
         "result": AssertionError,
-        "message": 'The file "foo.py" is missing the required suffix',
+        "message": '"foo.py" does not meet this exercise\'s file naming requirements',
     },
 ]
 
@@ -196,4 +191,4 @@ def test_file_presence(case_test_method, capsys):
         error = case["result"]
         with pytest.raises(error) as exc_info:
             test_method()
-        assert case["message"] in str(exc_info.value)
+        assert case["message"] in " ".join(str(exc_info.value).split())
