@@ -42,26 +42,84 @@ def test_file_set_up_instance_has_test_method(built_instance):
     assert hasattr(built_instance, "test_file_set_up_0")
 
 
-# |        present | required | expected result                             |
-# |---------------:|---------:|:--------------------------------------------|
-# |          foo_l |      foo | symlink foo_login to foo.py                 |
-# |          bar_l |      foo | no action                                   |
-# |  foo_l, foot_l |      foo | fail: extra file matching pattern present   |
-# |      foo, foot |      foo | pass: the extra file is ignored             |
-# |       foo, bar | foo, bar | pass: both required files are present       |
-# |            bar | foo, bar | fail: first required file is missing        |
-# |            foo | foo, bar | fail: second required file is missing       |
-# |              - | foo, bar | fail: both required files are missing       |
-# | foo, bar, barf | foo, bar | fail: an extra file is present              |
-# | foo, bar, barf | foo, bar | pass: the extra file is ignored             |
-#
+# |          present |   required | ignored | expected result                          |
+# |-----------------:|-----------:|--------:|:-----------------------------------------|
+# |              foo |        foo |       - | no action (file already exists)          |
+# |              foo |       foo* |       - | no action (file matching pattern exists) |
+# |             foo_ |       foo* |       - | symlink foo_login to foo.py              |
+# |             bar_ |       foo* |       - | no action (missing source file)          |
+# |       foo_, foot |       foo* |       - | no action (ambiguous request)            |
+# |       foo_, foot |       foo* |    foot | symlink foo_login to foo.py              |
+# |       foo_, bar_ | foo*, bar* |       - | symlink both files                       |
+# |             bar_ | foo*, bar* |       - | symlink bar_login to bar.py              |
+# |             foo_ | foo*, bar* |       - | symlink foo_login to foo.py              |
+# |                - | foo*, bar* |       - | no action (missing source files)         |
+# | foo_, bar_, barf | foo*, bar* |       - | symlink foo_login to foo.py              |
+# | foo_, bar_, barf | foo*, bar* |    barf | symlink to foo.py and bar.py             |
 
 set_up_cases = [
     {
-        "present": ("foo_login.py",),
-        "required": ("foo*.py",),
+        "present": {"foo.py"},
+        "required": {"foo.py"},
+        "expected_symlinks": set(),
     },
-    # TODO add remaining cases
+    {
+        "present": {"foo.py"},
+        "required": {"foo*.py"},
+        "expected_symlinks": set(),
+    },
+    {
+        "present": {"foo_login.py"},
+        "required": {"foo*.py"},
+        "expected_symlinks": {"foo.py"},
+    },
+    {
+        "present": {"bar_login.py"},
+        "required": {"foo*.py"},
+        "expected_symlinks": set(),
+    },
+    {
+        "present": {"foo_login.py", "foot.py"},
+        "required": {"foo*.py"},
+        "expected_symlinks": set(),
+    },
+    {
+        "present": {"foo_login.py", "foot.py"},
+        "required": {"foo*.py"},
+        "ignored": {"foot.py"},
+        "expected_symlinks": {"foo.py"},
+    },
+    {
+        "present": {"foo_login.py", "bar_login.py"},
+        "required": {"foo*.py", "bar*.py"},
+        "expected_symlinks": {"foo.py", "bar.py"},
+    },
+    {
+        "present": {"bar_login.py"},
+        "required": {"foo*.py", "bar*.py"},
+        "expected_symlinks": {"bar.py"},
+    },
+    {
+        "present": {"foo_login.py"},
+        "required": {"foo*.py", "bar*.py"},
+        "expected_symlinks": {"foo.py"},
+    },
+    {
+        "present": set(),
+        "required": {"foo*.py", "bar*.py"},
+        "expected_symlinks": set(),
+    },
+    {
+        "present": {"foo_login.py", "bar_login.py", "barf.py"},
+        "required": {"foo*.py", "bar*.py"},
+        "expected_symlinks": {"foo.py"},
+    },
+    {
+        "present": {"foo_login.py", "bar_login.py", "barf.py"},
+        "required": {"foo*.py", "bar*.py"},
+        "ignored": {"barf.py"},
+        "expected_symlinks": {"foo.py", "bar.py"},
+    },
 ]
 
 
@@ -78,6 +136,7 @@ def set_up_case_test_method(request, tmp_path, monkeypatch):
         param(
             Options(
                 required_files=case["required"],
+                ignored_files=case.get("ignored", set()),
             ),
         )
     ]
@@ -91,7 +150,8 @@ def set_up_case_test_method(request, tmp_path, monkeypatch):
 def test_file_setup(set_up_case_test_method):
     """Test that the file setup function returns a class."""
     case, test_method = set_up_case_test_method
-    required_patterns = case["required"]
     test_method()
-    for pattern in required_patterns:
-        assert Path(pattern.replace("*", "")).is_symlink()
+
+    # Check for the expected symlinks.
+    actual_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
+    assert actual_symlinks == case["expected_symlinks"]

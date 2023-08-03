@@ -16,7 +16,7 @@ def build(the_params):
 
         @parameterized.expand(the_params)  # , doc_func=doc_func)
         def test_file_set_up(self, options):
-            """Create symlinks to the required files thet later tests depend on."""
+            """Create symlinks to the required files that later tests depend on."""
 
             o = options
 
@@ -27,6 +27,8 @@ def build(the_params):
                     continue
 
                 files = glob.glob(file_pattern)
+                files = [file for file in files if file not in o.ignored_files]
+
                 if len(files) != 1:  # src missing or ambiguous
                     continue
 
