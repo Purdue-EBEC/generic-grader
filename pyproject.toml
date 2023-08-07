@@ -35,6 +35,13 @@ classifiers = [
 [project.optional-dependencies]
 dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine"]
 
+[tool.hatch.build]
+exclude = [
+    "docs/",
+    "htmlcov/",
+    "tests/",
+]
+
 # pyproject.toml
 [tool.pytest.ini_options]
 minversion = "6.0"
