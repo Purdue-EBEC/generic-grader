@@ -4,6 +4,7 @@ from typing import NamedTuple
 
 class Options(NamedTuple):
     # Base
+    weight: int = 0
     init: Callable[[], None] | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
