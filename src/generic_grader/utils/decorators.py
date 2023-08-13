@@ -36,9 +36,15 @@ def weighted(func):
         weight = kwargs.get("options", Options()).weight
         wrapper.__weight__ = weight
 
+    def set_score(score):
+        """Set the score of the test."""
+        wrapper.__score__ = score
+
     @wraps(func)
-    def wrapper(*args, **kwargs):
+    def wrapper(self, *args, **kwargs):
         set_weight(*args, **kwargs)
-        return func(*args, **kwargs)
+        # Inject a set_score method into the test function's instance.
+        self.set_score = set_score
+        return func(self, *args, **kwargs)
 
     return wrapper
