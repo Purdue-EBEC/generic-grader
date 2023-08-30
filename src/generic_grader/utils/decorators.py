@@ -39,16 +39,20 @@ def weighted(func):
 
     def set_score(self, score):
         """Set the score of the test."""
-
         type(self).__gradescope__[self._testMethodName]["score"] = score
 
-    def set_gradescope_vars(cls):
-        """Set the gradescope variables as attributes on each test."""
+    def set_gradescope_vars(self):
+        """Set the Gradescope variables as attributes on this test method."""
 
-        for test_method_name, test_method_vars in cls.__gradescope__.items():
-            test_method = getattr(cls, test_method_name)
-            test_method.__weight__ = test_method_vars["weight"]
-            test_method.__score__ = test_method_vars["score"]
+        # Get a reference to the test method.
+        cls = type(self)
+        test_method_name = self._testMethodName
+        test_method = getattr(cls, test_method_name)
+
+        # Add the Gradescope variables as attributes.
+        test_method_vars = cls.__gradescope__[test_method_name]
+        test_method.__weight__ = test_method_vars["weight"]
+        test_method.__score__ = test_method_vars["score"]
 
     @wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -57,28 +61,29 @@ def weighted(func):
         A __gradescope__ dict is added to the class to store each test's
         variables.  The weight is set immediately, and a `set_score` method is
         added to the function to allow partial credit to be set by the test
-        itself.  Once all the tests are complete, the cleanup function migrates
-        the gradescope variables to the test methods as Gradescope expects.
-        """
+        itself.  Once a test case has run, the cleanup function migrates the
+        gradescope variables to that test case instance's test method as
+        Gradescope expects."""
 
         cls = type(self)
         if not hasattr(cls, "__gradescope__"):
+            # This could have been attached to the test case instance, but after
+            # being wrapped by parameterize, all instances will end up sharing
+            # the same dict.  So here it is added to the class to emphasize that
+            # this is shared across all test cases in the class.
             cls.__gradescope__ = {}
 
-        test_method_name = self._testMethodName
-        cls.__gradescope__[test_method_name] = {
+        cls.__gradescope__[self._testMethodName] = {
             "weight": get_weight(*args, **kwargs),
             "score": None,
         }
 
-        # Inject a set_score method into the test function's instance.
+        # Inject a set_score method into the test case instance.
         self.set_score = set_score
 
-        # Add a function to process the gradescope variables exactly once.  This
-        # will run after all the test methods have been called.
-        cleanup_functions = [f for f, args, kwargs in cls._class_cleanups]
-        if set_gradescope_vars not in cleanup_functions:
-            cls.addClassCleanup(set_gradescope_vars, cls)
+        # Add a function to process the gradescope variables.  This will be
+        # called automatically after the test case is run().
+        self.addCleanup(set_gradescope_vars, self)
 
         return func(self, *args, **kwargs)
 
