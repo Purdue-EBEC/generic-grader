@@ -1,4 +1,3 @@
-import unittest
 from functools import wraps
 
 from generic_grader.utils.options import Options
@@ -41,16 +40,15 @@ def weighted(func):
     def set_score(self, score):
         """Set the score of the test."""
 
-        type(self).__gradescope__["scores"][-1] = score
+        type(self).__gradescope__[self._testMethodName]["score"] = score
 
     def set_gradescope_vars(cls):
         """Set the gradescope variables as attributes on each test."""
 
-        test_case_names = unittest.TestLoader().getTestCaseNames(cls)
-        for test_case_name in test_case_names:
-            test_case = getattr(cls, test_case_name)
-            test_case.__weight__ = cls.__gradescope__["weights"].pop(0)
-            test_case.__score__ = cls.__gradescope__["scores"].pop(0)
+        for test_method_name, test_method_vars in cls.__gradescope__.items():
+            test_method = getattr(cls, test_method_name)
+            test_method.__weight__ = test_method_vars["weight"]
+            test_method.__score__ = test_method_vars["score"]
 
     @wraps(func)
     def wrapper(self, *args, **kwargs):
@@ -65,10 +63,13 @@ def weighted(func):
 
         cls = type(self)
         if not hasattr(cls, "__gradescope__"):
-            cls.__gradescope__ = {"weights": [], "scores": []}
+            cls.__gradescope__ = {}
 
-        cls.__gradescope__["weights"].append(get_weight(*args, **kwargs))
-        cls.__gradescope__["scores"].append(None)
+        test_method_name = self._testMethodName
+        cls.__gradescope__[test_method_name] = {
+            "weight": get_weight(*args, **kwargs),
+            "score": None,
+        }
 
         # Inject a set_score method into the test function's instance.
         self.set_score = set_score
