@@ -6,7 +6,7 @@ class Options(NamedTuple):
     # Base
     weight: int = 0
     init: Callable[[], None] | None = None
-    ref_module: str = "tests.reference"
+    ref_module: str = "tests/reference"
     sub_module: str = ""
     required_files: tuple = ()
     ignored_files: tuple = ()
