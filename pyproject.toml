@@ -8,6 +8,7 @@ version = "0.0.5"
 authors = [
   { name="John Cole", email="jhcole@purdue.edu" },
   { name="Jack Scarfo", email="jscarfo@purdue.edu" },
+  { name="Advait Jawaji", email="ajawaji@purdue.edu"},
 ]
 description = "A collection of parameterizable tests for automatic grading."
 readme = "README.md"
