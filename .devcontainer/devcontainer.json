@@ -13,7 +13,7 @@
 		},
 		"ghcr.io/devcontainers-contrib/features/ruff:1": {
 			"version": "latest"
-		},
+		}
 	},
 
 	// Use 'postCreateCommand' to run commands after the container is created.
