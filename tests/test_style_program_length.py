@@ -11,8 +11,8 @@ from generic_grader.utils.options import Options
 def built_class():
     """Provide the class built by the build function."""
     o = Options()
-    params = param(o)
-    return build(params)
+    the_params = param(o)
+    return build(the_params)
 
 
 @pytest.fixture()
@@ -82,7 +82,7 @@ def case_test_method(request, tmp_path, monkeypatch):
     file_path.write_text(case["reference"])
     monkeypatch.chdir(tmp_path)
 
-    params = [
+    the_params = [
         param(
             Options(
                 sub_module="submission",
@@ -91,7 +91,7 @@ def case_test_method(request, tmp_path, monkeypatch):
             ),
         )
     ]
-    built_class = build(params)
+    built_class = build(the_params)
     built_instance = built_class(methodName="test_program_length_0")
     test_method = built_instance.test_program_length_0
 

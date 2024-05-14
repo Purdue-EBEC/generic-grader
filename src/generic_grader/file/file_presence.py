@@ -26,6 +26,12 @@ from parameterized import parameterized
 #     pass
 
 
+# TODO
+# Move the test_submitted_files() function out of the class and into the module
+# scope.  Then assign the function to an attribute of the class.  This will make
+# the code more readable (less indentation).
+
+
 def build(the_params):
     """Create a class for file presence tests."""
 

@@ -11,8 +11,8 @@ from generic_grader.utils.options import Options
 def built_class():
     """Provide the class built by the build function."""
     o = Options()
-    params = param(o)
-    return build(params)
+    the_params = param(o)
+    return build(the_params)
 
 
 @pytest.fixture()
@@ -53,7 +53,7 @@ def test_file_presence_method_none(built_instance):
 # |---------------:|---------:|--------:|:--------------------------------------------|
 # |              - |        - |       - | raises error, at least one file is required |
 # |            foo |      foo |       - | pass: required file is present              |
-# |            bar |      foo |       - | fail: required file is missing              |
+# |            foo |      bar |       - | fail: required file is missing              |
 # |      foo, foot |      foo |       - | fail: extra file matching pattern present   |
 # |      foo, foot |      foo |    foot | pass: the extra file is ignored             |
 # |       foo, bar | foo, bar |       - | pass: both required files are present       |
@@ -166,7 +166,7 @@ def case_test_method(request, tmp_path, monkeypatch):
         file_path.write_text("")
     monkeypatch.chdir(tmp_path)
 
-    params = [
+    the_params = [
         param(
             Options(
                 required_files=case["required"],
@@ -174,7 +174,7 @@ def case_test_method(request, tmp_path, monkeypatch):
             ),
         )
     ]
-    built_class = build(params)
+    built_class = build(the_params)
     built_instance = built_class()
     test_method = built_instance.test_submitted_files_0
 
