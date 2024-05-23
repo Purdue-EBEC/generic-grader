@@ -47,7 +47,7 @@ exclude = [
 # pyproject.toml
 [tool.pytest.ini_options]
 minversion = "6.0"
-addopts = "-ra --quiet --cov=generic_grader --cov-report=term-missing --cov-report=xml --cov-report=html"
+addopts = "-ra --quiet --cov=generic_grader --cov=tests --cov-report=term-missing --cov-report=xml --cov-report=html"
 testpaths = [
     "tests",
 ]
