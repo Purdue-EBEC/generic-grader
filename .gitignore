@@ -17,3 +17,6 @@ dist/
 # code coverage
 .coverage
 coverage.xml
+
+hello_user.py
+setup_steps.json

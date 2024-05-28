@@ -102,3 +102,6 @@ def test_comment_length(case_test_method):
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+
+
+# TODO add tests for the hint message
