@@ -37,7 +37,6 @@ test_01_TestCommentLength = comments.build(
     for case in comment_cases
 )
 
-
 test_02_TestDocstring = docstring.build(
     [
         param(
