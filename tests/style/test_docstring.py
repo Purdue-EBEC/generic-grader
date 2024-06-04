@@ -110,6 +110,9 @@ def test_style_comments_instance_has_test_method(built_instance):
 """  # Make a table for all possible tests
 cases = []
 
+# Make the value of submission key to an entire submission
+# Try taking thing in an out to test if it works
+
 
 @pytest.fixture(params=cases)
 def case_test_method(request, tmp_path, monkeypatch):
