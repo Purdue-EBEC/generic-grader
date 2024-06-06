@@ -58,45 +58,45 @@ def test_style_comments_instance_has_test_method(built_instance):
 #   - Academic Integrity statement absent
 #   - All components present
 
-"""cases = [
+cases = [
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass module level docstring",
         "result": AssertionError,
         "message": "Module level docstring not found",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass some Author",
         "result": AssertionError,
         "message": "Author name is absent",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass some Assignment name",
         "result": AssertionError,
         "message": "Assignment name is absent",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass some Date",
         "result": AssertionError,
         "message": "Assignment date is absent",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass some Author",
         "result": AssertionError,
         "message": "Author name is absent",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass some contributors",
         "result": AssertionError,
         "message": "Contributors are absent",
     },
     {
-        "submission": None,
+        "submission": "None",
         "reference": "pass Academic Integrity statement",
         "result": AssertionError,
         "message": "Contributors are absent",
@@ -107,8 +107,7 @@ def test_style_comments_instance_has_test_method(built_instance):
         "result": "pass",
     },
 ]
-"""  # Make a table for all possible tests
-cases = []
+# Make a table for all possible tests
 
 # Make the value of submission key to an entire submission
 # Try taking thing in an out to test if it works
