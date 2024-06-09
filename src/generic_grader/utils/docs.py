@@ -44,7 +44,7 @@ def make_line_range(start, n_lines):
     if n_lines == 1:
         return f"line {start}"
     else:
-        stop = n_lines and start + n_lines - 1 or "the end"
+        stop = start + n_lines - 1 if n_lines else "the end"
         return f"lines {start} through {stop}"
 
 
