@@ -54,8 +54,86 @@ def build(the_params):
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
         @parameterized.expand(the_params)
-        def test_docstring(self, options):
+        def test_docstring_module(self, options):
             """Check for existence of module level docstring."""
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
+
+            message = "\n\nHint:\n" + self.wrapper.fill(
+                "The program's docstring was not found."
+                "  A docstring is the first triple quoted string"
+                ' (e.g. """program description ...""") in a Python program,'
+                " and should appear before any code."
+                "  Make sure to include the docstring"
+                " from the provided Python program template"
+                " at the top of your program."
+            )
+            self.assertIsNotNone(self.doc, msg=message)
+
+        @parameterized.expand(the_params)
+        def test_docstring_author(self, options):
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
+            actual = self.author and len(self.author) or 0
+            minimum = 2
+            message = "\n\nHint:\n" + self.wrapper.fill(
+                "The author's name was not found."
+                "  Make sure you have included your name and email address"
+                ' on the "Author:" line of the docstring'
+                ' (e.g. "Author: Your Name, login@purdue.edu").'
+            )
+            self.assertGreaterEqual(actual, minimum, msg=message)
+
+            message = "\n\nHint:\n" + self.wrapper.fill(
+                "The author's email address was not found."
+                "  Make sure you have included your name and email address"
+                ' on the "Author:" line of the docstring'
+                ' (e.g. "Author: Your Name, login@purdue.edu").'
+            )
+            self.assertIn("@purdue.edu", self.author.lower(), msg=message)
+
+        @parameterized.expand(the_params)
+        def test_docstring_assgnmt_name(self, options):
             SUBMISSION = options.sub_module + ".py"
             with open(SUBMISSION) as fo:
                 fail_msg = None
@@ -79,36 +157,6 @@ def build(the_params):
                 self.contributors,
                 self.integrity,
             ) = parse_docstring(self.doc or "")
-
-            message = "\n\nHint:\n" + self.wrapper.fill(
-                "The program's docstring was not found."
-                "  A docstring is the first triple quoted string"
-                ' (e.g. """program description ...""") in a Python program,'
-                " and should appear before any code."
-                "  Make sure to include the docstring"
-                " from the provided Python program template"
-                " at the top of your program."
-            )
-            self.assertIsNotNone(self.doc, msg=message)
-
-            actual = self.author and len(self.author) or 0
-            minimum = 2
-            message = "\n\nHint:\n" + self.wrapper.fill(
-                "The author's name was not found."
-                "  Make sure you have included your name and email address"
-                ' on the "Author:" line of the docstring'
-                ' (e.g. "Author: Your Name, login@purdue.edu").'
-            )
-            self.assertGreaterEqual(actual, minimum, msg=message)
-
-            message = "\n\nHint:\n" + self.wrapper.fill(
-                "The author's email address was not found."
-                "  Make sure you have included your name and email address"
-                ' on the "Author:" line of the docstring'
-                ' (e.g. "Author: Your Name, login@purdue.edu").'
-            )
-            self.assertIn("@purdue.edu", self.author.lower(), msg=message)
-
             name = titlecase(SUBMISSION.replace(".py", "").replace("_", " "))
             actual = self.assignment and len(self.assignment) or 0
             minimum = 7
@@ -128,6 +176,31 @@ def build(the_params):
             )
             self.assertIn(name.lower(), self.assignment.lower(), msg=message)
 
+        @parameterized.expand(the_params)
+        def test_docstring_date(self, options):
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
             actual = self.date and len(self.date) or 0
             minimum = 8  # e.g. "01/01/22"
             today = datetime.datetime.today().date().isoformat()
@@ -138,6 +211,31 @@ def build(the_params):
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
+        @parameterized.expand(the_params)
+        def test_docstring_desc(self, options):
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
             actual = len("".join(self.description))
             REFERENCE = options.ref_module + ".py"
             with open(REFERENCE) as fo:
@@ -160,6 +258,31 @@ def build(the_params):
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
+        @parameterized.expand(the_params)
+        def test_docstring_contributors(self, options):
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
             actual = len("".join(self.contributors))
             minimum = 4  # e.g. "None"
             message = "\n\nHint:\n" + self.wrapper.fill(
@@ -170,6 +293,31 @@ def build(the_params):
 
             self.assertGreaterEqual(actual, minimum, msg=message)
 
+        @parameterized.expand(the_params)
+        def test_docstring_integrity(self, options):
+            SUBMISSION = options.sub_module + ".py"
+            with open(SUBMISSION) as fo:
+                fail_msg = None
+                try:
+                    self.doc = ast.get_docstring(ast.parse(fo.read()))
+                except SyntaxError as e:
+                    fail_msg = (
+                        f"Error while parsing `{SUBMISSION}`. "
+                        + f'The error was "{e.__class__.__name__}: {e}".'
+                    )
+                # Fail outside of the except block
+                # so that AssertionError(s) will be handled properly.
+                if fail_msg:
+                    self.fail(fail_msg)
+
+            (
+                self.author,
+                self.assignment,
+                self.date,
+                self.description,
+                self.contributors,
+                self.integrity,
+            ) = parse_docstring(self.doc or "")
             actual_integrity = "\n".join(self.integrity) + "\n"
 
             expected_integrity = "\n".join(

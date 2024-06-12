@@ -38,7 +38,13 @@ def test_style_docstring_built_instance_type(built_instance):
 
 def test_style_docstring_instance_has_test_method(built_instance):
     """Test that instances of the built_class have test method."""
-    assert hasattr(built_instance, "test_docstring_0")
+    assert hasattr(built_instance, "test_docstring_module_0")
+    assert hasattr(built_instance, "test_docstring_author_0")
+    assert hasattr(built_instance, "test_docstring_assgnmt_name_0")
+    assert hasattr(built_instance, "test_docstring_date_0")
+    assert hasattr(built_instance, "test_docstring_desc_0")
+    assert hasattr(built_instance, "test_docstring_contributors_0")
+    assert hasattr(built_instance, "test_docstring_integrity_0")
 
 
 # Test a file with
@@ -78,205 +84,261 @@ Academic Integrity Statement:
     source, either modified or unmodified; nor have I provided
     another student access to my code.  The project I am
     submitting is my own original work.
-"""
-'''
+"""'''
+parse_err = "print("
+
+miss_auth = "Author:"
+inc_auth = "Author: A"
+miss_email = "Author: John Cole"
+comp_auth = "Author: John Cole, jhcole@purdue.edu"
+
+miss_assgnmt_name = "Assignment: 00.1"
+inc_assgnmt_name = "Assignment: 00.1 - A"
+wrong_assgnmt_name = "Assignment: 00.1 - Road Trip"
+comp_assgnmt_name = "Assignment: 00.1 - Hello User"
+
+miss_date = "Date:"
+comp_date = "Date: 2022/01/09"
+
+miss_desc = "Description:"
+short_desc = "Description:\nshort"
+long_desc = "Description:\n" + "\nlonglonglonglong" * 30
+comp_desc = """Description:
+    This program get the user's name and then displays a message."""
+
+miss_contri = "Contributors:"
+comp_contri = """Contributors:
+    Name, login@purdue.edu [repeat for each]
+    My contributor(s) helped me:
+    [ ] understand the assignment expectations without
+        telling me how they will approach it.
+    [ ] understand different ways to think about a solution
+        without helping me plan my solution.
+    [ ] think through the meaning of a specific error or
+        bug present in my code without looking at my code.
+    Note that if you helped somebody else with their code, you
+    have to list that person as a contributor."""
+
+miss_acdmc_int = ""
+modified_acdmc_int = """Academic Integrity Statement:
+    I have used source code obtained from any unauthorized
+    source, either modified or unmodified; nor have I provided
+    another student access to my code.  The project I am
+    submitting is my own original work."""
+comp_acdmc_int = """Academic Integrity Statement:
+    I have not used source code obtained from any unauthorized
+    source, either modified or unmodified; nor have I provided
+    another student access to my code.  The project I am
+    submitting is my own original work."""
 
 
 cases = [
     {
+        "submission": parse_err,
+        "reference": comp,
+        "result": AssertionError,
+        "message": "Error while parsing",
+        "method": "test_docstring_module_0",
+    },
+    {
         "submission": "",
         "reference": comp,
         "result": AssertionError,
-        "message": "Module level docstring not found",
+        "message": "The program's docstring was not found",
+        "method": "test_docstring_module_0",
     },
     {
-        "submission": """
-Author:
-Assignment: 00.1 - Hello User
-Date: 2022/01/09
-
-Description:
-    This program get the user's name and then displays a message.
-
-Contributors:
-    Name, login@purdue.edu [repeat for each]
-
-My contributor(s) helped me:
-    [ ] understand the assignment expectations without
-        telling me how they will approach it.
-    [ ] understand different ways to think about a solution
-        without helping me plan my solution.
-    [ ] think through the meaning of a specific error or
-        bug present in my code without looking at my code.
-    Note that if you helped somebody else with their code, you
-    have to list that person as a contributor.
-
-Academic Integrity Statement:
-    I have not used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
-    another student access to my code.  The project I am
-    submitting is my own original work.
-""",
+        "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
-        "message": "Author name/email is absent",
+        "message": "Error while parsing",
+        "method": "test_docstring_author_0",
     },
     {
-        "submission": """
-Author: John Cole, jhcole@purdue.edu
-Assignment: 00.1 -
-Date: 2022/01/09
-
-Description:
-    This program get the user's name and then displays a message.
-
-Contributors:
-    Name, login@purdue.edu [repeat for each]
-
-My contributor(s) helped me:
-    [ ] understand the assignment expectations without
-        telling me how they will approach it.
-    [ ] understand different ways to think about a solution
-        without helping me plan my solution.
-    [ ] think through the meaning of a specific error or
-        bug present in my code without looking at my code.
-    Note that if you helped somebody else with their code, you
-    have to list that person as a contributor.
-
-Academic Integrity Statement:
-    I have not used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
-    another student access to my code.  The project I am
-    submitting is my own original work.
-""",
+        "submission": f'''"""{inc_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
         "reference": comp,
         "result": AssertionError,
-        "message": "Assignment name is absent",
+        "message": "The author's name was not found",
+        "method": "test_docstring_author_0",
     },
     {
-        "submission": """
-Author: John Cole, jhcole@purdue.edu
-Assignment: 00.1 - Hello User
-Date:
-
-Description:
-    This program get the user's name and then displays a message.
-
-Contributors:
-    Name, login@purdue.edu [repeat for each]
-
-My contributor(s) helped me:
-    [ ] understand the assignment expectations without
-        telling me how they will approach it.
-    [ ] understand different ways to think about a solution
-        without helping me plan my solution.
-    [ ] think through the meaning of a specific error or
-        bug present in my code without looking at my code.
-    Note that if you helped somebody else with their code, you
-    have to list that person as a contributor.
-
-Academic Integrity Statement:
-    I have not used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
-    another student access to my code.  The project I am
-    submitting is my own original work.
-""",
+        "submission": f'''"""{inc_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
         "reference": comp,
         "result": AssertionError,
-        "message": "Assignment date is absent",
+        "message": "The author's name was not found",
+        "method": "test_docstring_author_0",
     },
     {
-        "submission": """
-Author: John Cole, jhcole@purdue.edu
-Assignment: 00.1 - Hello User
-Date: 2022/01/09
-
-Description:
-
-
-Contributors:
-    Name, login@purdue.edu [repeat for each]
-
-My contributor(s) helped me:
-    [ ] understand the assignment expectations without
-        telling me how they will approach it.
-    [ ] understand different ways to think about a solution
-        without helping me plan my solution.
-    [ ] think through the meaning of a specific error or
-        bug present in my code without looking at my code.
-    Note that if you helped somebody else with their code, you
-    have to list that person as a contributor.
-
-Academic Integrity Statement:
-    I have not used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
-    another student access to my code.  The project I am
-    submitting is my own original work.
-""",
+        "submission": f'''"""{miss_email}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
         "reference": comp,
         "result": AssertionError,
-        "message": "Description is too short/missing",
+        "message": "The author's email address was not found",
+        "method": "test_docstring_author_0",
     },
     {
-        "submission": """
-Author: John Cole, jhcole@purdue.edu
-Assignment: 00.1 - Hello User
-Date: 2022/01/09
-
-Description:
-    This program get the user's name and then displays a message.
-
-Contributors:
-
-
-Academic Integrity Statement:
-    I have not used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
-    another student access to my code.  The project I am
-    submitting is my own original work.
-""",
+        "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
-        "message": "Contributors section is absent",
+        "message": "Error while parsing",
+        "method": "test_docstring_assgnmt_name_0",
     },
     {
-        "submission": """
-Author: John Cole, jhcole@purdue.edu
-Assignment: 00.1 - Hello User
-Date: 2022/01/09
-
-Description:
-    This program get the user's name and then displays a message.
-
-Contributors:
-    Name, login@purdue.edu [repeat for each]
-
-My contributor(s) helped me:
-    [ ] understand the assignment expectations without
-        telling me how they will approach it.
-    [ ] understand different ways to think about a solution
-        without helping me plan my solution.
-    [ ] think through the meaning of a specific error or
-        bug present in my code without looking at my code.
-    Note that if you helped somebody else with their code, you
-    have to list that person as a contributor.
-
-Academic Integrity Statement:
-    I have not used source
-""",
+        "submission": f'''"""{comp_auth}
+                            {miss_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
         "reference": comp,
         "result": AssertionError,
-        "message": "Academic Integrity statement was changed/modified",
+        "message": "The assignment's name was not found.",
+        "method": "test_docstring_assgnmt_name_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {inc_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The assignment name doesn't match the required name",
+        "method": "test_docstring_assgnmt_name_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {wrong_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The assignment name doesn't match the required name",
+        "method": "test_docstring_assgnmt_name_0",
+    },
+    {
+        "submission": parse_err,
+        "reference": comp,
+        "result": AssertionError,
+        "message": "Error while parsing",
+        "method": "test_docstring_date_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assgnmt_name}
+                            {miss_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": " The program's date was not found.",
+        "method": "test_docstring_date_0",
+    },
+    {
+        "submission": parse_err,
+        "reference": comp,
+        "result": AssertionError,
+        "message": "Error while parsing",
+        "method": "test_docstring_desc_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {miss_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The program's description was not found.",
+        "method": "test_docstring_desc_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {short_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The program's description is too short.",
+        "method": "test_docstring_desc_0",
+    },
+    {
+        "submission": parse_err,
+        "reference": comp,
+        "result": AssertionError,
+        "message": "Error while parsing",
+        "method": "test_docstring_contributors_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {miss_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The program contributors section is missing or too short.",
+        "method": "test_docstring_contributors_0",
+    },
+    {
+        "submission": parse_err,
+        "reference": comp,
+        "result": AssertionError,
+        "message": "Error while parsing",
+        "method": "test_docstring_integrity_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {miss_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The Academic Integrity Statement is missing or modified.",
+        "method": "test_docstring_integrity_0",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {inc_assgnmt_name}
+                            {comp_date}
+                            {comp_desc}
+                            {comp_contri}
+                            {modified_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The Academic Integrity Statement is missing or modified.",
+        "method": "test_docstring_integrity_0",
     },
     {
         "submission": comp,
         "reference": comp,
         "result": "pass",
-    },
-    {
-        "submission": "print(",
-        "reference": comp,
-        "result": AssertionError,
+        "message": "Docstring is valid",
+        "method": "test_docstring_integrity_0",
     },
 ]
 
@@ -306,7 +368,7 @@ def case_test_method(request, tmp_path, monkeypatch):
     ]
     built_class = build(the_params)
     built_instance = built_class()
-    test_method = built_instance.test_docstring_0
+    test_method = getattr(built_instance, case["method"])
 
     return case, test_method
 
@@ -314,10 +376,12 @@ def case_test_method(request, tmp_path, monkeypatch):
 def test_docstring(case_test_method):
     """Test docstring of test_submitted_files function."""
     case, test_method = case_test_method
+
     if case["result"] == "pass":
         test_method()  # should not raise an error
     else:
         error = case["result"]
-        with pytest.raises(error):
+        with pytest.raises(error) as exc_info:
             test_method()
-        # assert case["message"] in message
+        message = " ".join(str(exc_info.value).split())
+        assert case["message"] in message
