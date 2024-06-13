@@ -6,7 +6,7 @@ import pytest
 from generic_grader.utils.importer import Importer
 
 
-@pytest.fixture(scope="module")
+@pytest.fixture(scope="module", autouse=True)
 def fix_syspath():
     """Add the current directory to sys.path to allow for importing fake modules."""
     sys.path.append("")
@@ -30,7 +30,6 @@ class FakeTest:
             )  # pragma: no cover # This line is not covered by tests because we are not testing for this case.
 
 
-@pytest.mark.usefixtures("fix_syspath")
 def test_input_error(monkeypatch, tmp_path):
     """Test the Importer's ability to catch global input() calls."""
     # Create a fake file using tmp_path in order to avoid pytest coverage errors.
@@ -45,7 +44,6 @@ def test_input_error(monkeypatch, tmp_path):
         Importer.import_obj(test, "fake_module", "fake_func")
 
 
-@pytest.mark.usefixtures("fix_syspath")
 def test_other_error(monkeypatch, tmp_path):
     """Test the Importer's ability to catch other exceptions. This raises a ModuleNotFoundError."""
 
@@ -59,7 +57,6 @@ def test_other_error(monkeypatch, tmp_path):
         Importer.import_obj(test, "fake_module_0", "fake_func")
 
 
-@pytest.mark.usefixtures("fix_syspath")
 def test_attribute_error(monkeypatch, tmp_path):
     """Test the Importer's ability to catch missing objects."""
 
@@ -73,7 +70,6 @@ def test_attribute_error(monkeypatch, tmp_path):
         Importer.import_obj(test, "fake_module", "fake_obj")
 
 
-@pytest.mark.usefixtures("fix_syspath")
 def test_ignores_function_input(monkeypatch, tmp_path):
     """Test the Importer's ability to not catch input() calls inside functions."""
 
@@ -87,7 +83,6 @@ def test_ignores_function_input(monkeypatch, tmp_path):
     assert isinstance(obj, FunctionType)
 
 
-@pytest.mark.usefixtures("fix_syspath")
 def test_valid_import(monkeypatch, tmp_path):
     """Test the Importer's ability to import a valid object."""
     fake_file = tmp_path / "fake_module.py"
