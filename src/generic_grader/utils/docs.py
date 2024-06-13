@@ -108,7 +108,10 @@ def output_line_matches_reference(func, num, param):
     call_str = make_call_str()
     docstring = (
         f"Check that the formatting of output line {line_n} from `{call_str}` "
-        + (entries and f"with entries={entries} " or "")
+        + f"with entries={entries} "
+        if entries
+        else ""
+        # + (entries and f"with entries={entries} " or "")
         + "matches the reference line."
     )
 
