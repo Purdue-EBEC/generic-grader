@@ -6,7 +6,9 @@ import pytest
 from generic_grader.utils.importer import Importer
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(
+    scope="module", autouse=True
+)  # This is the current solution to the empty string being missing from sys.path when running pytest.
 def fix_syspath():
     """Add the current directory to sys.path to allow for importing fake modules."""
     sys.path.append("")
