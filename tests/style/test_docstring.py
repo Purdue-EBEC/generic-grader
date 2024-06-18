@@ -1,18 +1,14 @@
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.style.docstring import build
-from generic_grader.utils.options import Options
 
 
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options()
-    the_params = param(o)
-    return build(the_params)
+    return build(submission=None, reference=None)
 
 
 @pytest.fixture()
@@ -38,25 +34,15 @@ def test_style_docstring_built_instance_type(built_instance):
 
 def test_style_docstring_instance_has_test_method(built_instance):
     """Test that instances of the built_class have test method."""
-    assert hasattr(built_instance, "test_docstring_module_0")
-    assert hasattr(built_instance, "test_docstring_author_0")
-    assert hasattr(built_instance, "test_docstring_assgnmt_name_0")
-    assert hasattr(built_instance, "test_docstring_date_0")
-    assert hasattr(built_instance, "test_docstring_desc_0")
-    assert hasattr(built_instance, "test_docstring_contributors_0")
-    assert hasattr(built_instance, "test_docstring_integrity_0")
+    assert hasattr(built_instance, "setUp")
+    assert hasattr(built_instance, "test_docstring_module")
+    assert hasattr(built_instance, "test_docstring_author")
+    assert hasattr(built_instance, "test_docstring_assignment_name")
+    assert hasattr(built_instance, "test_docstring_date")
+    assert hasattr(built_instance, "test_docstring_desc")
+    assert hasattr(built_instance, "test_docstring_contributors")
+    assert hasattr(built_instance, "test_docstring_integrity")
 
-
-# Test a file with
-#   - Module level docstring absent
-#   - Author absent
-#   - Assignment name absent
-#   - Assignment date absent
-#   - Description too short* - yet to add
-#   - Description too long* - yet to add
-#   - Contributors absent
-#   - Academic Integrity statement absent
-#   - All components present
 
 comp = '''"""
 Author: John Cole, jhcole@purdue.edu
@@ -92,10 +78,10 @@ inc_auth = "Author: A"
 miss_email = "Author: John Cole"
 comp_auth = "Author: John Cole, jhcole@purdue.edu"
 
-miss_assgnmt_name = "Assignment: 00.1"
-inc_assgnmt_name = "Assignment: 00.1 - A"
-wrong_assgnmt_name = "Assignment: 00.1 - Road Trip"
-comp_assgnmt_name = "Assignment: 00.1 - Hello User"
+miss_assignment_name = "Assignment: 00.1"
+inc_assignment_name = "Assignment: 00.1 - A"
+wrong_assignment_name = "Assignment: 00.1 - Road Trip"
+comp_assignment_name = "Assignment: 00.1 - Hello User"
 
 miss_date = "Date:"
 comp_date = "Date: 2022/01/09"
@@ -118,19 +104,52 @@ comp_contri = """Contributors:
         bug present in my code without looking at my code.
     Note that if you helped somebody else with their code, you
     have to list that person as a contributor."""
+multi_contri = """Contributors:
+    Test1, test1@purdue.edu
+    Test2, test2@purdue.edu
+    Test3, test3@purdue.edu
+    Test4, test4@purdue.edu
+    Test5, test5@purdue.edu
+    My contributor(s) helped me:
+    [X] understand the assignment expectations without
+        telling me how they will approach it.
+    [X] understand different ways to think about a solution
+        without helping me plan my solution.
+    [X] think through the meaning of a specific error or
+        bug present in my code without looking at my code.
+    Note that if you helped somebody else with their code, you
+    have to list that person as a contributor."""
 
 miss_acdmc_int = ""
 modified_acdmc_int = """Academic Integrity Statement:
     I have used source code obtained from any unauthorized
-    source, either modified or unmodified; nor have I provided
+    source, either modified or unmodified; I provided
     another student access to my code.  The project I am
-    submitting is my own original work."""
+    submitting is not my own original work."""
 comp_acdmc_int = """Academic Integrity Statement:
     I have not used source code obtained from any unauthorized
     source, either modified or unmodified; nor have I provided
     another student access to my code.  The project I am
     submitting is my own original work."""
 
+# Test a file with
+#   - Parse error for each test
+#   - Module level docstring absent
+#   - Missing author
+#   - Incomplete author name (1 character)
+#   - Missing author email
+#   - Missing assignment name
+#   - Incomplete assignment name
+#   - Wrong assignment name
+#   - Missing date
+#   - Missing description
+#   - Description too short
+#   - Description too long
+#   - Missing contributors
+#   - Multiple contributors
+#   - Missing academic integrity statement
+#   - Modified academic integrity statement
+#   - All components present for each test
 
 cases = [
     {
@@ -138,25 +157,32 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_module_0",
+        "method": "test_docstring_module",
     },
     {
         "submission": "",
         "reference": comp,
         "result": AssertionError,
         "message": "The program's docstring was not found",
-        "method": "test_docstring_module_0",
+        "method": "test_docstring_module",
+    },
+    {
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "message": "Docstring is valid",
+        "method": "test_docstring_module",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_author_0",
+        "method": "test_docstring_author",
     },
     {
-        "submission": f'''"""{inc_auth}
-                            {comp_assgnmt_name}
+        "submission": f'''"""{miss_auth}
+                            {comp_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -164,11 +190,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's name was not found",
-        "method": "test_docstring_author_0",
+        "method": "test_docstring_author",
     },
     {
         "submission": f'''"""{inc_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -176,11 +202,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's name was not found",
-        "method": "test_docstring_author_0",
+        "method": "test_docstring_author",
     },
     {
         "submission": f'''"""{miss_email}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -188,18 +214,25 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's email address was not found",
-        "method": "test_docstring_author_0",
+        "method": "test_docstring_author",
+    },
+    {
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "message": "Docstring is valid",
+        "method": "test_docstring_author",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_assgnmt_name_0",
+        "method": "test_docstring_assignment_name",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {miss_assgnmt_name}
+                            {miss_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -207,11 +240,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment's name was not found.",
-        "method": "test_docstring_assgnmt_name_0",
+        "method": "test_docstring_assignment_name",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {inc_assgnmt_name}
+                            {inc_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -219,11 +252,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
-        "method": "test_docstring_assgnmt_name_0",
+        "method": "test_docstring_assignment_name",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {wrong_assgnmt_name}
+                            {wrong_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -231,18 +264,25 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
-        "method": "test_docstring_assgnmt_name_0",
+        "method": "test_docstring_assignment_name",
+    },
+    {
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "message": "Docstring is valid",
+        "method": "test_docstring_assignment_name",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_date_0",
+        "method": "test_docstring_date",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {miss_date}
                             {comp_desc}
                             {comp_contri}
@@ -250,18 +290,18 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": " The program's date was not found.",
-        "method": "test_docstring_date_0",
+        "method": "test_docstring_date",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_desc_0",
+        "method": "test_docstring_desc",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {miss_desc}
                             {comp_contri}
@@ -269,11 +309,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program's description was not found.",
-        "method": "test_docstring_desc_0",
+        "method": "test_docstring_desc",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {short_desc}
                             {comp_contri}
@@ -281,18 +321,30 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program's description is too short.",
-        "method": "test_docstring_desc_0",
+        "method": "test_docstring_desc",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assignment_name}
+                            {comp_date}
+                            {long_desc}
+                            {comp_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": AssertionError,
+        "message": "The program's description is too long.",
+        "method": "test_docstring_desc",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_contributors_0",
+        "method": "test_docstring_contributors",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {miss_contri}
@@ -300,18 +352,37 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program contributors section is missing or too short.",
-        "method": "test_docstring_contributors_0",
+        "method": "test_docstring_contributors",
+    },
+    {
+        "submission": f'''"""{comp_auth}
+                            {comp_assignment_name}
+                            {comp_date}
+                            {comp_desc}
+                            {multi_contri}
+                            {comp_acdmc_int}"""''',
+        "reference": comp,
+        "result": "pass",
+        "message": "Docstring is valid",
+        "method": "test_docstring_contributors",
+    },
+    {
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "message": "Docstring is valid",
+        "method": "test_docstring_contributors",
     },
     {
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_integrity_0",
+        "method": "test_docstring_integrity",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {comp_assgnmt_name}
+                            {comp_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -319,11 +390,11 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
-        "method": "test_docstring_integrity_0",
+        "method": "test_docstring_integrity",
     },
     {
         "submission": f'''"""{comp_auth}
-                            {inc_assgnmt_name}
+                            {inc_assignment_name}
                             {comp_date}
                             {comp_desc}
                             {comp_contri}
@@ -331,21 +402,16 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
-        "method": "test_docstring_integrity_0",
+        "method": "test_docstring_integrity",
     },
     {
         "submission": comp,
         "reference": comp,
         "result": "pass",
         "message": "Docstring is valid",
-        "method": "test_docstring_integrity_0",
+        "method": "test_docstring_integrity",
     },
 ]
-
-# Make a table for all possible tests
-
-# Make the value of submission key to an entire submission
-# Try taking thing in an out to test if it works
 
 
 @pytest.fixture(params=cases)
@@ -353,35 +419,33 @@ def case_test_method(request, tmp_path, monkeypatch):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
     file_path = tmp_path / "hello_user.py"
+    submission = file_path.name
     file_path.write_text(case["submission"])
     file_path = tmp_path / "reference.py"
+    reference = file_path.name
     file_path.write_text(case["reference"])
     monkeypatch.chdir(tmp_path)
 
-    the_params = [
-        param(
-            Options(
-                sub_module="hello_user",
-                ref_module="reference",
-            ),
-        )
-    ]
-    built_class = build(the_params)
+    built_class = build(submission, reference)
     built_instance = built_class()
     test_method = getattr(built_instance, case["method"])
+    custom_setup_method = getattr(built_instance, "setUp")
 
-    return case, test_method
+    return case, test_method, custom_setup_method
 
 
 def test_docstring(case_test_method):
     """Test docstring of test_submitted_files function."""
-    case, test_method = case_test_method
+    case, test_method, custom_setup_method = case_test_method
 
     if case["result"] == "pass":
+        custom_setup_method()
         test_method()  # should not raise an error
+
     else:
         error = case["result"]
         with pytest.raises(error) as exc_info:
+            custom_setup_method()
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message

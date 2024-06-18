@@ -37,13 +37,7 @@ test_01_TestCommentLength = comments.build(
     for case in comment_cases
 )
 
+
 test_02_TestDocstring = docstring.build(
-    [
-        param(
-            Options(
-                sub_module="hello_user",
-                ref_module="reference",
-            ),
-        )
-    ]
+    submission="hello_user.py", reference="tests/reference.py"
 )
