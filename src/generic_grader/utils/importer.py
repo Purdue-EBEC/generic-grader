@@ -1,6 +1,7 @@
 """Handle importing objects from student code."""
 
 import textwrap
+import unittest
 from unittest.mock import patch
 
 from generic_grader.utils.exceptions import handle_error
@@ -20,7 +21,7 @@ class Importer:
         raise cls.InputError()
 
     @classmethod
-    def import_obj(cls, test, module, obj_name):
+    def import_obj(cls, test: unittest.TestCase, module: str, obj_name: str):
         """Import and return the requested object from module. Special
         handling is applied to catch input() statements and missing
         objects."""
@@ -45,6 +46,7 @@ class Importer:
                     " sure its definition is not inside of any other block."
                 )
             )
+            test.failureException = AttributeError
 
         except cls.InputError:
             # Handle exception raised by call to input.
@@ -58,9 +60,11 @@ class Importer:
                     "(i.e. outside of any function or other code block)."
                 )
             )
+            test.failureException = cls.InputError
 
         except Exception as e:
             fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
+            test.failureException = type(e)
 
         # Fail outside of the except block
         # so that AssertionError(s) will be handled properly.
