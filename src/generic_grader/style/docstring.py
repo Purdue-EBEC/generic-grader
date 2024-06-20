@@ -140,8 +140,7 @@ def build(submission, reference):
 
         def test_docstring_desc(self):
             actual = len("".join(self.description))
-            REFERENCE = reference
-            with open(REFERENCE) as fo:
+            with open(reference) as fo:
                 reference_doc = ast.get_docstring(ast.parse(fo.read()))
             _, _, _, reference_desc, _, _ = parse_docstring(reference_doc)
             minimum = len("".join(reference_desc)) // 2
