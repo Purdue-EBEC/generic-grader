@@ -108,7 +108,6 @@ def build(submission, reference):
             self.assertIn("@purdue.edu", self.author.lower(), msg=message)
 
         def test_docstring_assignment_name(self):
-            # name = titlecase(submission.replace(".py", "").replace("_", " "))
             name = titlecase(submission.replace(".py", "").replace("_", " "))
             actual = self.assignment and len(self.assignment) or 0
             minimum = 7

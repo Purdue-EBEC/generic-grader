@@ -104,6 +104,17 @@ comp_contri = """Contributors:
         bug present in my code without looking at my code.
     Note that if you helped somebody else with their code, you
     have to list that person as a contributor."""
+single_contri = """Contributors:
+    test1 test1, test1@purdue.edu [repeat for each]
+    My contributor(s) helped me:
+    [ ] understand the assignment expectations without
+        telling me how they will approach it.
+    [ ] understand different ways to think about a solution
+        without helping me plan my solution.
+    [ ] think through the meaning of a specific error or
+        bug present in my code without looking at my code.
+    Note that if you helped somebody else with their code, you
+    have to list that person as a contributor."""
 multi_contri = """Contributors:
     Test1, test1@purdue.edu
     Test2, test2@purdue.edu
@@ -133,54 +144,81 @@ comp_acdmc_int = """Academic Integrity Statement:
     submitting is my own original work."""
 
 # Test a file with
-#   - Parse error for each test
-#   - Module level docstring absent
-#   - Missing author
-#   - Incomplete author name (1 character)
-#   - Missing author email
-#   - Missing assignment name
-#   - Incomplete assignment name
-#   - Wrong assignment name
-#   - Missing date
-#   - Missing description
-#   - Description too short
-#   - Description too long
-#   - Missing contributors
-#   - Multiple contributors
-#   - Missing academic integrity statement
-#   - Modified academic integrity statement
-#   - All components present for each test
+#   - Module level docstring
+#       - Passing case
+#       - Parse error
+#       - Missing module level docstring
+
+#   - Author
+#       - Passing case
+#       - Parse error
+#       - Missing author name
+#       - Incomplete author name
+#       - Missing author email
+
+#   - Assignment name
+#       - Passing case
+#       - Parse error
+#       - Missing assignment name
+#       - Incomplete assignment name
+#       - Wrong assignment name
+
+#   - Assignment date
+#       - Passing case
+#       - Parse error
+#       - Missing assignment date
+
+#   - Assignment description
+#       - Passing case
+#       - Parse error
+#       - Missing assignment description
+#       - Description too short
+#       - Description too long
+
+#   - Contributor's section
+#       - Passing case (No contributors)
+#       - Multiple contributors
+#       - Single contributor
+#       - Parse error
+#       - Missing contributor's section
+
+
+#   - Academic integrity statament
+#       - Passing case
+#       - Parse error
+#       - Missing academic integrity statement
+#       - Modified academic integrity statement
+
 
 cases = [
-    {
+    {  # Parse error for module level docstring test
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_module",
     },
-    {
+    {  # Missing module level docstring
         "submission": "",
         "reference": comp,
         "result": AssertionError,
         "message": "The program's docstring was not found",
         "method": "test_docstring_module",
     },
-    {
+    {  # Valid test case for module level docstring
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "message": "Docstring is valid",
         "method": "test_docstring_module",
     },
-    {
+    {  # Parse error for author in odcstring
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_author",
     },
-    {
+    {  # Missing Author name
         "submission": f'''"""{miss_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -192,7 +230,7 @@ cases = [
         "message": "The author's name was not found",
         "method": "test_docstring_author",
     },
-    {
+    {  # Incomplete author name
         "submission": f'''"""{inc_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -204,7 +242,7 @@ cases = [
         "message": "The author's name was not found",
         "method": "test_docstring_author",
     },
-    {
+    {  # Missing author email
         "submission": f'''"""{miss_email}
                             {comp_assignment_name}
                             {comp_date}
@@ -216,21 +254,20 @@ cases = [
         "message": "The author's email address was not found",
         "method": "test_docstring_author",
     },
-    {
+    {  # Valid test case for author section
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "message": "Docstring is valid",
         "method": "test_docstring_author",
     },
-    {
+    {  # Parse error for assignment name in docstring
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_assignment_name",
     },
-    {
+    {  # Missing assignment name
         "submission": f'''"""{comp_auth}
                             {miss_assignment_name}
                             {comp_date}
@@ -242,7 +279,7 @@ cases = [
         "message": "The assignment's name was not found.",
         "method": "test_docstring_assignment_name",
     },
-    {
+    {  # Incomplete assignment name
         "submission": f'''"""{comp_auth}
                             {inc_assignment_name}
                             {comp_date}
@@ -254,7 +291,7 @@ cases = [
         "message": "The assignment name doesn't match the required name",
         "method": "test_docstring_assignment_name",
     },
-    {
+    {  # Wrong assignment name
         "submission": f'''"""{comp_auth}
                             {wrong_assignment_name}
                             {comp_date}
@@ -266,21 +303,20 @@ cases = [
         "message": "The assignment name doesn't match the required name",
         "method": "test_docstring_assignment_name",
     },
-    {
+    {  # Valid test case for assignment name
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "message": "Docstring is valid",
         "method": "test_docstring_assignment_name",
     },
-    {
+    {  # Parse error for date in docstring
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_date",
     },
-    {
+    {  # Missing assignment date
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {miss_date}
@@ -292,14 +328,20 @@ cases = [
         "message": " The program's date was not found.",
         "method": "test_docstring_date",
     },
-    {
+    {  # Valid test case for assignment date
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "method": "test_docstring_date",
+    },
+    {  # Parse error for description in docstring
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_desc",
     },
-    {
+    {  # Missing description
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -311,7 +353,7 @@ cases = [
         "message": "The program's description was not found.",
         "method": "test_docstring_desc",
     },
-    {
+    {  # Description too short
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -323,7 +365,7 @@ cases = [
         "message": "The program's description is too short.",
         "method": "test_docstring_desc",
     },
-    {
+    {  # Description too long
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -335,14 +377,20 @@ cases = [
         "message": "The program's description is too long.",
         "method": "test_docstring_desc",
     },
-    {
+    {  # Valid test case for assignment description
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "method": "test_docstring_desc",
+    },
+    {  # Parse error for contributor's section
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_contributors",
     },
-    {
+    {  # Missing contributor's section
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -354,7 +402,7 @@ cases = [
         "message": "The program contributors section is missing or too short.",
         "method": "test_docstring_contributors",
     },
-    {
+    {  # Multiple contributors (passes)
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -366,21 +414,32 @@ cases = [
         "message": "Docstring is valid",
         "method": "test_docstring_contributors",
     },
-    {
-        "submission": comp,
+    {  # Single contributor (passes)
+        "submission": f'''"""{comp_auth}
+                            {comp_assignment_name}
+                            {comp_date}
+                            {comp_desc}
+                            {single_contri}
+                            {comp_acdmc_int}"""''',
         "reference": comp,
         "result": "pass",
         "message": "Docstring is valid",
         "method": "test_docstring_contributors",
     },
-    {
+    {  # Valid test case for contributor's section (No contributors)
+        "submission": comp,
+        "reference": comp,
+        "result": "pass",
+        "method": "test_docstring_contributors",
+    },
+    {  # Parse error for academic integrity statement
         "submission": parse_err,
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_integrity",
     },
-    {
+    {  # Missing academic integrity statement
         "submission": f'''"""{comp_auth}
                             {comp_assignment_name}
                             {comp_date}
@@ -392,7 +451,7 @@ cases = [
         "message": "The Academic Integrity Statement is missing or modified.",
         "method": "test_docstring_integrity",
     },
-    {
+    {  # Modified academic integrity statement
         "submission": f'''"""{comp_auth}
                             {inc_assignment_name}
                             {comp_date}
@@ -404,11 +463,10 @@ cases = [
         "message": "The Academic Integrity Statement is missing or modified.",
         "method": "test_docstring_integrity",
     },
-    {
+    {  # Valid test case for academic integrity statement
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "message": "Docstring is valid",
         "method": "test_docstring_integrity",
     },
 ]
