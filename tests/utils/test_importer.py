@@ -50,73 +50,57 @@ def test_ignores_function_input(monkeypatch, tmp_path):
     assert isinstance(obj, FunctionType)
 
 
-def test_input_error(monkeypatch, tmp_path):
-    """Test the Importer's ability to catch global input() calls."""
-    fake_file = tmp_path / "fake_module_2.py"
-    fake_file.write_text("input()\nfake_func = lambda: None")
-    monkeypatch.chdir(tmp_path)
-
-    test = FakeTest()
-
-    with pytest.raises(Importer.InputError):
-        Importer.import_obj(test, "fake_module_2", "fake_func")
-
-
-def test_other_error():
-    """Test the Importer's ability to catch other exceptions. This raises a ModuleNotFoundError."""
-    test = FakeTest()
-
-    with pytest.raises(ModuleNotFoundError):
-        Importer.import_obj(test, "fake_module_-1", "fake_func")
-
-
-def test_attribute_error(monkeypatch, tmp_path):
-    """Test the Importer's ability to catch missing objects."""
-
-    fake_file = tmp_path / "fake_module_3.py"
-    fake_file.write_text("")  # The file does not get created until this line.
-    monkeypatch.chdir(tmp_path)
-
-    test = FakeTest()
-
-    with pytest.raises(AttributeError):
-        Importer.import_obj(test, "fake_module_3", "fake_obj")
-
-
-error_message_cases = [
+error_cases = [
     {
-        "module": "fake_module_5",
+        # Tests the except block on line 39
+        "module": "fake_module_2",
+        "error": AttributeError,
         "text": "fake_func = lambda: None",
         "message": "Unable to import `fake_obj`",
         "object": "fake_obj",
     },
     {
-        "module": "fake_module_6",
+        # Tests the except block on line 51
+        "module": "fake_module_3",
+        "error": Importer.InputError,
         "text": "input()\nfake_func = lambda: None",
         "message": "Stuck at call to `input()` while importing `fake_func`",
         "object": "fake_func",
     },
     {
-        "module": "fake_module_7",
-        "text": "",
-        "message": "Unable to import `fake_obj`",
+        # Tests the except block on line 65
+        "module": "fake_module_4",
+        "error": ModuleNotFoundError,
+        "message": "Error while importing `fake_obj`",
         "object": "fake_obj",
     },
 ]
 
 
-@pytest.mark.parametrize("case", error_message_cases)
+@pytest.mark.parametrize("case", error_cases)
+def test_error_exception(monkeypatch, tmp_path, case):
+    """Test the Importer's ability to raise the correct exception."""
+
+    if case["error"] is not ModuleNotFoundError:
+        fake_file = tmp_path / (case["module"] + ".py")
+        fake_file.write_text(case["text"])
+        monkeypatch.chdir(tmp_path)
+
+    test = FakeTest()
+    with pytest.raises(case["error"]):
+        Importer.import_obj(test, case["module"], case["object"])
+
+
+@pytest.mark.parametrize("case", error_cases)
 def test_error_message(monkeypatch, tmp_path, case):
     """Test the Importer's ability to provide helpful error messages."""
-
-    fake_file = tmp_path / (case["module"] + ".py")
-    fake_file.write_text(case["text"])
-    monkeypatch.chdir(tmp_path)
+    if case["error"] is not ModuleNotFoundError:
+        fake_file = tmp_path / (case["module"] + ".py")
+        fake_file.write_text(case["text"])
+        monkeypatch.chdir(tmp_path)
 
     test = FakeTest()
     #  Since we already check Exception type, we can use a generic Exception here
     with pytest.raises(Exception) as exc_info:
         Importer.import_obj(test, case["module"], case["object"])
-    assert case["message"] in str(exc_info.value)
-
     assert case["message"] in str(exc_info.value)
