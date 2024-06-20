@@ -1,7 +1,7 @@
 from parameterized import param
 
 from generic_grader.file import file_set_up
-from generic_grader.style import comments
+from generic_grader.style import comments, docstring
 from generic_grader.utils.options import Options
 
 test_00_TestFileSetUp = file_set_up.build(
@@ -35,4 +35,9 @@ test_01_TestCommentLength = comments.build(
         ),
     )
     for case in comment_cases
+)
+
+
+test_02_TestDocstring = docstring.build(
+    submission="hello_user.py", reference="tests/reference.py"
 )
