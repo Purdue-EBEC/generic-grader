@@ -22,6 +22,7 @@ str_cases = [
 
 @pytest.mark.parametrize("case", str_cases)
 def test_make_call_str(case):
+    """Test make_call_str to ensure it formats function calls correctly."""
     assert (
         make_call_str(case["func_name"], case["args"], case["kwargs"])
         == case["expected"]
@@ -52,6 +53,7 @@ ord_cases = [
 
 @pytest.mark.parametrize("case", ord_cases)
 def test_ordinalize(case):
+    """Test ordinalize to ensure it formats numbers correctly."""
     assert ordinalize(case["n"]) == case["expected"]
 
 
@@ -64,6 +66,7 @@ calc_log_cases = [
 
 @pytest.mark.parametrize("case", calc_log_cases)
 def test_calc_log_limit(case):
+    """Test calc_log_limit to ensure it calculates log limits correctly."""
     assert calc_log_limit(case["expected_log"]) == case["expected"]
 
 
@@ -79,6 +82,7 @@ line_range_cases = [
 
 @pytest.mark.parametrize("case", line_range_cases)
 def test_make_line_range(case):
+    """Test make_line_range to ensure it formats line ranges correctly."""
     assert make_line_range(case["start"], case["n_lines"]) == case["expected"]
 
 
@@ -96,4 +100,5 @@ oxford_cases = [
 
 @pytest.mark.parametrize("case", oxford_cases)
 def test_oxford_list(case):
+    """Test oxford_list to ensure it formats lists correctly."""
     assert oxford_list(case["sequence"]) == case["expected"]
