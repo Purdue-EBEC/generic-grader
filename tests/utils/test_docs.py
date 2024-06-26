@@ -13,6 +13,12 @@ str_cases = [
     {"func_name": "main", "args": [1, 2, 3], "kwargs": {}, "expected": "main(1, 2, 3)"},
     {
         "func_name": "main",
+        "args": [],
+        "kwargs": {"x": 4, "y": 5},
+        "expected": "main(x=4, y=5)",
+    },
+    {
+        "func_name": "main",
         "args": [1, 2, 3],
         "kwargs": {"x": 4, "y": 5},
         "expected": "main(1, 2, 3, x=4, y=5)",
@@ -30,6 +36,7 @@ def test_make_call_str(case):
 
 
 ord_cases = [
+    {"n": 0, "expected": "0th"},
     {"n": 1, "expected": "1st"},
     {"n": 2, "expected": "2nd"},
     {"n": 3, "expected": "3rd"},
@@ -58,6 +65,7 @@ def test_ordinalize(case):
 
 
 calc_log_cases = [
+    {"expected_log": "", "expected": 200},
     {"expected_log": "log message", "expected": 216},
     {"expected_log": "log message" * 10, "expected": 365},
     {"expected_log": "log message" * 100, "expected": 1850},
@@ -74,8 +82,10 @@ line_range_cases = [
     {"start": 1, "n_lines": 1, "expected": "line 1"},
     {"start": 1, "n_lines": 3, "expected": "lines 1 through 3"},
     {"start": 1, "n_lines": 0, "expected": "lines 1 through the end"},
+    {"start": 1, "n_lines": None, "expected": "lines 1 through the end"},
     {"start": 3, "n_lines": 1, "expected": "line 3"},
     {"start": 3, "n_lines": 0, "expected": "lines 3 through the end"},
+    {"start": 3, "n_lines": None, "expected": "lines 3 through the end"},
     {"start": 3, "n_lines": 3, "expected": "lines 3 through 5"},
 ]
 
