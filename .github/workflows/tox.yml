@@ -2,9 +2,9 @@ name: Tox
 
 on:
     push:
-      branches: [ "main", "github-actions" ]
+      branches: [ "main" ]
     pull_request:
-      branches: [ "main", "github-actions" ]
+      branches: [ "main" ]
 
 jobs:
     build:
