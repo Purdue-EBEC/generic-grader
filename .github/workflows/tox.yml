@@ -11,14 +11,14 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                python: ["3.12.4", "3.11"]
+                python: ["3.12.4"]
 
         steps:
             - uses: actions/checkout@v4
             - name: Set up Python
               uses: actions/setup-python@v3
               with:
-                python-version: ​${{ matrix.python }}
+                python-version: ${{ matrix.python }}
             - name: Upgrade pip
               run: python -m pip install --upgrade pip
             - name: Install Tox
