@@ -2,7 +2,7 @@ name: Tox
 
 on:
     push:
-      branches: [ "main", "fix-tox" ]
+      branches: [ "main" ]
     pull_request:
       branches: [ "main" ]
 
