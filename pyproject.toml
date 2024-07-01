@@ -35,7 +35,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"
 
 [project.optional-dependencies]
-dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine"]
+dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine", "tox"]
 
 [tool.hatch.build]
 exclude = [
@@ -51,3 +51,18 @@ addopts = "-ra --quiet --cov=generic_grader --cov=tests --cov-report=term-missin
 testpaths = [
     "tests",
 ]
+
+[tool.tox]
+legacy_tox_ini = """
+    [tox]
+    min_version = 4.0
+    env_list =
+        py312
+    isolated_build = True
+
+    [testenv]
+    deps =
+        pytest
+        pytest-cov
+    commands = python -m pytest
+"""
