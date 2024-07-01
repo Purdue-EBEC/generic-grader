@@ -56,8 +56,6 @@ testpaths = [
 legacy_tox_ini = """
     [tox]
     min_version = 4.0
-    env_list =
-        py312
     isolated_build = True
 
     [testenv]
