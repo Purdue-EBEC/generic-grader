@@ -24,6 +24,7 @@ from generic_grader.utils.exceptions import (
 from generic_grader.utils.importer import Importer
 
 
+# TODO Why is everything in this class indexed at 1 instead of 0?
 def raise_exit_error(*args, **kwargs):
     """Raise a custom ExitError."""
     raise ExitError()
@@ -171,6 +172,7 @@ class User:
             msg = False
             value = values[value_n - 1]
         except IndexError:
+            self.test.failureException = IndexError
             value_nth = ordinalize(value_n)
             line_nth = ordinalize(line_n)
             msg = (
@@ -221,6 +223,7 @@ class User:
             msg = False
             values = [float(value_str) for value_str in value_strings]
         except ValueError as e:  # Just in case the pattern matching fails.
+            self.test.failureException = ValueError
             msg = (
                 "Test failed due to an error. "
                 + f'The error was "{e.__class__.__name__}: {e}". '
@@ -247,6 +250,7 @@ class User:
             msg = False
             line_string = lines[line_n - 1]
         except IndexError:
+            self.test.failureException = IndexError
             msg = (
                 "\n"
                 + self.wrapper.fill(
@@ -333,6 +337,8 @@ class User:
                 # Call the attached object with copies of r args and kwargs.
                 self.returned_values = self.obj(*deepcopy(args), **deepcopy(kwargs))
         except Exception as e:
+            # TODO This function is going to be refactored
+            self.test.failureException = type(e)
             msg = handle_error(e, error_msg)
         else:
             try:  # Check for left over entries.
