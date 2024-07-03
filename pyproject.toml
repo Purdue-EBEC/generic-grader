@@ -23,6 +23,7 @@ dependencies = [
     "pytz==2022.7.1",
     "rapidfuzz>=3.1.1,<4",
     "scipy>=1.10.1,<2",
+    "freezegun==1.5.1",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
