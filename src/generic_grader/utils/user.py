@@ -148,7 +148,6 @@ class User:
         ]
         if patches:
             self.patches.extend(patches)
-            print(self.patches)
 
     def format_log(self, interaction=0, n_lines=None):
         lines = self.read_log_lines(interaction, n_lines=n_lines)
