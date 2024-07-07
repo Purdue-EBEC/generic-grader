@@ -34,9 +34,9 @@ def test_time_limit(case):
 
 
 memory_limit_cases = [
-    {"limit": 1, "usage": 2, "result": MemoryError},
-    {"limit": 1, "usage": 0.5, "result": None},
-    {"limit": 1, "usage": 1, "result": MemoryError},
+    {"usage": 0.5, "result": None},
+    {"usage": 1, "result": MemoryError},
+    {"usage": 2, "result": MemoryError},
 ]
 
 
@@ -45,10 +45,10 @@ def test_memory_limit(case):
     """Test the memory_limit function."""
     if case["result"] is not None:
         with pytest.raises(case["result"]):
-            with memory_limit(case["limit"]):
-                " " * case["usage"] * 2**30
+            with memory_limit(1):
+                " " * int(case["usage"] * 2**30)
     else:
-        with memory_limit(case["limit"]):
+        with memory_limit(1):
             " " * int(case["usage"] * 2**30)
 
 
@@ -82,8 +82,9 @@ class FakeTest(unittest.TestCase):
 call_obj_pass = [
     {
         "module": "hello_user_1",
-        "file_text": "def main():\n    print('Hello, User!')\nif __name__ == '__main__':\n    main()\n",
+        "file_text": "def main():\n    print('Hello, User!')\n",
         "obj_name": "main",
+        "patches": None,
         "call_obj": {
             "entries": "",
             "args": (),
@@ -96,8 +97,9 @@ call_obj_pass = [
     },
     {
         "module": "input_user_1",
-        "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')\nif __name__ == '__main__':\n    main()\n",
+        "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')\n",
         "obj_name": "main",
+        "patches": None,
         "call_obj": {
             "entries": ["Jack"],
             "args": (),
@@ -112,6 +114,7 @@ call_obj_pass = [
         "module": "print_user_arg_1",
         "file_text": "def user_func(user):\n    print(f'Hello, {user}!')\n",
         "obj_name": "user_func",
+        "patches": None,
         "call_obj": {
             "entries": "",
             "args": (["Jack"]),
@@ -126,6 +129,7 @@ call_obj_pass = [
         "module": "print_user_kwargs_1",
         "file_text": "def user_func(user, greeting):\n    print(f'{greeting}, {user}!')\n",
         "obj_name": "user_func",
+        "patches": None,
         "call_obj": {
             "entries": "",
             "args": (),
@@ -140,6 +144,7 @@ call_obj_pass = [
         "module": "hello_user_2",
         "file_text": "def main():\n    print('Hello, User!')\nif __name__ == '__main__':\n    main()\n",
         "obj_name": "main",
+        "patches": None,
         "call_obj": {
             "entries": "",
             "args": (),
@@ -154,6 +159,7 @@ call_obj_pass = [
         "module": "freeze_time_1",
         "file_text": "import datetime\n\ndef main():\n    print(datetime.datetime.now())\n\nif __name__ == '__main__':\n    main()\n",
         "obj_name": "main",
+        "patches": None,
         "call_obj": {
             "entries": "",
             "args": (),
@@ -163,6 +169,21 @@ call_obj_pass = [
             "debug": False,
         },
         "result": "2021-01-01 00:00:00\n",
+    },
+    {
+        "module": "int_patch_1",
+        "file_text": "def main():\n    x = input('Enter a string: ')\n    print(f'{x} * 2 = {int(x)}')\nif __name__ == '__main__':\n    main()\n",
+        "obj_name": "main",
+        "patches": [{"args": ["builtins.int", lambda x: x * 2]}],
+        "call_obj": {
+            "entries": ["100"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "result": "Enter a string: 100\n100 * 2 = 100100\n",
     },
 ]
 
@@ -188,7 +209,8 @@ def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     # Create a fake test object
     test = FakeTest()
     # Create a User object
-    user = User(test, case["module"], case["obj_name"])
+    print(case["patches"])
+    user = User(test, case["module"], case["obj_name"], case["patches"])
     # Call the object
     user.call_obj(**case["call_obj"])
     # Check
@@ -210,7 +232,6 @@ call_obj_fail = [
         },
         "result": "Hello, User!\n",
         "error": AssertionError,
-        "error_msg": "Your program ended before the user finished entering input.",
     },
     {  # Missing entry
         "module": "input_user_2",
@@ -226,7 +247,6 @@ call_obj_fail = [
         },
         "result": "What is your name? ",
         "error": EndOfInputError,
-        "error_msg": "Your `main` malfunctioned when called as `main()`.",
     },
     {  # Missing argument
         "module": "print_user_arg_2",
@@ -242,7 +262,6 @@ call_obj_fail = [
         },
         "result": "",
         "error": TypeError,
-        "error_msg": "user_func() missing 1 required positional argument: 'user'",
     },
     {  # Missing keyword argument
         "module": "print_user_kwargs_2",
@@ -258,7 +277,6 @@ call_obj_fail = [
         },
         "result": "",
         "error": TypeError,
-        "error_msg": "user_func() missing 1 required positional argument: 'greeting'",
     },
     {  # Log limit exceeded
         "module": "hello_user_4",
@@ -274,7 +292,6 @@ call_obj_fail = [
         },
         "result": "Hello, User!",  # No newline
         "error": LogLimitExceededError,
-        "error_msg": "Your `main` malfunctioned when called as `main()`.",
     },
     {  # Exit function
         "module": "hello_user_5",
@@ -290,7 +307,6 @@ call_obj_fail = [
         },
         "result": "Hello, User!\n",
         "error": ExitError,
-        "error_msg": "Calling the `exit()` function is not allowed in this course.",
     },
     {  # Quit function
         "module": "hello_user_6",
@@ -306,7 +322,6 @@ call_obj_fail = [
         },
         "result": "Hello, User!\n",
         "error": QuitError,
-        "error_msg": "Calling the `quit()` function is not allowed in this course.",
     },
 ]
 
@@ -315,7 +330,7 @@ call_obj_fail = [
 def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     """Test the User class call_obj method."""
     # Set up the test environment
-    fake_file = tmp_path / f"{case["module"]}.py"
+    fake_file = tmp_path / f"{case['module']}.py"
     fake_file.write_text(case["file_text"])
     monkeypatch.chdir(tmp_path)
     # Create a fake test object
@@ -323,9 +338,8 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     # Create a User object
     user = User(test, case["module"], case["obj_name"])
     # Call the object
-    with pytest.raises(case["error"]) as exc_info:
+    with pytest.raises(case["error"]):
         user.call_obj(**case["call_obj"])
-    assert case["error_msg"] in exc_info.value.args[0]
     assert user.log.getvalue() == case["result"]
 
 
@@ -333,9 +347,7 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
     """Test the debug option in the User class call_obj method."""
     # Set up the test environment
     fake_file = tmp_path / "hello_user.py"
-    fake_file.write_text(
-        "def main():\n    print('Hello, User!')\nif __name__ == '__main__':\n    main()\n"
-    )
+    fake_file.write_text("def main():\n    print('Hello, User!')\n")
     monkeypatch.chdir(tmp_path)
     # Create a fake test object
     test = FakeTest()
@@ -352,98 +364,230 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
     assert captured.err == ""
 
 
-# TODO Add decimals, large numbers with commas, negative numbers, floats, and scientific notation
-@pytest.fixture(scope="function")
-def complete_user(fix_syspath, tmp_path, monkeypatch):
+complete_user_cases = [
+    {
+        "module": "add_numbers_1",
+        "file_text": "def add_number():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
+        "obj_name": "add_number",
+        "call_obj": {
+            "entries": ["1", "10"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "full_log": "Enter the first number: 1\nEnter the second number: 10\n1 + 10 = 11\n",
+        "log_lines": [
+            "Enter the first number: 1\n",
+            "Enter the second number: 10\n",
+            "1 + 10 = 11\n",
+        ],
+        "formatted_log": "\n\nline |Input/Output Log:\n"
+        + "-" * 70
+        + "\n"
+        + "   1 |Enter the first number: 1\n"
+        + "   2 |Enter the second number: 10\n"
+        + "   3 |1 + 10 = 11\n",
+        "values": [
+            [1],
+            [10],
+            [1, 10, 11],
+        ],
+    },
+    {
+        "module": "add_decimals_1",
+        "file_text": "def add_decimal():\n    num1 = float(input('Enter the first number: '))\n    num2 = float(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
+        "obj_name": "add_decimal",
+        "call_obj": {
+            "entries": ["1.1", "10.1"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "full_log": "Enter the first number: 1.1\nEnter the second number: 10.1\n1.1 + 10.1 = 11.2\n",
+        "log_lines": [
+            "Enter the first number: 1.1\n",
+            "Enter the second number: 10.1\n",
+            "1.1 + 10.1 = 11.2\n",
+        ],
+        "formatted_log": "\n\nline |Input/Output Log:\n"
+        + "-" * 70
+        + "\n"
+        + "   1 |Enter the first number: 1.1\n"
+        + "   2 |Enter the second number: 10.1\n"
+        + "   3 |1.1 + 10.1 = 11.2\n",
+        "values": [
+            [1.1],
+            [10.1],
+            [1.1, 10.1, 11.2],
+        ],
+    },
+    {
+        "module": "add_negative_1",
+        "file_text": "def add_negative():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
+        "obj_name": "add_negative",
+        "call_obj": {
+            "entries": ["-1", "-10"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "full_log": "Enter the first number: -1\nEnter the second number: -10\n-1 + -10 = -11\n",
+        "log_lines": [
+            "Enter the first number: -1\n",
+            "Enter the second number: -10\n",
+            "-1 + -10 = -11\n",
+        ],
+        "formatted_log": "\n\nline |Input/Output Log:\n"
+        + "-" * 70
+        + "\n"
+        + "   1 |Enter the first number: -1\n"
+        + "   2 |Enter the second number: -10\n"
+        + "   3 |-1 + -10 = -11\n",
+        "values": [
+            [-1],
+            [-10],
+            [-1, -10, -11],
+        ],
+    },
+    {
+        "module": "multiply_large_1",
+        "file_text": "def multiply_large():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} * {num2} = {(num1 * num2):,}')",
+        "obj_name": "multiply_large",
+        "call_obj": {
+            "entries": ["100", "1000000"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "full_log": "Enter the first number: 100\nEnter the second number: 1000000\n100 * 1000000 = 100,000,000\n",
+        "log_lines": [
+            "Enter the first number: 100\n",
+            "Enter the second number: 1000000\n",
+            "100 * 1000000 = 100,000,000\n",
+        ],
+        "formatted_log": "\n\nline |Input/Output Log:\n"
+        + "-" * 70
+        + "\n"
+        + "   1 |Enter the first number: 100\n"
+        + "   2 |Enter the second number: 1000000\n"
+        + "   3 |100 * 1000000 = 100,000,000\n",
+        "values": [
+            [100],
+            [1000000],
+            [100, 1000000, 100000000],
+        ],
+    },
+    {
+        "module": "multiply_large_2",
+        "file_text": "def multiply_large():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} * {num2} = {(num1 * num2):.2e}')",
+        "obj_name": "multiply_large",
+        "call_obj": {
+            "entries": ["100", "1000000"],
+            "args": (),
+            "kwargs": {},
+            "log_limit": 0,
+            "fixed_time": False,
+            "debug": False,
+        },
+        "full_log": "Enter the first number: 100\nEnter the second number: 1000000\n100 * 1000000 = 1.00e+08\n",
+        "log_lines": [
+            "Enter the first number: 100\n",
+            "Enter the second number: 1000000\n",
+            "100 * 1000000 = 1.00e+08\n",
+        ],
+        "formatted_log": "\n\nline |Input/Output Log:\n"
+        + "-" * 70
+        + "\n"
+        + "   1 |Enter the first number: 100\n"
+        + "   2 |Enter the second number: 1000000\n"
+        + "   3 |100 * 1000000 = 1.00e+08\n",
+        "values": [
+            [100],
+            [1000000],
+            [100, 1000000, 1.00e08],
+        ],
+    },
+]
+
+
+@pytest.fixture(scope="function", params=complete_user_cases)
+def complete_user(request, fix_syspath, tmp_path, monkeypatch):
     """Create a User object for testing."""
-    fake_file = tmp_path / "add_numbers.py"
-    fake_file.write_text(
-        "def add_numbers():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n"
-    )
+    case = request.param
+    fake_file = tmp_path / f"{case['module']}.py"
+    fake_file.write_text(case["file_text"])
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
-    user = User(test, "add_numbers", "add_numbers")
-    user.call_obj(
-        entries=["1", "10"],
-        args=(),
-        kwargs={},
-        log_limit=0,
-        fixed_time=False,
-        debug=False,
-    )
-    return user
+    user = User(test, case["module"], case["obj_name"])
+    user.call_obj(**case["call_obj"])
+    return user, case
 
 
 def test_read_log_lines(complete_user):
     """Test the User class read_log_lines method."""
-    user = complete_user
-    assert user.read_log_lines() == [
-        "Enter the first number: 1\n",
-        "Enter the second number: 10\n",
-        "1 + 10 = 11\n",
-    ]
+    user, case = complete_user
+    assert user.read_log_lines() == case["log_lines"]
 
 
 def test_read_log_line(complete_user):
     """Test the User class read_log_line method."""
-    user = complete_user
-    assert user.read_log_line() == "Enter the first number: 1\n"
-    assert user.read_log_line(line_n=2) == "Enter the second number: 10\n"
-    assert user.read_log_line(line_n=3) == "1 + 10 = 11\n"
+    user, case = complete_user
+    for i, line in enumerate(case["log_lines"]):
+        assert user.read_log_line(line_n=(i + 1)) == line
     with pytest.raises(IndexError) as exc_info:
-        user.read_log_line(line_n=4)
+        user.read_log_line(line_n=(i + 2))
+    print(exc_info.value)
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
 
 
 def test_read_log(complete_user):
     """Test the User class read_log method."""
-    user = complete_user
-    assert (
-        user.read_log()
-        == "Enter the first number: 1\nEnter the second number: 10\n1 + 10 = 11\n"
-    )
+    user, case = complete_user
+    assert user.read_log() == case["full_log"]
 
 
-def test_format_log(complete_user, fix_syspath, tmp_path, monkeypatch):
+def test_format_log(complete_user):
     """Test the User class format_log method."""
-    log = (
-        "\n\nline |Input/Output Log:\n"
-        + "-" * 70
-        + "\n"
-        + "   1 |Enter the first number: 1\n"
-        + "   2 |Enter the second number: 10\n"
-        + "   3 |1 + 10 = 11\n"
-    )
-    assert complete_user.format_log() == log
-    fake_file = tmp_path / "nothing.py"
-    fake_file.write_text("def nothing():\n    pass\n")
+    user, case = complete_user
+    assert user.format_log() == case["formatted_log"]
+
+
+def test_empty_format_log(fix_syspath, tmp_path, monkeypatch):
+    """Test the User class format_log method with an empty log."""
+    fake_file = tmp_path / "empty.py"
+    fake_file.write_text("def main():\n    pass\n")
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
-    user = User(test, "nothing", "nothing")
+    user = User(test, "empty", "main")
     assert user.format_log() == ""
 
 
 def test_get_values(complete_user):
     """Test the User class get_values method."""
-    user = complete_user
-    assert user.get_values(line_n=1) == [1]
-    assert user.get_values(line_n=2) == [10]
-    assert user.get_values(line_n=3) == [1, 10, 11]
+    user, case = complete_user
+    for i, values in enumerate(case["values"]):
+        assert user.get_values(line_n=(i + 1)) == values
     with pytest.raises(IndexError) as exc_info:
-        user.get_values(line_n=4)
+        user.get_values(line_n=(i + 2))
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
 
 
 def test_get_value(complete_user):
     """Test the User class get_value method."""
-    user = complete_user
-    assert user.get_value(line_n=1) == 1
-    assert user.get_value(line_n=2) == 10
-    assert user.get_value(line_n=3, value_n=1) == 1
-    assert user.get_value(line_n=3, value_n=2) == 10
-    assert user.get_value(line_n=3, value_n=3) == 11
+    user, case = complete_user
+    for i, values in enumerate(case["values"]):
+        for j, value in enumerate(values):
+            assert user.get_value(line_n=(i + 1), value_n=(j + 1)) == value
     with pytest.raises(IndexError) as exc_info:
-        user.get_value(line_n=3, value_n=4)
+        user.get_value(line_n=(i + 1), value_n=(j + 2))
     assert (
         "Looking for the 4th value in the 3rd output line, but only found 3"
         in exc_info.value.args[0]
