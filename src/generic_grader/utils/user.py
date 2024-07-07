@@ -223,16 +223,18 @@ class User:
         try:
             msg = False
             values = [float(value_str) for value_str in value_strings]
-        except ValueError as e:  # Just in case the pattern matching fails.
-            self.test.failureException = ValueError
+        except (
+            ValueError
+        ) as e:  # Just in case the pattern matching fails. # pragma: no cover
+            self.test.failureException = ValueError  # pragma: no cover
             msg = (
                 "Test failed due to an error. "
                 + f'The error was "{e.__class__.__name__}: {e}". '
                 + "This is a bug in the autograder. "
                 + "Please notify your instructor."
-            )
+            )  # pragma: no cover
         if msg:
-            self.test.fail(msg)
+            self.test.fail(msg)  # pragma: no cover
 
         return values
 
