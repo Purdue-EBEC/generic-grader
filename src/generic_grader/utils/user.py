@@ -24,7 +24,7 @@ from generic_grader.utils.exceptions import (
 from generic_grader.utils.importer import Importer
 
 
-# TODO Why is everything in this class indexed at 1 instead of 0?
+# Change to Lamda functions
 def raise_exit_error(*args, **kwargs):
     """Raise a custom ExitError."""
     raise ExitError()
@@ -148,6 +148,7 @@ class User:
         ]
         if patches:
             self.patches.extend(patches)
+            print(self.patches)
 
     def format_log(self, interaction=0, n_lines=None):
         lines = self.read_log_lines(interaction, n_lines=n_lines)
@@ -315,15 +316,6 @@ class User:
         )
         try:
             with ExitStack() as stack:
-                # Apply each patch.
-                for p in self.patches:
-                    stack.enter_context(
-                        patch(
-                            *p.get("args", ()),  # permit missing args
-                            **p.get("kwargs", {}),  # permit missing kwargs
-                        )
-                    )
-
                 # Limit execution time to 1 second.
                 stack.enter_context(time_limit(1))
 
@@ -334,11 +326,21 @@ class User:
                     # Freeze time
                     stack.enter_context(freeze_time(fixed_time))
 
+                # Apply patches, this must be done last because any patches added also affect our code
+                for p in self.patches:
+                    stack.enter_context(
+                        patch(
+                            *p.get("args", ()),  # permit missing args
+                            **p.get("kwargs", {}),  # permit missing kwargs
+                        )
+                    )
+
                 # Call the attached object with copies of r args and kwargs.
                 self.returned_values = self.obj(*deepcopy(args), **deepcopy(kwargs))
         except Exception as e:
             # TODO This function is going to be refactored
             self.test.failureException = type(e)
+            raise e
             msg = handle_error(e, error_msg)
         else:
             try:  # Check for left over entries.
