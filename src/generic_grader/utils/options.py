@@ -11,7 +11,7 @@ class Options(NamedTuple):
     required_files: tuple = ()
     ignored_files: tuple = ()
     hint: str = ""
-    patches: str = ""
+    patches: list[dict[str, list[str, Callable]]] = []
 
     # Input
     entries: tuple = ()
