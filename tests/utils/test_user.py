@@ -568,16 +568,16 @@ def test_empty_format_log(fix_syspath, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
     user = User(test, "empty", "main")
-    assert user.format_log() == ""
+    assert user.format_log(Options()) == ""
 
 
 def test_get_values(complete_user):
     """Test the User class get_values method."""
     user, case = complete_user
     for i, values in enumerate(case["values"]):
-        assert user.get_values(line_n=(i + 1)) == values
+        assert user.get_values(Options(line_n=(i + 1))) == values
     with pytest.raises(IndexError) as exc_info:
-        user.get_values(line_n=(i + 2))
+        user.get_values(Options(line_n=(i + 2)))
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
 
 
@@ -586,9 +586,9 @@ def test_get_value(complete_user):
     user, case = complete_user
     for i, values in enumerate(case["values"]):
         for j, value in enumerate(values):
-            assert user.get_value(line_n=(i + 1), value_n=(j + 1)) == value
+            assert user.get_value(Options(line_n=(i + 1), value_n=(j + 1))) == value
     with pytest.raises(IndexError) as exc_info:
-        user.get_value(line_n=(i + 1), value_n=(j + 2))
+        user.get_value(Options(line_n=(i + 1), value_n=(j + 2)))
     assert (
         "Looking for the 4th value in the 3rd output line, but only found 3"
         in exc_info.value.args[0]

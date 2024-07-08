@@ -168,7 +168,6 @@ class User:
         """Return the value_n th float in line `line_n`, indexed from the
         prompt for user interaction `interaction`.
         """
-        interaction = options.interaction
         line_n = options.line_n
         value_n = options.value_n
         values = self.get_values(options)
@@ -188,7 +187,7 @@ class User:
                     + f"but only found {len(values)} value(s) "
                     + f"in line {line_n}."
                 )
-                + self.format_log(interaction, line_n + self.log_context)
+                + self.format_log(options)
             )
 
         if msg:
