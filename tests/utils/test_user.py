@@ -542,9 +542,9 @@ def test_read_log_line(complete_user):
     """Test the User class read_log_line method."""
     user, case = complete_user
     for i, line in enumerate(case["log_lines"]):
-        assert user.read_log_line(line_n=(i + 1)) == line
+        assert user.read_log_line(Options(line_n=(i + 1))) == line
     with pytest.raises(IndexError) as exc_info:
-        user.read_log_line(line_n=(i + 2))
+        user.read_log_line(Options(line_n=(i + 2)))
     print(exc_info.value)
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
 
@@ -552,13 +552,13 @@ def test_read_log_line(complete_user):
 def test_read_log(complete_user):
     """Test the User class read_log method."""
     user, case = complete_user
-    assert user.read_log() == case["full_log"]
+    assert user.read_log(Options()) == case["full_log"]
 
 
 def test_format_log(complete_user):
     """Test the User class format_log method."""
     user, case = complete_user
-    assert user.format_log() == case["formatted_log"]
+    assert user.format_log(Options()) == case["formatted_log"]
 
 
 def test_empty_format_log(fix_syspath, tmp_path, monkeypatch):
