@@ -18,7 +18,7 @@ class Options(NamedTuple):
 
     # Output
     interaction: int = 0
-    start: str = 1
+    start: str = 1  # TODO should be int?
     n_lines: int = None
     line_n: int = 1
     value_n: int = 1

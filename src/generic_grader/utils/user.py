@@ -22,6 +22,7 @@ from generic_grader.utils.exceptions import (
     handle_error,
 )
 from generic_grader.utils.importer import Importer
+from generic_grader.utils.options import Options
 
 
 # Change to Lamda functions
@@ -113,6 +114,7 @@ class User:
                 raise LogLimitExceededError()
 
     def __init__(self, test, module, obj_name="main", patches=None):
+        # TODO can use options class, but need to talk about how to deal with module
         """Initialize a user."""
 
         self.test = test
@@ -149,8 +151,9 @@ class User:
         if patches:
             self.patches.extend(patches)
 
-    def format_log(self, interaction=0, n_lines=None):
-        lines = self.read_log_lines(interaction, n_lines=n_lines)
+    def format_log(self, options: Options):
+        """Return a formatted string of the IO log."""
+        lines = self.read_log_lines(options)
         if lines:
             string = (
                 "\n\nline |Input/Output Log:\n"
@@ -161,12 +164,14 @@ class User:
             string = ""
         return string
 
-    def get_value(self, interaction=0, line_n=1, value_n=1):
+    def get_value(self, options: Options):
         """Return the value_n th float in line `line_n`, indexed from the
         prompt for user interaction `interaction`.
         """
-
-        values = self.get_values(interaction=interaction, line_n=line_n)
+        interaction = options.interaction
+        line_n = options.line_n
+        value_n = options.value_n
+        values = self.get_values(options)
 
         try:
             msg = False
@@ -191,7 +196,7 @@ class User:
 
         return value
 
-    def get_values(self, interaction=0, line_n=1):
+    def get_values(self, options: Options):
         """Return all the values matching a number like pattern in line
         `line_n`, indexed from the prompt for user interaction `interaction`.
         """
@@ -214,8 +219,7 @@ class User:
                         [0-9]+             #   1 or more digits
                       )?                   # 0 or 1 times
                   )"""
-
-        line_string = self.read_log_line(interaction, line_n)
+        line_string = self.read_log_line(options)
         match_strings = re.findall(pattern, line_string)
         value_strings = [match.replace(",", "") for match in match_strings]
 
@@ -237,17 +241,18 @@ class User:
 
         return values
 
-    def read_log(self, interaction=0, start=0, n_lines=None):
+    def read_log(self, options: Options):
         """Return a string of up to `n_lines` lines of IO starting from the
         prompt for user interaction `interaction`.
         """
-        return "".join(self.read_log_lines(interaction, start, n_lines))
+        return "".join(self.read_log_lines(options))
 
-    def read_log_line(self, interaction=0, line_n=1):
+    def read_log_line(self, options: Options):
         """Return line number `line_n` of IO as a string, indexed from the
         prompt for user interaction `interaction`.
         """
-        lines = self.read_log_lines(interaction)
+        line_n = options.line_n
+        lines = self.read_log_lines(options)
         try:
             msg = False
             line_string = lines[line_n - 1]
@@ -259,17 +264,20 @@ class User:
                     f"Looking for line {line_n}, "
                     + f"but output only has {len(lines)} lines."
                 )
-                + self.format_log(interaction, line_n)
+                + self.format_log(options)
             )
         if msg:
             self.test.fail(msg)
 
         return line_string
 
-    def read_log_lines(self, interaction=0, start=0, n_lines=None):
+    def read_log_lines(self, options: Options):
         """Return a list of up to `n_lines` lines of IO starting from the
         prompt for user interaction `interaction`.
         """
+        interaction = options.interaction
+        n_lines = options.n_lines
+        start = options.start
         self.log.seek(self.interactions[interaction])
         start = start and start - 1 or 0
         stop = n_lines and start + n_lines or n_lines
@@ -361,7 +369,7 @@ class User:
             # Append the IO log to the error message if it's not empty.
             log = self.log.getvalue()
             if log:
-                msg += self.format_log()
+                msg += self.format_log(Options(interaction=0))
 
             self.test.fail(msg)
 
