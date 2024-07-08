@@ -12,6 +12,7 @@ from generic_grader.utils.exceptions import (
     QuitError,
     UserTimeoutError,
 )
+from generic_grader.utils.options import Options
 from generic_grader.utils.user import User, memory_limit, time_limit
 
 time_limit_cases = [
@@ -534,7 +535,7 @@ def complete_user(request, fix_syspath, tmp_path, monkeypatch):
 def test_read_log_lines(complete_user):
     """Test the User class read_log_lines method."""
     user, case = complete_user
-    assert user.read_log_lines() == case["log_lines"]
+    assert user.read_log_lines(Options()) == case["log_lines"]
 
 
 def test_read_log_line(complete_user):
