@@ -348,7 +348,6 @@ class __User__:
         except Exception as e:
             # TODO This function is going to be refactored
             self.test.failureException = type(e)
-            raise e
             msg = handle_error(e, error_msg)
         else:
             try:  # Check for left over entries.
