@@ -113,23 +113,22 @@ class User:
             if self.log_limit and len(self) > self.log_limit:
                 raise LogLimitExceededError()
 
-    def __init__(self, test, module, obj_name="main", patches=None):
-        # TODO can use options class, but need to talk about how to deal with module
+    def __init__(self, test, options: Options):
         """Initialize a user."""
 
+        if not hasattr(self, "module"):
+            self.module = options.sub_module
         self.test = test
-        self.module = module
-        self.obj_name = obj_name
+        self.obj_name = options.obj_name
         self.entries = iter("")
         self.log = self.LogIO()
-        self.log_context = 2  # Number of additional lines of context to include.
 
         # Make a list of stream positions starting from the beginning and
         # adding one at each user entry.
         self.interactions = [self.log.tell()]
 
         # Import the test modules obj_name object.
-        self.obj = Importer.import_obj(test, module, obj_name)
+        self.obj = Importer.import_obj(test, self.module, self.obj_name)
         self.returned_values = None
 
         self.patches = [
@@ -148,8 +147,8 @@ class User:
                 ],
             },
         ]
-        if patches:
-            self.patches.extend(patches)
+        if options.patches:
+            self.patches.extend(options.patches)
 
     def format_log(self, options: Options):
         """Return a formatted string of the IO log."""
@@ -304,23 +303,21 @@ class User:
 
         return entry
 
-    def call_obj(
-        self, entries="", args=(), kwargs={}, log_limit=0, fixed_time=False, debug=False
-    ):
+    def call_obj(self, options: Options):
         """Have a simulated user call the object."""
 
-        if entries:
-            self.entries = iter(entries)
+        if options.entries:
+            self.entries = iter(options.entries)
 
-        if log_limit:
-            self.log.log_limit = log_limit
+        if options.log_limit:
+            self.log.log_limit = options.log_limit
 
         msg = False
-        call_str = make_call_str(self.obj_name, args, kwargs)
+        call_str = make_call_str(self.obj_name, options.args, options.kwargs)
         error_msg = "\n" + self.wrapper.fill(
             f"Your `{self.obj_name}` malfunctioned"
             + f" when called as `{call_str}`"
-            + ((entries) and f" with entries {entries}." or ".")
+            + ((self.entries) and f" with entries {self.entries}." or ".")
         )
         try:
             with ExitStack() as stack:
@@ -330,9 +327,9 @@ class User:
                 # Limit memory to 1.4 GB.
                 stack.enter_context(memory_limit(1.4))
 
-                if fixed_time:
+                if options.fixed_time:
                     # Freeze time
-                    stack.enter_context(freeze_time(fixed_time))
+                    stack.enter_context(freeze_time(options.fixed_time))
 
                 # Apply patches, this must be done last because any patches added also affect our code
                 for p in self.patches:
@@ -344,7 +341,9 @@ class User:
                     )
 
                 # Call the attached object with copies of r args and kwargs.
-                self.returned_values = self.obj(*deepcopy(args), **deepcopy(kwargs))
+                self.returned_values = self.obj(
+                    *deepcopy(options.args), **deepcopy(options.kwargs)
+                )
         except Exception as e:
             # TODO This function is going to be refactored
             self.test.failureException = type(e)
@@ -372,7 +371,19 @@ class User:
 
             self.test.fail(msg)
 
-        if debug:
+        if options.debug:
             print(self.log.getvalue())
 
         return self.returned_values
+
+
+class RefUser(User):
+    def __init__(self, test, options: Options):
+        self.module = options.ref_module
+        super().__init__(test, options)
+
+
+class SubUser(User):
+    def __init__(self, test, options: Options):
+        self.module = options.sub_module
+        super().__init__(test, options)
