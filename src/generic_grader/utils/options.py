@@ -27,6 +27,8 @@ class Options(NamedTuple):
     log_limit: int = 0
     fixed_time: bool | datetime.datetime | str = False
     debug: bool = False
+    time_limit: int = 1
+    memory_limit_GB: int = 1.4
 
     # Callable
     obj_name: str = "main"

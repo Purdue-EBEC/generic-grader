@@ -323,10 +323,10 @@ class __User__:
         try:
             with ExitStack() as stack:
                 # Limit execution time to 1 second.
-                stack.enter_context(time_limit(1))
+                stack.enter_context(time_limit(options.time_limit))
 
                 # Limit memory to 1.4 GB.
-                stack.enter_context(memory_limit(1.4))
+                stack.enter_context(memory_limit(options.memory_limit_GB))
 
                 if options.fixed_time:
                     # Freeze time
