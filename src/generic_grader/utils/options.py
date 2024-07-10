@@ -28,7 +28,7 @@ class Options(NamedTuple):
     fixed_time: bool | datetime.datetime | str = False
     debug: bool = False
     time_limit: int = 1
-    memory_limit_GB: int = 1.4
+    memory_limit_GB: FloatingPointError = 1.4
 
     # Callable
     obj_name: str = "main"
