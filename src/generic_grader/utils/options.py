@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from typing import NamedTuple
 
@@ -23,6 +24,9 @@ class Options(NamedTuple):
     line_n: int = 1
     value_n: int = 1
     ratio: int = 1  # exact match
+    log_limit: int = 0
+    fixed_time: bool | datetime.datetime | str = False
+    debug: bool = False
 
     # Callable
     obj_name: str = "main"
