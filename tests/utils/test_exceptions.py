@@ -8,6 +8,7 @@ from generic_grader.utils.exceptions import (
     QuitError,
     TurtleDoneError,
     TurtleWriteError,
+    UserInitializationError,
     UserTimeoutError,
     format_error_msg,
     indent,
@@ -113,6 +114,10 @@ custom_errors = [
     {
         "error": ExcessFunctionCallError("function_name", "this is a hint"),
         "expected": "  Your program called the `function_name` function more times than\n  expected.\n\nHint:\n  this is a hint  Make sure your program isn't stuck in an infinite\n  loop.",
+    },
+    {
+        "error": UserInitializationError(),
+        "expected": "  The User class should not be directly instantiated. Use `RefUser` or\n  SubUser` instead.",
     },
 ]
 

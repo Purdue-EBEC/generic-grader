@@ -168,3 +168,14 @@ class TurtleDoneError(Exception):
 
     def __str__(self):
         return self.msg
+
+
+class UserInitializationError(Exception):
+    """Custom Exception to raise when a regular User Class is created"""
+
+    def __init__(self):
+        error_msg = "The User class should not be directly instantiated. Use `RefUser` or SubUser` instead."
+        self.msg = format_error_msg(error_msg, None)
+
+    def __str__(self):
+        return self.msg
