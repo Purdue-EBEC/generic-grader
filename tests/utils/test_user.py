@@ -10,10 +10,17 @@ from generic_grader.utils.exceptions import (
     ExitError,
     LogLimitExceededError,
     QuitError,
+    UserInitializationError,
     UserTimeoutError,
 )
 from generic_grader.utils.options import Options
-from generic_grader.utils.user import RefUser, SubUser, User, memory_limit, time_limit
+from generic_grader.utils.user import (
+    RefUser,
+    SubUser,
+    __User__,
+    memory_limit,
+    time_limit,
+)
 
 time_limit_cases = [
     {"length": 0.5, "result": None},
@@ -65,7 +72,7 @@ user_log_cases = [
 @pytest.mark.parametrize("case", user_log_cases)
 def test_user_log(case):
     """Test the User class log attribute."""
-    log = User.LogIO(case["limit"])
+    log = __User__.LogIO(case["limit"])
     if case["result"] is not None:
         with pytest.raises(case["result"]):
             log.write(case["log"])
@@ -154,7 +161,7 @@ def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     # Create a fake test object
     test = FakeTest()
     # Create a User object
-    user = User(test, options)
+    user = SubUser(test, options)
     # Call the object
     user.call_obj(options)
     # Check
@@ -223,7 +230,7 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     # Create a fake test object
     test = FakeTest()
     # Create a User object
-    user = User(test, options)
+    user = SubUser(test, options)
     # Call the object
     with pytest.raises(case["error"]):
         user.call_obj(options)
@@ -240,7 +247,7 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
     # Create a fake test object
     test = FakeTest()
     # Create a User object
-    user = User(test, options)
+    user = SubUser(test, options)
     # Call the object
     user.call_obj(options)
     # Check
@@ -386,7 +393,7 @@ def complete_user(request, fix_syspath, tmp_path, monkeypatch):
     fake_file.write_text(case["file_text"])
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
-    user = User(test, options)
+    user = SubUser(test, options)
     user.call_obj(options)
     return user, case
 
@@ -426,7 +433,7 @@ def test_empty_format_log(fix_syspath, tmp_path, monkeypatch):
     fake_file.write_text("def main():\n    pass\n")
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
-    user = User(test, Options(sub_module="empty"))
+    user = SubUser(test, Options(sub_module="empty"))
     assert user.format_log(Options()) == ""
 
 
@@ -454,7 +461,7 @@ def test_get_value(complete_user):
     )
 
 
-def test_RefUser(fix_syspath, tmp_path, monkeypatch):
+def test_RefSubUser(fix_syspath, tmp_path, monkeypatch):
     """Make sure the RefUser class is instantiated properly."""
     options = Options(ref_module="reference")
     test = FakeTest()
@@ -464,7 +471,7 @@ def test_RefUser(fix_syspath, tmp_path, monkeypatch):
     user = RefUser(test, options)
     assert user.module == "reference"
     assert isinstance(user, RefUser)
-    assert issubclass(RefUser, User)
+    assert issubclass(RefUser, __User__)
 
 
 def test_SubUser(fix_syspath, tmp_path, monkeypatch):
@@ -477,4 +484,10 @@ def test_SubUser(fix_syspath, tmp_path, monkeypatch):
     user = SubUser(test, options)
     assert user.module == "submission"
     assert isinstance(user, SubUser)
-    assert issubclass(SubUser, User)
+    assert issubclass(SubUser, __User__)
+
+
+def test_disallow_User():
+    """Test that the User class is not directly instantiated."""
+    with pytest.raises(UserInitializationError):
+        __User__(FakeTest(), Options())

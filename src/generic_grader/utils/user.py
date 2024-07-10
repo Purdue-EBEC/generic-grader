@@ -18,6 +18,7 @@ from generic_grader.utils.exceptions import (
     ExitError,
     LogLimitExceededError,
     QuitError,
+    UserInitializationError,
     UserTimeoutError,
     handle_error,
 )
@@ -87,7 +88,7 @@ def memory_limit(max_gibibytes):
         resource.setrlimit(resource.RLIMIT_AS, (soft, hard))
 
 
-class User:
+class __User__:
     """Manages interactions with parts of the submitted code."""
 
     wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
@@ -116,8 +117,8 @@ class User:
     def __init__(self, test, options: Options):
         """Initialize a user."""
 
-        if not hasattr(self, "module"):
-            self.module = options.sub_module
+        if not hasattr(self, "module"):  # This error is not student facing.
+            raise UserInitializationError()
         self.test = test
         self.obj_name = options.obj_name
         self.entries = iter("")
@@ -377,13 +378,13 @@ class User:
         return self.returned_values
 
 
-class RefUser(User):
+class RefUser(__User__):
     def __init__(self, test, options: Options):
         self.module = options.ref_module
         super().__init__(test, options)
 
 
-class SubUser(User):
+class SubUser(__User__):
     def __init__(self, test, options: Options):
         self.module = options.sub_module
         super().__init__(test, options)
