@@ -173,7 +173,7 @@ call_obj_fail = [
         "options": Options(sub_module="hello_user_3", entries=(["Jack"])),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
-        "error": AssertionError,
+        "error": EndOfInputError,
     },
     {  # Missing entry
         "options": Options(sub_module="input_user_2"),
