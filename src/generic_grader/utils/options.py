@@ -1,26 +1,28 @@
 import datetime
 from collections.abc import Callable
-from typing import NamedTuple
+
+from attrs import Factory, define
 
 
-class Options(NamedTuple):
+@define(kw_only=True, frozen=True)
+class Options:
     # Base
     weight: int = 0
     init: Callable[[], None] | None = None
     ref_module: str = "tests/reference"
-    sub_module: str = ""
-    required_files: tuple = ()
-    ignored_files: tuple = ()
-    hint: str = ""
-    patches: list[dict[str, list[str, Callable]]] = []
+    sub_module: str = Factory(str)
+    required_files: tuple = Factory(tuple)
+    ignored_files: tuple = Factory(tuple)
+    hint: str = Factory(str)
+    patches: list[dict[str, list[str, Callable]]] = Factory(list)
 
     # Input
-    entries: tuple = ()
+    entries: list[str] = Factory(list)
 
     # Output
     interaction: int = 0
     start: int = 1
-    n_lines: int = None
+    n_lines: int | None = None
     line_n: int = 1
     value_n: int = 1
     ratio: int = 1  # exact match
@@ -32,29 +34,44 @@ class Options(NamedTuple):
 
     # Callable
     obj_name: str = "main"
-    args: list = []
-    kwargs: dict = {}
-    expected_set: set = set()
-    expected_perms: set = set()
+    args: list = Factory(list)
+    kwargs: dict = Factory(dict)
+    expected_set: set = Factory(set)
+    expected_perms: set = Factory(set)
     validator: Callable | None = None
 
     # File
-    filenames: tuple = ()
+    filenames: tuple = Factory(tuple)
 
     # Code
     expected_minimum_depth: int = 1
 
     # Plots
     prop: str = ""
-    prop_kwargs: dict = {}
+    prop_kwargs: dict = Factory(dict)
 
     # Stats
     expected_distribution: dict = {0: 0}
     relative_tolerance: float = 1e-7
     absolute_tolerance: int = 0
 
+    def __attrs_post_init__(self):
+        for attr in self.__annotations__:
+            if attr == "init":
+                continue
+            elif attr in ["patches", "entries"]:
+                if not isinstance(getattr(self, attr), list):
+                    raise ValueError(
+                        f"{attr} must be of type list., Got {type(getattr(self, attr))} instead."
+                    )
+            elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
+                raise ValueError(
+                    f"{attr} must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                )
 
-class ImageOptions(NamedTuple):
+
+@define(kw_only=True, frozen=True)
+class ImageOptions:
     init: Callable[[], None] = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
@@ -71,3 +88,12 @@ class ImageOptions(NamedTuple):
     delta: int = 0
     hint: str = ""
     patches: str = ""
+
+    def __attrs_post_init__(self):
+        for attr in self.__annotations__:
+            if attr == "init":
+                continue
+            elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
+                raise ValueError(
+                    f"{attr} must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                )
