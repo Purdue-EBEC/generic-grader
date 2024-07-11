@@ -1,3 +1,4 @@
+import datetime
 from collections.abc import Callable
 from typing import NamedTuple
 
@@ -11,18 +12,23 @@ class Options(NamedTuple):
     required_files: tuple = ()
     ignored_files: tuple = ()
     hint: str = ""
-    patches: str = ""
+    patches: list[dict[str, list[str, Callable]]] = []
 
     # Input
     entries: tuple = ()
 
     # Output
     interaction: int = 0
-    start: str = 1
+    start: int = 1
     n_lines: int = None
     line_n: int = 1
     value_n: int = 1
     ratio: int = 1  # exact match
+    log_limit: int = 0
+    fixed_time: bool | datetime.datetime | str = False
+    debug: bool = False
+    time_limit: int = 1
+    memory_limit_GB: float = 1.4
 
     # Callable
     obj_name: str = "main"
