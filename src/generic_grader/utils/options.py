@@ -58,27 +58,30 @@ class Options:
     def __attrs_post_init__(self):
         for attr in self.__annotations__:
             if attr == "init":
-                continue
+                if not isinstance(getattr(self, attr), (Callable, type(None))):
+                    raise ValueError(
+                        f"`{attr}` must be of type <class 'function'> or {type(None)}. Got {type(getattr(self, attr))} instead."
+                    )
             elif attr in ["patches", "entries"]:
                 if not isinstance(getattr(self, attr), list):
                     raise ValueError(
-                        f"{attr} must be of type list., Got {type(getattr(self, attr))} instead."
+                        f"`{attr}` must be of type list. Got {type(getattr(self, attr))} instead."
                     )
             elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
                 raise ValueError(
-                    f"{attr} must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                    f"`{attr}` must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
                 )
 
 
 @define(kw_only=True, frozen=True)
 class ImageOptions:
-    init: Callable[[], None] = None
+    init: Callable[[], None] | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
     obj_name: str = "main"
-    args: list = []
-    kwargs: dict = {}
-    entries: tuple = ()
+    args: list = Factory(list)
+    kwargs: dict = Factory(dict)
+    entries: tuple = Factory(tuple)
     A: str = ""
     B: str = ""
     region_a: str = ""
@@ -92,8 +95,11 @@ class ImageOptions:
     def __attrs_post_init__(self):
         for attr in self.__annotations__:
             if attr == "init":
-                continue
+                if not isinstance(getattr(self, attr), (Callable, type(None))):
+                    raise ValueError(
+                        f"`{attr}` must be of type <class 'function'> or {type(None)}. Got {type(getattr(self, attr))} instead."
+                    )
             elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
                 raise ValueError(
-                    f"{attr} must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                    f"`{attr}` must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
                 )
