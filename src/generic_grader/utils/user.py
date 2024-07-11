@@ -318,7 +318,7 @@ class __User__:
         error_msg = "\n" + self.wrapper.fill(
             f"Your `{self.obj_name}` malfunctioned"
             + f" when called as `{call_str}`"
-            + ((self.entries) and f" with entries {self.entries}." or ".")
+            + ((options.entries) and f" with entries {options.entries}." or ".")
         )
         try:
             with ExitStack() as stack:
@@ -355,6 +355,7 @@ class __User__:
             except StopIteration:
                 pass  # The expected result.
             else:
+                self.test.failureException = EndOfInputError
                 msg = (
                     error_msg
                     + "\n\nHint:\n"
@@ -367,6 +368,7 @@ class __User__:
             # Append the IO log to the error message if it's not empty.
             log = self.log.getvalue()
             if log:
+                # TODO add testcase to determine if this is intended
                 msg += self.format_log(Options(interaction=0))
 
             self.test.fail(msg)

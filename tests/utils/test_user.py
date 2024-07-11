@@ -237,6 +237,24 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     assert user.log.getvalue() == case["result"]
 
 
+def test_failing_call_obj_error(fix_syspath, tmp_path, monkeypatch):
+    """Make sure `error_msg` is properly shown when an error occurs."""
+    options = Options(sub_module="error_user_1", entries=(["Jack", "AJ"]))
+    fake_file = tmp_path / f"{options.sub_module}.py"
+    fake_file.write_text(
+        "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')"
+    )
+    monkeypatch.chdir(tmp_path)
+    test = FakeTest()
+    user = SubUser(test, options)
+    with pytest.raises(EndOfInputError) as exc_info:
+        user.call_obj(options)
+    assert (
+        f"Your `{options.obj_name}` malfunctioned when called as `main()` with entries\n  {options.entries}."
+        in exc_info.value.args[0]
+    )
+
+
 def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
     """Test the debug option in the User class call_obj method."""
     # Set up the test environment
