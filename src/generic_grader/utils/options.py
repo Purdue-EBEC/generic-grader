@@ -10,14 +10,14 @@ class Options:
     weight: int = 0
     init: Callable[[], None] | None = None
     ref_module: str = "tests/reference"
-    sub_module: str = Factory(str)
-    required_files: tuple = Factory(tuple)
-    ignored_files: tuple = Factory(tuple)
-    hint: str = Factory(str)
+    sub_module: str = ""
+    required_files: tuple = ()
+    ignored_files: tuple = ()
+    hint: str = ""
     patches: list[dict[str, list[str, Callable]]] = Factory(list)
 
     # Input
-    entries: list[str] = Factory(list)
+    entries: tuple = ()
 
     # Output
     interaction: int = 0
@@ -41,7 +41,7 @@ class Options:
     validator: Callable | None = None
 
     # File
-    filenames: tuple = Factory(tuple)
+    filenames: tuple = ()
 
     # Code
     expected_minimum_depth: int = 1
@@ -58,19 +58,27 @@ class Options:
     def __attrs_post_init__(self):
         for attr in self.__annotations__:
             if attr == "init":
-                if not isinstance(getattr(self, attr), (Callable, type(None))):
-                    raise ValueError(
-                        f"`{attr}` must be of type <class 'function'> or {type(None)}. Got {type(getattr(self, attr))} instead."
-                    )
-            elif attr in ["patches", "entries"]:
-                if not isinstance(getattr(self, attr), list):
-                    raise ValueError(
-                        f"`{attr}` must be of type list. Got {type(getattr(self, attr))} instead."
-                    )
-            elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
-                raise ValueError(
-                    f"`{attr}` must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                expected_type = (Callable, type(None))
+                error_msg = (
+                    f"`{attr}` must be of type <class 'function'> or {type(None)}. "
                 )
+            elif attr == "patches":
+                expected_type = list
+                error_msg = f"`{attr}` must be of type {list}. "
+            else:
+                expected_type = self.__annotations__[attr]
+                error_msg = f"`{attr}` must be of type {self.__annotations__[attr]}. "
+            if not isinstance(getattr(self, attr), expected_type):
+                raise ValueError(
+                    error_msg + f"Got {type(getattr(self, attr))} instead."
+                )
+        for name in ["filenames", "required_files", "ignored_files"]:
+            attr = getattr(self, name)
+            if attr == ():
+                continue
+            s = set(attr)
+            if len(s) != len(attr):
+                raise ValueError(f"Duplicate entries in {name}.")
 
 
 @define(kw_only=True, frozen=True)
@@ -95,11 +103,14 @@ class ImageOptions:
     def __attrs_post_init__(self):
         for attr in self.__annotations__:
             if attr == "init":
-                if not isinstance(getattr(self, attr), (Callable, type(None))):
-                    raise ValueError(
-                        f"`{attr}` must be of type <class 'function'> or {type(None)}. Got {type(getattr(self, attr))} instead."
-                    )
-            elif not isinstance(getattr(self, attr), self.__annotations__[attr]):
+                expected_type = (Callable, type(None))
+                error_msg = (
+                    f"`{attr}` must be of type <class 'function'> or {type(None)}. "
+                )
+            else:
+                expected_type = self.__annotations__[attr]
+                error_msg = f"`{attr}` must be of type {self.__annotations__[attr]}. "
+            if not isinstance(getattr(self, attr), expected_type):
                 raise ValueError(
-                    f"`{attr}` must be of type {self.__annotations__[attr]}. Got {type(getattr(self, attr))} instead."
+                    error_msg + f"Got {type(getattr(self, attr))} instead."
                 )

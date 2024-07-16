@@ -15,11 +15,11 @@ typecheck_options = [
     },
     {
         "options": {"patches": {}},
-        "error": "`patches` must be of type list. Got <class 'dict'> instead.",
+        "error": "`patches` must be of type <class 'list'>. Got <class 'dict'> instead.",
     },
     {
         "options": {"entries": ""},
-        "error": "`entries` must be of type list. Got <class 'str'> instead.",
+        "error": "`entries` must be of type <class 'tuple'>. Got <class 'str'> instead.",
     },
     {
         "options": {"weight": "0"},
@@ -58,4 +58,28 @@ def test_typecheck_image_options(case):
     """Test that the runtime error is raised."""
     with pytest.raises(ValueError) as exc_info:
         ImageOptions(**case["options"])
+    assert str(exc_info.value) == case["error"]
+
+
+duplicate_file_names = [
+    {
+        "options": {"filenames": ("a", "a")},
+        "error": "Duplicate entries in filenames.",
+    },
+    {
+        "options": {"required_files": ("a", "a")},
+        "error": "Duplicate entries in required_files.",
+    },
+    {
+        "options": {"ignored_files": ("a", "a")},
+        "error": "Duplicate entries in ignored_files.",
+    },
+]
+
+
+@pytest.mark.parametrize("case", duplicate_file_names)
+def test_duplicate_file_names(case):
+    """Test that the runtime error is raised."""
+    with pytest.raises(ValueError) as exc_info:
+        Options(**case["options"])
     assert str(exc_info.value) == case["error"]
