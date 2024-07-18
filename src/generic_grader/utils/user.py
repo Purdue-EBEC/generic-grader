@@ -120,7 +120,7 @@ class __User__:
         if not hasattr(self, "module"):  # This error is not student facing.
             raise UserInitializationError()
         self.test = test
-        self.obj_name = options.obj_name
+        self.options = options
         self.entries = iter("")
         self.log = self.LogIO()
 
@@ -129,7 +129,7 @@ class __User__:
         self.interactions = [self.log.tell()]
 
         # Import the test modules obj_name object.
-        self.obj = Importer.import_obj(test, self.module, self.obj_name)
+        self.obj = Importer.import_obj(test, self.module, self.options.obj_name)
         self.returned_values = None
 
         self.patches = [
@@ -151,9 +151,9 @@ class __User__:
         if options.patches:
             self.patches.extend(options.patches)
 
-    def format_log(self, options: Options):
+    def format_log(self):
         """Return a formatted string of the IO log."""
-        lines = self.read_log_lines(options)
+        lines = self.read_log_lines()
         if lines:
             string = (
                 "\n\nline |Input/Output Log:\n"
@@ -164,13 +164,13 @@ class __User__:
             string = ""
         return string
 
-    def get_value(self, options: Options):
+    def get_value(self):
         """Return the value_n th float in line `line_n`, indexed from the
         prompt for user interaction `interaction`.
         """
-        line_n = options.line_n
-        value_n = options.value_n
-        values = self.get_values(options)
+        value_n = self.options.value_n
+        line_n = self.options.line_n
+        values = self.get_values()
 
         try:
             msg = False
@@ -187,7 +187,7 @@ class __User__:
                     + f"but only found {len(values)} value(s) "
                     + f"in line {line_n}."
                 )
-                + self.format_log(options)
+                + self.format_log()
             )
 
         if msg:
@@ -195,7 +195,7 @@ class __User__:
 
         return value
 
-    def get_values(self, options: Options):
+    def get_values(self, line_string: str | None = None):
         """Return all the values matching a number like pattern in line
         `line_n`, indexed from the prompt for user interaction `interaction`.
         """
@@ -218,7 +218,8 @@ class __User__:
                         [0-9]+             #   1 or more digits
                       )?                   # 0 or 1 times
                   )"""
-        line_string = self.read_log_line(options)
+        if line_string is None:
+            line_string = self.read_log_line()
         match_strings = re.findall(pattern, line_string)
         value_strings = [match.replace(",", "") for match in match_strings]
 
@@ -240,18 +241,18 @@ class __User__:
 
         return values
 
-    def read_log(self, options: Options):
+    def read_log(self):
         """Return a string of up to `n_lines` lines of IO starting from the
         prompt for user interaction `interaction`.
         """
-        return "".join(self.read_log_lines(options))
+        return "".join(self.read_log_lines())
 
-    def read_log_line(self, options: Options):
+    def read_log_line(self):
         """Return line number `line_n` of IO as a string, indexed from the
         prompt for user interaction `interaction`.
         """
-        line_n = options.line_n
-        lines = self.read_log_lines(options)
+        line_n = self.options.line_n
+        lines = self.read_log_lines()
         try:
             msg = False
             line_string = lines[line_n - 1]
@@ -263,23 +264,23 @@ class __User__:
                     f"Looking for line {line_n}, "
                     + f"but output only has {len(lines)} lines."
                 )
-                + self.format_log(options)
+                + self.format_log()
             )
         if msg:
             self.test.fail(msg)
 
         return line_string
 
-    def read_log_lines(self, options: Options):
+    def read_log_lines(self):
         """Return a list of up to `n_lines` lines of IO starting from the
         prompt for user interaction `interaction`.
         """
-        interaction = options.interaction
-        n_lines = options.n_lines
-        start = options.start
+        interaction = self.options.interaction
+        n_lines = self.options.n_lines
+        start = self.options.start
         self.log.seek(self.interactions[interaction])
-        start = start and start - 1 or 0
-        stop = n_lines and start + n_lines or n_lines
+        start = start - 1 if start else 0
+        stop = start + n_lines if n_lines else n_lines
         return self.log.readlines()[start:stop]
 
     def responder(self, string=""):
@@ -304,8 +305,10 @@ class __User__:
 
         return entry
 
-    def call_obj(self, options: Options):
+    def call_obj(self):
         """Have a simulated user call the object."""
+
+        options = self.options
 
         if options.entries:
             self.entries = iter(options.entries)
@@ -314,9 +317,9 @@ class __User__:
             self.log.log_limit = options.log_limit
 
         msg = False
-        call_str = make_call_str(self.obj_name, options.args, options.kwargs)
+        call_str = make_call_str(options.obj_name, options.args, options.kwargs)
         error_msg = "\n" + self.wrapper.fill(
-            f"Your `{self.obj_name}` malfunctioned"
+            f"Your `{options.obj_name}` malfunctioned"
             + f" when called as `{call_str}`"
             + ((options.entries) and f" with entries {options.entries}." or ".")
         )
@@ -369,7 +372,7 @@ class __User__:
             log = self.log.getvalue()
             if log:
                 # TODO add testcase to determine if this is intended
-                msg += self.format_log(Options(interaction=0))
+                msg += self.format_log()
 
             self.test.fail(msg)
 
