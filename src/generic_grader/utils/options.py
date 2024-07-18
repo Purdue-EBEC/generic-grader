@@ -24,7 +24,7 @@ class Options:
     start: int = 1
     n_lines: int | None = None
     line_n: int = 1
-    value_n: int = 1
+    value_n: int | None = None
     ratio: int = 1  # exact match
     log_limit: int = 0
     fixed_time: bool | datetime.datetime | str = False
@@ -59,18 +59,18 @@ class Options:
         for attr in self.__annotations__:
             if attr == "init":
                 expected_type = (Callable, type(None))
-                error_msg = (
-                    f"`{attr}` must be of type <class 'function'> or {type(None)}. "
-                )
+                attr_type = f"<class 'function'> or {type(None)}. "
             elif attr == "patches":
                 expected_type = list
-                error_msg = f"`{attr}` must be of type {list}. "
+                attr_type = f"{list}. "
             else:
                 expected_type = self.__annotations__[attr]
-                error_msg = f"`{attr}` must be of type {self.__annotations__[attr]}. "
+                attr_type = f"{self.__annotations__[attr]}. "
             if not isinstance(getattr(self, attr), expected_type):
                 raise ValueError(
-                    error_msg + f"Got {type(getattr(self, attr))} instead."
+                    f"`{attr}` must be of type "
+                    + attr_type
+                    + f"Got {type(getattr(self, attr))} instead."
                 )
         for name in ["filenames", "required_files", "ignored_files"]:
             attr = getattr(self, name)
