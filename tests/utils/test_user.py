@@ -1,4 +1,3 @@
-import sys
 import time
 import unittest
 from datetime import datetime
@@ -90,26 +89,26 @@ class FakeTest(unittest.TestCase):
 
 call_obj_pass = [
     {
-        "options": Options(sub_module="hello_user_1"),
+        "options": Options(sub_module="hello_user"),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
     },
     {
-        "options": Options(sub_module="input_user_1", entries=("Jack",)),
+        "options": Options(sub_module="input_user", entries=("Jack",)),
         "module": "input_user_1",
         "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
         "result": "What is your name? Jack\nHello, Jack!\n",
     },
     {
         "options": Options(
-            sub_module="print_user_arg_1", args=(["Jack"]), obj_name="user_func"
+            sub_module="print_user_arg", args=(["Jack"]), obj_name="user_func"
         ),
         "file_text": "def user_func(user):\n    print(f'Hello, {user}!')",
         "result": "Hello, Jack!\n",
     },
     {
         "options": Options(
-            sub_module="print_user_kwargs_1",
+            sub_module="print_user_kwargs",
             kwargs={"user": "Jack", "greeting": "Hi"},
             obj_name="user_func",
         ),
@@ -117,20 +116,20 @@ call_obj_pass = [
         "result": "Hi, Jack!\n",
     },
     {
-        "options": Options(sub_module="hello_user_2", log_limit=13),
+        "options": Options(sub_module="hello_user", log_limit=13),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
     },
     {
         "options": Options(
-            sub_module="freeze_time_1", fixed_time=datetime(2021, 1, 1, 0, 0, 0)
+            sub_module="freeze_time", fixed_time=datetime(2021, 1, 1, 0, 0, 0)
         ),
         "file_text": "import datetime\n\ndef main():\n    print(datetime.datetime.now())",
         "result": "2021-01-01 00:00:00\n",
     },
     {
         "options": Options(
-            sub_module="int_patch_1",
+            sub_module="int_patch",
             entries=("100",),
             patches=[{"args": ["builtins.int", lambda x: x * 2]}],
         ),
@@ -140,25 +139,13 @@ call_obj_pass = [
 ]
 
 
-@pytest.fixture()
-def fix_syspath():
-    """
-    This is the current solution to the empty string being missing
-    from sys.path when running pytest."""
-    old_path = sys.path.copy()
-    sys.path.insert(0, "")
-    yield
-    sys.path = old_path
-
-
 @pytest.mark.parametrize("case", call_obj_pass)
-def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
+def test_passing_call_obj(case, fix_syspath):
     """Test the User class call_obj method."""
     # Set up the test environment
     options = case["options"]
-    fake_file = tmp_path / f"{options.sub_module}.py"
+    fake_file = fix_syspath / f"{options.sub_module}.py"
     fake_file.write_text(case["file_text"])
-    monkeypatch.chdir(tmp_path)
     # Create a fake test object
     test = FakeTest()
     # Create a User object
@@ -171,26 +158,26 @@ def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
 
 call_obj_fail = [
     {  # Too many entries
-        "options": Options(sub_module="hello_user_3", entries=("Jack",)),
+        "options": Options(sub_module="hello_user", entries=("Jack",)),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
         "error": EndOfInputError,
     },
     {  # Missing entry
-        "options": Options(sub_module="input_user_2"),
+        "options": Options(sub_module="input_user"),
         "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
         "result": "What is your name? ",
         "error": EndOfInputError,
     },
     {  # Missing argument
-        "options": Options(sub_module="print_user_arg_2", obj_name="user_func"),
+        "options": Options(sub_module="print_user_arg", obj_name="user_func"),
         "file_text": "def user_func(user):\n    print(f'Hello, {user}!')\n",
         "result": "",
         "error": TypeError,
     },
     {  # Missing keyword argument
         "options": Options(
-            sub_module="print_user_kwargs_2",
+            sub_module="print_user_kwargs",
             kwargs={"greeting": "Hi"},
             obj_name="user_func",
         ),
@@ -199,20 +186,20 @@ call_obj_fail = [
         "error": TypeError,
     },
     {  # Log limit exceeded
-        "options": Options(sub_module="hello_user_4", log_limit=5),
+        "options": Options(sub_module="hello_user", log_limit=5),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!",  # No newline
         "error": LogLimitExceededError,
     },
     {  # Exit function
-        "options": Options(sub_module="hello_user_5"),
+        "options": Options(sub_module="hello_user"),
         "module": "hello_user_5",
         "file_text": "def main():\n     print('Hello, User!')\n     exit()",
         "result": "Hello, User!\n",
         "error": ExitError,
     },
     {  # Quit function
-        "options": Options(sub_module="hello_user_6"),
+        "options": Options(sub_module="hello_user"),
         "file_text": "def main():\n    print('Hello, User!')\n    quit()",
         "result": "Hello, User!\n",
         "error": QuitError,
@@ -221,13 +208,12 @@ call_obj_fail = [
 
 
 @pytest.mark.parametrize("case", call_obj_fail)
-def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
+def test_failing_call_obj(case, fix_syspath):
     """Test the User class call_obj method."""
     # Set up the test environment
     options = case["options"]
-    fake_file = tmp_path / f"{options.sub_module}.py"
+    fake_file = fix_syspath / f"{options.sub_module}.py"
     fake_file.write_text(case["file_text"])
-    monkeypatch.chdir(tmp_path)
     # Create a fake test object
     test = FakeTest()
     # Create a User object
@@ -238,14 +224,13 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     assert user.log.getvalue() == case["result"]
 
 
-def test_failing_call_obj_error(fix_syspath, tmp_path, monkeypatch):
+def test_failing_call_obj_error(fix_syspath):
     """Make sure `error_msg` is properly shown when an error occurs."""
-    options = Options(sub_module="error_user_1", entries=("Jack", "AJ"))
-    fake_file = tmp_path / f"{options.sub_module}.py"
+    options = Options(sub_module="error_user", entries=("Jack", "AJ"))
+    fake_file = fix_syspath / f"{options.sub_module}.py"
     fake_file.write_text(
         "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')"
     )
-    monkeypatch.chdir(tmp_path)
     test = FakeTest()
     user = SubUser(test, options)
     with pytest.raises(EndOfInputError) as exc_info:
@@ -256,13 +241,12 @@ def test_failing_call_obj_error(fix_syspath, tmp_path, monkeypatch):
     )
 
 
-def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
+def test_debug_call_obj(capsys, fix_syspath):
     """Test the debug option in the User class call_obj method."""
     # Set up the test environment
-    options = Options(sub_module="hello_user_7", debug=True)
-    fake_file = tmp_path / f"{options.sub_module}.py"
+    options = Options(sub_module="hello_user", debug=True)
+    fake_file = fix_syspath / f"{options.sub_module}.py"
     fake_file.write_text("def main():\n    print('Hello, User!')")
-    monkeypatch.chdir(tmp_path)
     # Create a fake test object
     test = FakeTest()
     # Create a User object
@@ -279,7 +263,7 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
 complete_user_cases = [
     {
         "options": Options(
-            sub_module="add_user_1", entries=("1", "10"), obj_name="add_number"
+            sub_module="add_user", entries=("1", "10"), obj_name="add_number"
         ),
         "file_text": "def add_number():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
         "full_log": "Enter the first number: 1\nEnter the second number: 10\n1 + 10 = 11\n",
@@ -302,7 +286,7 @@ complete_user_cases = [
     },
     {
         "options": Options(
-            sub_module="add_decimals_1",
+            sub_module="add_decimals",
             entries=("1.1", "10.1"),
             obj_name="add_decimal",
         ),
@@ -327,7 +311,7 @@ complete_user_cases = [
     },
     {
         "options": Options(
-            sub_module="add_negative_1",
+            sub_module="add_negative",
             entries=("-1", "-10"),
             obj_name="add_negative",
         ),
@@ -352,7 +336,7 @@ complete_user_cases = [
     },
     {
         "options": Options(
-            sub_module="multiply_large_1",
+            sub_module="multiply_large",
             entries=("100", "1000000"),
             obj_name="multiply_large",
         ),
@@ -377,7 +361,7 @@ complete_user_cases = [
     },
     {
         "options": Options(
-            sub_module="multiply_large_2",
+            sub_module="multiply_large",
             entries=("100", "1000000"),
             obj_name="multiply_large",
         ),
@@ -404,13 +388,12 @@ complete_user_cases = [
 
 
 @pytest.fixture(scope="function", params=complete_user_cases)
-def complete_user(request, fix_syspath, tmp_path, monkeypatch):
+def complete_user(request, fix_syspath):
     """Create a User object for testing."""
     case = request.param
     options = case["options"]
-    fake_file = tmp_path / f"{options.sub_module}.py"
+    fake_file = fix_syspath / f"{options.sub_module}.py"
     fake_file.write_text(case["file_text"])
-    monkeypatch.chdir(tmp_path)
     test = FakeTest()
     user = SubUser(test, options)
     user.call_obj()
@@ -418,11 +401,10 @@ def complete_user(request, fix_syspath, tmp_path, monkeypatch):
 
 
 @pytest.fixture(scope="function")
-def empty_user(fix_syspath, tmp_path, monkeypatch):
+def empty_user(fix_syspath):
     """Create a User object for testing."""
-    fake_file = tmp_path / "empty.py"
+    fake_file = fix_syspath / "empty.py"
     fake_file.write_text("def main():\n    pass\n")
-    monkeypatch.chdir(tmp_path)
     test = FakeTest()
     user = SubUser(test, Options(sub_module="empty"))
     user.call_obj()
@@ -498,26 +480,24 @@ def test_get_value(complete_user):
     )
 
 
-def test_RefSubUser(fix_syspath, tmp_path, monkeypatch):
+def test_RefSubUser(fix_syspath):
     """Make sure the RefUser class is instantiated properly."""
     options = Options(ref_module="reference")
     test = FakeTest()
-    fake_file = tmp_path / "reference.py"
+    fake_file = fix_syspath / "reference.py"
     fake_file.write_text("def main():\n    pass\n")
-    monkeypatch.chdir(tmp_path)
     user = RefUser(test, options)
     assert user.module == "reference"
     assert isinstance(user, RefUser)
     assert issubclass(RefUser, __User__)
 
 
-def test_SubUser(fix_syspath, tmp_path, monkeypatch):
+def test_SubUser(fix_syspath):
     """Make sure the SubUser class is instantiated properly."""
     options = Options(sub_module="submission")
     test = FakeTest()
-    fake_file = tmp_path / "submission.py"
+    fake_file = fix_syspath / "submission.py"
     fake_file.write_text("def main():\n    pass\n")
-    monkeypatch.chdir(tmp_path)
     user = SubUser(test, options)
     assert user.module == "submission"
     assert isinstance(user, SubUser)
