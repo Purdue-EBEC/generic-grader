@@ -308,32 +308,32 @@ class __User__:
     def call_obj(self):
         """Have a simulated user call the object."""
 
-        options = self.options
+        o = self.options
 
-        if options.entries:
-            self.entries = iter(options.entries)
+        if o.entries:
+            self.entries = iter(o.entries)
 
-        if options.log_limit:
-            self.log.log_limit = options.log_limit
+        if o.log_limit:
+            self.log.log_limit = o.log_limit
 
         msg = False
-        call_str = make_call_str(options.obj_name, options.args, options.kwargs)
+        call_str = make_call_str(o.obj_name, o.args, o.kwargs)
         error_msg = "\n" + self.wrapper.fill(
-            f"Your `{options.obj_name}` malfunctioned"
+            f"Your `{o.obj_name}` malfunctioned"
             + f" when called as `{call_str}`"
-            + ((options.entries) and f" with entries {options.entries}." or ".")
+            + ((o.entries) and f" with entries {o.entries}." or ".")
         )
         try:
             with ExitStack() as stack:
                 # Limit execution time to 1 second.
-                stack.enter_context(time_limit(options.time_limit))
+                stack.enter_context(time_limit(o.time_limit))
 
                 # Limit memory to 1.4 GB.
-                stack.enter_context(memory_limit(options.memory_limit_GB))
+                stack.enter_context(memory_limit(o.memory_limit_GB))
 
-                if options.fixed_time:
+                if o.fixed_time:
                     # Freeze time
-                    stack.enter_context(freeze_time(options.fixed_time))
+                    stack.enter_context(freeze_time(o.fixed_time))
 
                 # Apply patches, this must be done last because any patches added also affect our code
                 for p in self.patches:
@@ -345,9 +345,7 @@ class __User__:
                     )
 
                 # Call the attached object with copies of r args and kwargs.
-                self.returned_values = self.obj(
-                    *deepcopy(options.args), **deepcopy(options.kwargs)
-                )
+                self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
         except Exception as e:
             # TODO This function is going to be refactored
             self.test.failureException = type(e)
@@ -376,7 +374,7 @@ class __User__:
 
             self.test.fail(msg)
 
-        if options.debug:
+        if o.debug:
             print(self.log.getvalue())
 
         return self.returned_values
