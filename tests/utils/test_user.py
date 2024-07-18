@@ -94,7 +94,7 @@ call_obj_pass = [
         "result": "Hello, User!\n",
     },
     {
-        "options": Options(sub_module="input_user_1", entries=(["Jack"])),
+        "options": Options(sub_module="input_user_1", entries=("Jack",)),
         "module": "input_user_1",
         "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
         "result": "What is your name? Jack\nHello, Jack!\n",
@@ -130,7 +130,7 @@ call_obj_pass = [
     {
         "options": Options(
             sub_module="int_patch_1",
-            entries=(["100"]),
+            entries=("100",),
             patches=[{"args": ["builtins.int", lambda x: x * 2]}],
         ),
         "file_text": "def main():\n    x = input('Enter a string: ')\n    print(f'{x} * 2 = {int(x)}')",
@@ -170,7 +170,7 @@ def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
 
 call_obj_fail = [
     {  # Too many entries
-        "options": Options(sub_module="hello_user_3", entries=(["Jack"])),
+        "options": Options(sub_module="hello_user_3", entries=("Jack",)),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
         "error": EndOfInputError,
@@ -239,7 +239,7 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
 
 def test_failing_call_obj_error(fix_syspath, tmp_path, monkeypatch):
     """Make sure `error_msg` is properly shown when an error occurs."""
-    options = Options(sub_module="error_user_1", entries=(["Jack", "AJ"]))
+    options = Options(sub_module="error_user_1", entries=("Jack", "AJ"))
     fake_file = tmp_path / f"{options.sub_module}.py"
     fake_file.write_text(
         "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')"
@@ -278,7 +278,7 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
 complete_user_cases = [
     {
         "options": Options(
-            sub_module="add_user_1", entries=(["1", "10"]), obj_name="add_number"
+            sub_module="add_user_1", entries=("1", "10"), obj_name="add_number"
         ),
         "file_text": "def add_number():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
         "full_log": "Enter the first number: 1\nEnter the second number: 10\n1 + 10 = 11\n",
@@ -302,7 +302,7 @@ complete_user_cases = [
     {
         "options": Options(
             sub_module="add_decimals_1",
-            entries=(["1.1", "10.1"]),
+            entries=("1.1", "10.1"),
             obj_name="add_decimal",
         ),
         "file_text": "def add_decimal():\n    num1 = float(input('Enter the first number: '))\n    num2 = float(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
@@ -327,7 +327,7 @@ complete_user_cases = [
     {
         "options": Options(
             sub_module="add_negative_1",
-            entries=(["-1", "-10"]),
+            entries=("-1", "-10"),
             obj_name="add_negative",
         ),
         "file_text": "def add_negative():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} + {num2} = {num1 + num2}')\n",
@@ -352,7 +352,7 @@ complete_user_cases = [
     {
         "options": Options(
             sub_module="multiply_large_1",
-            entries=(["100", "1000000"]),
+            entries=("100", "1000000"),
             obj_name="multiply_large",
         ),
         "file_text": "def multiply_large():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} * {num2} = {(num1 * num2):,}')",
@@ -377,7 +377,7 @@ complete_user_cases = [
     {
         "options": Options(
             sub_module="multiply_large_2",
-            entries=(["100", "1000000"]),
+            entries=("100", "1000000"),
             obj_name="multiply_large",
         ),
         "file_text": "def multiply_large():\n    num1 = int(input('Enter the first number: '))\n    num2 = int(input('Enter the second number: '))\n    print(f'{num1} * {num2} = {(num1 * num2):.2e}')",

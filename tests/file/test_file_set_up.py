@@ -59,65 +59,100 @@ def test_file_set_up_instance_has_test_method(built_instance):
 
 set_up_cases = [
     {
-        "present": {"foo.py"},
-        "required": {"foo.py"},
+        "present": ("foo.py",),
+        "required": ("foo.py",),
         "expected_symlinks": set(),
     },
     {
-        "present": {"foo.py"},
-        "required": {"foo*.py"},
+        "present": ("foo.py",),
+        "required": ("foo*.py",),
         "expected_symlinks": set(),
     },
     {
-        "present": {"foo_login.py"},
-        "required": {"foo*.py"},
+        "present": ("foo_login.py",),
+        "required": ("foo*.py",),
         "expected_symlinks": {"foo.py"},
     },
     {
-        "present": {"bar_login.py"},
-        "required": {"foo*.py"},
+        "present": ("bar_login.py",),
+        "required": ("foo*.py",),
         "expected_symlinks": set(),
     },
     {
-        "present": {"foo_login.py", "foot.py"},
-        "required": {"foo*.py"},
+        "present": (
+            "foo_login.py",
+            "foot.py",
+        ),
+        "required": ("foo*.py",),
         "expected_symlinks": set(),
     },
     {
-        "present": {"foo_login.py", "foot.py"},
-        "required": {"foo*.py"},
-        "ignored": {"foot.py"},
+        "present": (
+            "foo_login.py",
+            "foot.py",
+        ),
+        "required": ("foo*.py",),
+        "ignored": ("foot.py",),
         "expected_symlinks": {"foo.py"},
     },
     {
-        "present": {"foo_login.py", "bar_login.py"},
-        "required": {"foo*.py", "bar*.py"},
+        "present": (
+            "foo_login.py",
+            "bar_login.py",
+        ),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
         "expected_symlinks": {"foo.py", "bar.py"},
     },
     {
-        "present": {"bar_login.py"},
-        "required": {"foo*.py", "bar*.py"},
+        "present": ("bar_login.py",),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
         "expected_symlinks": {"bar.py"},
     },
     {
-        "present": {"foo_login.py"},
-        "required": {"foo*.py", "bar*.py"},
+        "present": ("foo_login.py",),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
         "expected_symlinks": {"foo.py"},
     },
     {
-        "present": set(),
-        "required": {"foo*.py", "bar*.py"},
+        "present": tuple(),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
         "expected_symlinks": set(),
     },
     {
-        "present": {"foo_login.py", "bar_login.py", "barf.py"},
-        "required": {"foo*.py", "bar*.py"},
+        "present": (
+            "foo_login.py",
+            "bar_login.py",
+            "barf.py",
+        ),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
         "expected_symlinks": {"foo.py"},
     },
     {
-        "present": {"foo_login.py", "bar_login.py", "barf.py"},
-        "required": {"foo*.py", "bar*.py"},
-        "ignored": {"barf.py"},
+        "present": (
+            "foo_login.py",
+            "bar_login.py",
+            "barf.py",
+        ),
+        "required": (
+            "foo*.py",
+            "bar*.py",
+        ),
+        "ignored": ("barf.py",),
         "expected_symlinks": {"foo.py", "bar.py"},
     },
 ]
@@ -136,7 +171,7 @@ def set_up_case_test_method(request, tmp_path, monkeypatch):
         param(
             Options(
                 required_files=case["required"],
-                ignored_files=case.get("ignored", set()),
+                ignored_files=case.get("ignored", tuple()),
             ),
         )
     ]
