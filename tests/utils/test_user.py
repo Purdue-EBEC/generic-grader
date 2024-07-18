@@ -4,6 +4,7 @@ import unittest
 from datetime import datetime
 
 import pytest
+from attrs import evolve
 
 from generic_grader.utils.exceptions import (
     EndOfInputError,
@@ -163,7 +164,7 @@ def test_passing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     # Create a User object
     user = SubUser(test, options)
     # Call the object
-    user.call_obj(options)
+    user.call_obj()
     # Check
     assert user.log.getvalue() == case["result"]
 
@@ -233,7 +234,7 @@ def test_failing_call_obj(case, fix_syspath, tmp_path, monkeypatch):
     user = SubUser(test, options)
     # Call the object
     with pytest.raises(case["error"]):
-        user.call_obj(options)
+        user.call_obj()
     assert user.log.getvalue() == case["result"]
 
 
@@ -248,7 +249,7 @@ def test_failing_call_obj_error(fix_syspath, tmp_path, monkeypatch):
     test = FakeTest()
     user = SubUser(test, options)
     with pytest.raises(EndOfInputError) as exc_info:
-        user.call_obj(options)
+        user.call_obj()
     assert (
         f"Your `{options.obj_name}` malfunctioned when called as `main()` with entries\n  {options.entries}."
         in exc_info.value.args[0]
@@ -267,7 +268,7 @@ def test_debug_call_obj(capsys, fix_syspath, tmp_path, monkeypatch):
     # Create a User object
     user = SubUser(test, options)
     # Call the object
-    user.call_obj(options)
+    user.call_obj()
     # Check
     captured = capsys.readouterr()
     assert captured.out == "Hello, User!\n\n"
@@ -412,57 +413,73 @@ def complete_user(request, fix_syspath, tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     test = FakeTest()
     user = SubUser(test, options)
-    user.call_obj(options)
+    user.call_obj()
     return user, case
+
+
+@pytest.fixture(scope="function")
+def empty_user(fix_syspath, tmp_path, monkeypatch):
+    """Create a User object for testing."""
+    fake_file = tmp_path / "empty.py"
+    fake_file.write_text("def main():\n    pass\n")
+    monkeypatch.chdir(tmp_path)
+    test = FakeTest()
+    user = SubUser(test, Options(sub_module="empty"))
+    user.call_obj()
+    return user
 
 
 def test_read_log_lines(complete_user):
     """Test the User class read_log_lines method."""
     user, case = complete_user
-    assert user.read_log_lines(Options()) == case["log_lines"]
+    assert user.read_log_lines() == case["log_lines"]
 
 
 def test_read_log_line(complete_user):
     """Test the User class read_log_line method."""
     user, case = complete_user
     for i, line in enumerate(case["log_lines"]):
-        assert user.read_log_line(Options(line_n=(i + 1))) == line
+        user.options = evolve(user.options, line_n=(i + 1))
+        assert user.read_log_line() == line
     with pytest.raises(IndexError) as exc_info:
-        user.read_log_line(Options(line_n=(i + 2)))
-    print(exc_info.value)
+        user.options = evolve(user.options, line_n=(i + 2))
+        user.read_log_line()
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
 
 
 def test_read_log(complete_user):
     """Test the User class read_log method."""
     user, case = complete_user
-    assert user.read_log(Options()) == case["full_log"]
+    assert user.read_log() == case["full_log"]
 
 
 def test_format_log(complete_user):
     """Test the User class format_log method."""
     user, case = complete_user
-    assert user.format_log(Options()) == case["formatted_log"]
+    assert user.format_log() == case["formatted_log"]
 
 
-def test_empty_format_log(fix_syspath, tmp_path, monkeypatch):
+def test_empty_format_log(empty_user):
     """Test the User class format_log method with an empty log."""
-    fake_file = tmp_path / "empty.py"
-    fake_file.write_text("def main():\n    pass\n")
-    monkeypatch.chdir(tmp_path)
-    test = FakeTest()
-    user = SubUser(test, Options(sub_module="empty"))
-    assert user.format_log(Options()) == ""
+    assert empty_user.format_log() == ""
 
 
 def test_get_values(complete_user):
     """Test the User class get_values method."""
     user, case = complete_user
     for i, values in enumerate(case["values"]):
-        assert user.get_values(Options(line_n=(i + 1))) == values
+        user.options = evolve(user.options, line_n=(i + 1))
+        assert user.get_values() == values
     with pytest.raises(IndexError) as exc_info:
-        user.get_values(Options(line_n=(i + 2)))
+        user.options = evolve(user.options, line_n=(i + 2))
+        user.get_values()
     assert "Looking for line 4, but output only has 3 lines" in exc_info.value.args[0]
+
+
+def test_get_values_string(empty_user):
+    """Test the User class get_values method with a string."""
+    text = "1 + 1 = 2\n2 + 2 = 4"
+    assert empty_user.get_values(text) == [1.0, 1.0, 2.0, 2.0, 2.0, 4.0]
 
 
 def test_get_value(complete_user):
@@ -470,9 +487,11 @@ def test_get_value(complete_user):
     user, case = complete_user
     for i, values in enumerate(case["values"]):
         for j, value in enumerate(values):
-            assert user.get_value(Options(line_n=(i + 1), value_n=(j + 1))) == value
+            user.options = evolve(user.options, line_n=(i + 1), value_n=(j + 1))
+            assert user.get_value() == value
     with pytest.raises(IndexError) as exc_info:
-        user.get_value(Options(line_n=(i + 1), value_n=(j + 2)))
+        user.options = evolve(user.options, line_n=(i + 1), value_n=(j + 2))
+        user.get_value()
     assert (
         "Looking for the 4th value in the 3rd output line, but only found 3"
         in exc_info.value.args[0]
