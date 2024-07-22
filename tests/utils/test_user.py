@@ -95,7 +95,7 @@ call_obj_pass = [
     },
     {
         "options": Options(sub_module="input_user", entries=("Jack",)),
-        "module": "input_user_1",
+        "module": "input_user",
         "file_text": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
         "result": "What is your name? Jack\nHello, Jack!\n",
     },
@@ -193,7 +193,7 @@ call_obj_fail = [
     },
     {  # Exit function
         "options": Options(sub_module="hello_user"),
-        "module": "hello_user_5",
+        "module": "hello_user",
         "file_text": "def main():\n     print('Hello, User!')\n     exit()",
         "result": "Hello, User!\n",
         "error": ExitError,

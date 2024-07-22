@@ -54,7 +54,7 @@ error_cases = [
     },
     {
         # Tests the except block on line 65
-        "module": "fake_module_4",
+        "module": "fake_module",
         "error": ModuleNotFoundError,
         "message": "Error while importing `fake_obj`",
         "object": "fake_obj",
