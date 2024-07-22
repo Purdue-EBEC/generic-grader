@@ -14,11 +14,11 @@ from generic_grader.utils.options import Options
 
 
 cases = [
-    {"weight": [0], "the_params": [param()]},
-    {"weight": [1], "the_params": [param(Options(weight=1))]},
-    {"weight": [2], "the_params": [param("spam", False, Options(weight=2), 42)]},
+    {"weight": 0, "the_params": [param()]},
+    {"weight": 1, "the_params": [param(Options(weight=1))]},
+    {"weight": 2, "the_params": [param("spam", False, Options(weight=2), 42)]},
     {
-        "weight": [3],
+        "weight": 3,
         "the_params": [
             param(spam=False, options=Options(weight=3), eggs=3),
             param(Options(weight=3)),
@@ -63,7 +63,7 @@ def test_weighted_decorator(case_weighted_test_class):
     for test_case_name in test_case_names:
         test_case = getattr(TestClass, test_case_name)
         assert hasattr(test_case, "__weight__")
-        assert [test_case.__weight__] == case["weight"]
+        assert test_case.__weight__ == case["weight"]
 
 
 # Check that class methods decorated with weighted:
