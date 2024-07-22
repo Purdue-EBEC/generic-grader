@@ -11,26 +11,18 @@ from generic_grader.utils.options import Options
 #   - options as the first positional argument
 #   - options as a middle positional argument
 #   - options as a keyword argument
+
+
 cases = [
+    {"weight": [0], "the_params": [param()]},
+    {"weight": [1], "the_params": [param(Options(weight=1))]},
+    {"weight": [2], "the_params": [param("spam", False, Options(weight=2), 42)]},
     {
-        "weight": 0,  # The default weight
-        "args": (),
-        "kwargs": {},
-    },
-    {
-        "weight": 1,
-        "args": (Options(weight=1),),
-        "kwargs": {},
-    },
-    {
-        "weight": 2,
-        "args": ("spam", False, Options(weight=2), 42),
-        "kwargs": {},
-    },
-    {
-        "weight": 3,
-        "args": (),
-        "kwargs": {"spam": False, "options": Options(weight=3), "eggs": 3},
+        "weight": [3],
+        "the_params": [
+            param(spam=False, options=Options(weight=3), eggs=3),
+            param(Options(weight=3)),
+        ],
     },
 ]
 
@@ -40,9 +32,8 @@ def case_weighted_test_class(request):
     """Arrange parameterized test cases."""
 
     case = request.param
-    the_params = [
-        param(*case["args"], **case["kwargs"]),
-    ]
+
+    the_params = case["the_params"]
 
     class TestClass(unittest.TestCase):
         """A dummy test class."""
@@ -72,7 +63,7 @@ def test_weighted_decorator(case_weighted_test_class):
     for test_case_name in test_case_names:
         test_case = getattr(TestClass, test_case_name)
         assert hasattr(test_case, "__weight__")
-        assert test_case.__weight__ == case["weight"]
+        assert [test_case.__weight__] == case["weight"]
 
 
 # Check that class methods decorated with weighted:

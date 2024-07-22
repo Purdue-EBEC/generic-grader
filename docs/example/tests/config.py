@@ -30,6 +30,7 @@ test_01_TestCommentLength = comments.build(
         Options(
             weight=3,
             sub_module="hello_user",
+            ref_module="tests/reference",
             hint="Check the volume of comments in your code.",
             entries=case["entries"],
         ),

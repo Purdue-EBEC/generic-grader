@@ -85,7 +85,7 @@ def case_test_method(request, tmp_path, monkeypatch):
         )
     ]
     built_class = build(the_params)
-    built_instance = built_class()
+    built_instance = built_class(methodName="test_comment_length_0")
     test_method = built_instance.test_comment_length_0
 
     return case, test_method
