@@ -1,0 +1,12 @@
+version: 2
+updates:
+  - package-ecosystem: "pip"
+  # Location of pyproject.toml
+    directory: "/"
+    schedule:
+      interval: "daily"
+    # Update all dependencies in one PR
+    groups:
+      python-requirements:
+        patterns:
+          - "*"
