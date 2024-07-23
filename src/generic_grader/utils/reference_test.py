@@ -57,6 +57,7 @@ def reference_test(func):
                 os.replace(filename, f"sub_{filename}")
             except FileNotFoundError:
                 call_str = make_call_str(o.obj_name, o.args, o.kwargs)
+                self.failureException = FileNotFoundError
                 message = (
                     "\n\nHint:\n"
                     + self.wrapper.fill(
