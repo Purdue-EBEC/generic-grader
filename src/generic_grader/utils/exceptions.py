@@ -179,3 +179,16 @@ class UserInitializationError(Exception):
 
     def __str__(self):
         return self.msg
+
+
+class RefFileNotFoundError(Exception):
+    """Exception for failed reference solution file creation."""
+
+    def __init__(self, filename):
+        error_msg = (
+            f"The reference solution failed to create the required file `{filename}`."
+        )
+        self.msg = format_error_msg(error_msg, None)
+
+    def __str__(self):
+        return self.msg

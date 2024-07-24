@@ -3,11 +3,15 @@
 import difflib
 import functools
 import os
+import textwrap
 
 from attrs import evolve
 
 from generic_grader.utils.docs import calc_log_limit, make_call_str
+from generic_grader.utils.exceptions import RefFileNotFoundError
 from generic_grader.utils.user import RefUser, SubUser
+
+text_wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
 
 def reference_test(func):
@@ -33,19 +37,23 @@ def reference_test(func):
         # Create the reference user.
         self.ref_user = RefUser(self, options=o)
 
-        # Run the reference user code.
+        # Run the reference code.
         self.ref_user.call_obj()
         log_limit = calc_log_limit(self.ref_user.log)  # Get log_limit here
 
         # Rename reference files
         for filename in o.filenames:
             # Silent overwrite if exists.
-            os.replace(filename, f"ref_{filename}")
+            try:
+                os.replace(filename, f"ref_{filename}")
+            except FileNotFoundError:
+                raise RefFileNotFoundError(filename)
 
         sub_o = evolve(o, log_limit=log_limit)
 
         # Create the student user.
         self.student_user = SubUser(self, options=sub_o)
+
         # Run the submitted code.
         self.student_user.call_obj()
 
@@ -60,7 +68,7 @@ def reference_test(func):
                 self.failureException = FileNotFoundError
                 message = (
                     "\n\nHint:\n"
-                    + self.wrapper.fill(
+                    + text_wrapper.fill(
                         f"The file `{filename}` was not found.  Make sure your"
                         f" `{o.obj_name}` function creates a file named"
                         f" `{filename}` when called as `{call_str}`"

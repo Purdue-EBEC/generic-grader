@@ -1,9 +1,9 @@
 import os
-import textwrap
 import unittest
 
 import pytest
 
+from generic_grader.utils.exceptions import RefFileNotFoundError
 from generic_grader.utils.options import Options
 from generic_grader.utils.reference_test import make_diff, reference_test
 
@@ -66,8 +66,28 @@ def test_file_creation(reference_case):
     ft.test(o)
 
 
+def test_missing_reference_file(fix_syspath):
+    """Test that the correct exception is raised after the reference generated file is not found."""
+    ref_file = fix_syspath / "ref_test.py"
+    ref_file.write_text("def main():\n    print('Hello World!')")
+    sub_file = fix_syspath / "sub_test.py"
+    sub_file.write_text(
+        "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello World!')"
+    )
+    o = Options(sub_module="sub_test", ref_module="ref_test", filenames=("file.txt",))
+
+    class FakeTest(unittest.TestCase):
+        @reference_test
+        def test(self, options):
+            """This can do nothing because we are testing the decorator."""
+
+    ft = FakeTest()
+    with pytest.raises(RefFileNotFoundError):
+        ft.test(o)
+
+
 def test_missing_student_file(fix_syspath):
-    """Test that the correct execption is raised after the student file is not found."""
+    """Test that the correct exception is raised after the student generated file is not found."""
     ref_file = fix_syspath / "ref_test.py"
     ref_file.write_text(
         "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello World!')"
@@ -77,12 +97,6 @@ def test_missing_student_file(fix_syspath):
     o = Options(sub_module="sub_test", ref_module="ref_test", filenames=("file.txt",))
 
     class FakeTest(unittest.TestCase):
-        def __init__(self):
-            self.wrapper = textwrap.TextWrapper(
-                initial_indent="  ", subsequent_indent="  "
-            )
-            self.failureException = None
-
         @reference_test
         def test(self, options):
             """This can do nothing because we are testing the decorator."""
