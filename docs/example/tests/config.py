@@ -9,7 +9,7 @@ test_00_TestFileSetUp = file_set_up.build(
         param(
             Options(
                 weight=0,
-                required_files=["hello_user*.py"],
+                required_files=("hello_user*.py",),
             ),
         ),
     ]
@@ -18,10 +18,10 @@ test_00_TestFileSetUp = file_set_up.build(
 
 comment_cases = [
     {
-        "entries": ("Tim the Enchanter"),
+        "entries": ("Tim the Enchanter",),
     },
     {
-        "entries": ("King Arthur"),
+        "entries": ("King Arthur",),
     },
 ]
 
