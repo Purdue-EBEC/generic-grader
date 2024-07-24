@@ -6,6 +6,7 @@ from generic_grader.utils.exceptions import (
     ExitError,
     LogLimitExceededError,
     QuitError,
+    RefFileNotFoundError,
     TurtleDoneError,
     TurtleWriteError,
     UserInitializationError,
@@ -118,6 +119,10 @@ custom_errors = [
     {
         "error": UserInitializationError(),
         "expected": "  The User class should not be directly instantiated. Use `RefUser` or\n  SubUser` instead.",
+    },
+    {
+        "error": RefFileNotFoundError("filename"),
+        "expected": "  The reference solution failed to create the required file\n  `filename`.",
     },
 ]
 
