@@ -15,8 +15,7 @@ from generic_grader.utils.reference_test import reference_test
 def doc_func(func, num, param):
     """Return parameterized docstring when checking that opened files have been
     closed."""
-
-    o = param.kwargs["options"]
+    o = param.args[0]
 
     call_str = make_call_str(o.obj_name, o.args, o.kwargs)
     docstring = f"Check that all files are closed after calling `{call_str}`" + (
