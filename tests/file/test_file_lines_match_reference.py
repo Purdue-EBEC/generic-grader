@@ -82,13 +82,6 @@ passing_cases = [
             filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
         ),
     },
-    {
-        "ref_file": noop,
-        "sub_file": noop,
-        "options": Options(
-            sub_module="sub", ref_module="ref"
-        ),  # TODO this test should fail
-    },
     {  # Check that only specified files are tested
         "ref_file": hello_world,
         "sub_file": hello_goodbye,
@@ -114,6 +107,7 @@ failing_cases = [
         "ref_file": hello_world,
         "sub_file": goodbye_world,
         "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "exception": AssertionError,
         "error": (
             "{'file.txt': ['Goodbye, world!']} != {'file.txt': ['Hello, world!']}\n"
             "- {'file.txt': ['Goodbye, world!']}\n"
@@ -135,6 +129,7 @@ failing_cases = [
         "options": Options(
             sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
         ),
+        "exception": AssertionError,
         "error": (
             "{'file.txt': ['Goodbye, world!'], 'file2.txt': ['Hello, world!']} != "
             "{'file.txt': ['Hello, world!'], 'file2.txt': ['Goodbye, world!']}\n"
@@ -151,6 +146,16 @@ failing_cases = [
             "  `file2.txt` by your `main` function when called as `main()`."
         ),
     },
+    {  # Check that it fails when their are no files to check
+        "ref_file": noop,
+        "sub_file": noop,
+        "options": Options(sub_module="sub", ref_module="ref"),
+        "exception": ValueError,
+        "error": (
+            "There are no files to check."
+            "  This test requires filenames to be specified."
+        ),
+    },
 ]
 
 
@@ -163,6 +168,6 @@ def test_failing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build([param(case["options"])])
     built_instance = built_class(methodName="test_file_lines_match_reference_0")
-    with pytest.raises(AssertionError) as exc_info:
+    with pytest.raises(case["exception"]) as exc_info:
         built_instance.test_file_lines_match_reference_0()
     assert case["error"] == str(exc_info.value)

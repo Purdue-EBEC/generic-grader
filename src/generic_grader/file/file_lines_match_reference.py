@@ -46,6 +46,12 @@ def build(the_params):
 
             o = options
 
+            if not o.filenames:
+                raise ValueError(
+                    "There are no files to check."
+                    "  This test requires filenames to be specified."
+                )
+
             # Get the actual and expected lines for each file.
             ref_lines, sub_lines = {}, {}
             for filename in o.filenames:
