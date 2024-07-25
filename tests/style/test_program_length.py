@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import pytest
@@ -119,3 +120,28 @@ def test_program_length(case_test_method):
         # directly instead of using the instance's run() method.
         built_instance.doCleanups()
         assert test_method.__score__ == case["score"]
+
+
+def test_submodule_program_length(fix_syspath):
+    """
+    Check if we can test the program length of a submodule.
+
+    The program length test reads the files using get_tokens instead using the
+    importer, so we need to explicitly test its handling of submodules.
+    """
+
+    options = Options(sub_module="elsewhere.submission")
+
+    file_path = fix_syspath / (options.ref_module.replace(".", os.path.sep) + ".py")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text("pass # some comments")
+
+    file_path = fix_syspath / (options.sub_module.replace(".", os.path.sep) + ".py")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text("pass # enough comments")
+
+    the_params = [param(options)]
+    built_class = build(the_params)
+    built_instance = built_class(methodName="test_program_length_0")
+    test_method = built_instance.test_program_length_0
+    test_method()  # should not raise an error

@@ -1,5 +1,6 @@
 """Test for appropriate comment length."""
 
+import os
 import textwrap
 import unittest
 
@@ -20,11 +21,11 @@ def build(the_params):
         def test_comment_length(self, options):
             """Check if the program is well commented."""
 
-            submission_file = options.sub_module + ".py"
+            submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
             _, actual_body_comments = get_comments(self, submission_file)
             actual = sum([len(c) for c in actual_body_comments])
 
-            reference_file = options.ref_module + ".py"
+            reference_file = options.ref_module.replace(".", os.path.sep) + ".py"
             _, ref_body_comments = get_comments(self, reference_file)
             expected = sum([len(c) for c in ref_body_comments])
 
