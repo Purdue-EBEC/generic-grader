@@ -45,30 +45,53 @@ def test_doc_func(built_instance):
     """Test that the doc_func function returns the correct docstring."""
     docstring = built_instance.test_file_lines_match_reference_0.__doc__
     assert (
-        "Check that the lines written to the file `ref_file.txt` from your `hello_user.main` function when called as `main()` match the reference."
-        == docstring
-    )
+        "Check that the lines written to the file `ref_file.txt` from your"
+        " `hello_user.main` function when called as `main()` match the"
+        " reference."
+    ) == docstring
 
+
+hello_world = (
+    "def main():\n"
+    "    with open('file.txt', 'w') as f:\n"
+    "        f.write('Hello, world!')\n"
+)
+
+goodbye_world = hello_world.replace("Hello", "Goodbye")
+
+hello_goodbye = hello_world + (
+    "    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n"
+)
+
+goodbye_hello = goodbye_world + (
+    "    with open('file2.txt', 'w') as f:\n        f.write('Hello, world!')\n"
+)
+
+noop = "def main():\n    pass\n"
 
 passing_cases = [
     {  # Check that it works with a single file
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n",
+        "ref_file": hello_world,
+        "sub_file": hello_world,
         "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
     },
     {  # Check that it works with multiple files
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "ref_file": hello_goodbye,
+        "sub_file": hello_goodbye,
+        "options": Options(
+            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+        ),
     },
     {
-        "ref_file": "def main():\n    pass\n",
-        "sub_file": "def main():\n    pass\n",
-        "options": Options(sub_module="sub", ref_module="ref"),
+        "ref_file": noop,
+        "sub_file": noop,
+        "options": Options(
+            sub_module="sub", ref_module="ref"
+        ),  # TODO this test should fail
     },
-    {
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n",
+    {  # Check that only specified files are tested
+        "ref_file": hello_world,
+        "sub_file": hello_goodbye,
         "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
     },
 ]
@@ -87,19 +110,46 @@ def test_passing_cases(case, fix_syspath):
 
 
 failing_cases = [
-    {
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Goodbye, world!')\n",
+    {  # Check that it fails when single file contents do not match
+        "ref_file": hello_world,
+        "sub_file": goodbye_world,
         "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
-        "error": "{'file.txt': ['Goodbye, world!']} != {'file.txt': ['Hello, world!']}\n- {'file.txt': ['Goodbye, world!']}\n?                ^ -----\n\n+ {'file.txt': ['Hello, world!']}\n?                ^^^^\n : \n\nHint:\n  The lines written to your output file do not match the expected\n  lines.  Double check the lines written to the file `file.txt` by\n  your `main` function when called as `main()`.",
+        "error": (
+            "{'file.txt': ['Goodbye, world!']} != {'file.txt': ['Hello, world!']}\n"
+            "- {'file.txt': ['Goodbye, world!']}\n"
+            "?                ^ -----\n"
+            "\n"
+            "+ {'file.txt': ['Hello, world!']}\n"
+            "?                ^^^^\n"
+            " : \n"
+            "\n"
+            "Hint:\n"
+            "  The lines written to your output file do not match the expected\n"
+            "  lines.  Double check the lines written to the file `file.txt` by\n"
+            "  your `main` function when called as `main()`."
+        ),
     },
-    {
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Hello, world!')\n    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Goodbye, world!')\n    with open('file2.txt', 'w') as f:\n        f.write('Hello, world!')\n",
+    {  # Check that it fails when multiple file contents do not match
+        "ref_file": hello_goodbye,
+        "sub_file": goodbye_hello,
         "options": Options(
             sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
         ),
-        "error": "{'file.txt': ['Goodbye, world!'], 'file2.txt': ['Hello, world!']} != {'file.txt': ['Hello, world!'], 'file2.txt': ['Goodbye, world!']}\n- {'file.txt': ['Goodbye, world!'], 'file2.txt': ['Hello, world!']}\n?                ^ -----                           ^ ---\n\n+ {'file.txt': ['Hello, world!'], 'file2.txt': ['Goodbye, world!']}\n?                ^^^^                            ^^^^^^\n : \n\nHint:\n  The lines written to your output files do not match the expected\n  lines.  Double check the lines written to the files `file.txt` and\n  `file2.txt` by your `main` function when called as `main()`.",
+        "error": (
+            "{'file.txt': ['Goodbye, world!'], 'file2.txt': ['Hello, world!']} != "
+            "{'file.txt': ['Hello, world!'], 'file2.txt': ['Goodbye, world!']}\n"
+            "- {'file.txt': ['Goodbye, world!'], 'file2.txt': ['Hello, world!']}\n"
+            "?                ^ -----                           ^ ---\n"
+            "\n"
+            "+ {'file.txt': ['Hello, world!'], 'file2.txt': ['Goodbye, world!']}\n"
+            "?                ^^^^                            ^^^^^^\n"
+            " : \n"
+            "\n"
+            "Hint:\n"
+            "  The lines written to your output files do not match the expected\n"
+            "  lines.  Double check the lines written to the files `file.txt` and\n"
+            "  `file2.txt` by your `main` function when called as `main()`."
+        ),
     },
 ]
 
