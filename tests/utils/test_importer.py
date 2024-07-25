@@ -23,6 +23,20 @@ def test_valid_import(fix_syspath):
     assert isinstance(obj, FunctionType)
 
 
+def test_submodule_import(fix_syspath):
+    """Test the Importer's ability to import a valid object from a submodule."""
+    # Create a fake module
+    fake_file = fix_syspath / "tests" / "fake_module.py"
+    fake_file.parent.mkdir()
+    fake_file.write_text("fake_func = lambda: None")
+    # Create a fake test object
+    test = FakeTest()
+    # Import the fake object
+    obj = Importer.import_obj(test, "tests.fake_module", "fake_func")
+    # Check that the object is a function
+    assert isinstance(obj, FunctionType)
+
+
 def test_ignores_function_input(fix_syspath):
     """Test the Importer's ability to not catch input() calls inside functions."""
 

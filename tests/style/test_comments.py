@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import pytest
@@ -102,6 +103,31 @@ def test_comment_length(case_test_method):
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+
+
+def test_submodule_comment_length(fix_syspath):
+    """
+    Check if we can test the comments of a submodule.
+
+    The comments test opens the files to read them instead using the importer,
+    so we need to explicitly test its handling of submodules.
+    """
+
+    options = Options(sub_module="elsewhere.submission")
+
+    file_path = fix_syspath / (options.ref_module.replace(".", os.path.sep) + ".py")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text("pass # some comments")
+
+    file_path = fix_syspath / (options.sub_module.replace(".", os.path.sep) + ".py")
+    file_path.parent.mkdir(parents=True, exist_ok=True)
+    file_path.write_text("pass # enough comments")
+
+    the_params = [param(options)]
+    built_class = build(the_params)
+    built_instance = built_class(methodName="test_comment_length_0")
+    test_method = built_instance.test_comment_length_0
+    test_method()  # should not raise an error
 
 
 # TODO add tests for the hint message

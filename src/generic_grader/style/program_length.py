@@ -1,5 +1,6 @@
 """Test for appropriate program length."""
 
+import os
 import textwrap
 import unittest
 
@@ -21,8 +22,11 @@ def build(the_params):
         def test_program_length(self, options):
             """Check if the program is well bigger than expected."""
 
-            actual = len(get_tokens(self, options.sub_module + ".py"))
-            expected = len(get_tokens(self, options.ref_module + ".py"))
+            submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
+            actual = len(get_tokens(self, submission_file))
+
+            reference_file = options.ref_module.replace(".", os.path.sep) + ".py"
+            expected = len(get_tokens(self, reference_file))
 
             self.set_score(self, 0)  # No credit
             maximum = int(2 * expected)
