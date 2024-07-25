@@ -74,21 +74,20 @@ cases = [
 
 
 @pytest.fixture(params=cases)
-def case_test_method(request, tmp_path, monkeypatch):
+def case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
-    file_path = tmp_path / "submission.py"
-    file_path.write_text(case["submission"])
-    file_path = tmp_path / "reference.py"
+    file_path = fix_syspath / "reference.py"
     file_path.write_text(case["reference"])
-    monkeypatch.chdir(tmp_path)
+    file_path = fix_syspath / "submission.py"
+    file_path.write_text(case["submission"])
 
     the_params = [
         param(
             Options(
-                sub_module="submission",
-                ref_module="reference",
                 weight=case["weight"],
+                ref_module="reference",
+                sub_module="submission",
             ),
         )
     ]
@@ -104,7 +103,7 @@ def test_program_length(case_test_method):
     case, built_instance, test_method = case_test_method
 
     if case["result"] == "pass":
-        built_instance.run()
+        test_method()
         assert test_method.__score__ == case["score"]
     else:
         error = case["result"]
@@ -115,10 +114,6 @@ def test_program_length(case_test_method):
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
-
-        # We must call cleanups manually since we called the test method
-        # directly instead of using the instance's run() method.
-        built_instance.doCleanups()
         assert test_method.__score__ == case["score"]
 
 
