@@ -3,7 +3,7 @@ import unittest
 import pytest
 from parameterized import param
 
-from generic_grader.output.output_values_match_reference_merged import build
+from generic_grader.output.output_values_match_reference import build
 from generic_grader.utils.options import Options
 
 
@@ -43,7 +43,7 @@ def test_output_values_match_reference_has_test_method(built_instance):
 
 # Cases Tested:
 # 1. Correct output
-# 2. Correct output with init function
+# 2. Correct output with multiple inputs
 # 3. Wrong output with one input
 # 4. Wrong output with multiple inputs
 # 5. Not enough values in required line
@@ -277,4 +277,4 @@ def test_output_values_match_reference(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__doc__ == case["doc_func_test_string"]
-        # assert test_method.__score__ == case["score"] # Doesn't work with IndexError case
+        assert test_method.__score__ == case["score"]

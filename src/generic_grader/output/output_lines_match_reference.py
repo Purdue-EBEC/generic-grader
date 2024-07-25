@@ -43,6 +43,8 @@ def build(the_params):
 
             o = options
 
+            self.set_score(self, 0)  # No credit
+
             # Get the actual and expected values.
             actual = self.student_user.read_log()
             expected = self.ref_user.read_log()
@@ -54,8 +56,6 @@ def build(the_params):
             # long output.
             line_range = make_line_range(o.start, o.n_lines)
             call_str = make_call_str(o.obj_name, o.args, o.kwargs)
-
-            self.set_score(self, 0)  # No credit
 
             message = (
                 # "\n" + "\n".join(

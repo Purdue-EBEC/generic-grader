@@ -31,7 +31,6 @@ test_01_TestCommentLength = comments.build(
         Options(
             weight=3,
             sub_module="hello_user",
-            ref_module="tests/reference",
             hint="Check the volume of comments in your code.",
             entries=case["entries"],
         ),
@@ -61,7 +60,7 @@ test_04_TestOutput = output_lines_match_reference.build(
                 obj_name="main",
                 sub_module="hello_user",
                 ref_module="tests.reference",
-                entries=["AJ"],
+                entries=("AJ",),
                 n_lines=2,
             ),
         ),
