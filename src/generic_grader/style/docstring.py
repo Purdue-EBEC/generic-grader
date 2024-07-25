@@ -5,8 +5,6 @@ import datetime
 import textwrap
 import unittest
 
-from generic_grader.utils.decorators import weighted
-
 
 def parse_docstring(docstring):
     """Parse the doc string to find required components."""
@@ -47,16 +45,13 @@ def titlecase(phrase):
     return " ".join(word.capitalize() for word in phrase.split())
 
 
-def build(submission, reference, weight=0):
+def build(submission, reference):
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
 
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
-        @weighted
         def setUp(self):
-            self.set_score(self, 0)  # No credit
-
             with open(submission) as fo:
                 fail_msg = None
                 try:
@@ -79,7 +74,6 @@ def build(submission, reference, weight=0):
                 self.integrity,
             ) = parse_docstring(self.doc or "")
 
-        @weighted
         def test_docstring_module(self):
             """Check for existence of module level docstring."""
 
@@ -94,9 +88,6 @@ def build(submission, reference, weight=0):
             )
             self.assertIsNotNone(self.doc, msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_author(self):
             actual = self.author and len(self.author) or 0
             minimum = 2
@@ -116,9 +107,6 @@ def build(submission, reference, weight=0):
             )
             self.assertIn("@purdue.edu", self.author.lower(), msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_assignment_name(self):
             name = titlecase(submission.replace(".py", "").replace("_", " "))
             actual = self.assignment and len(self.assignment) or 0
@@ -139,9 +127,6 @@ def build(submission, reference, weight=0):
             )
             self.assertIn(name.lower(), self.assignment.lower(), msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_date(self):
             actual = self.date and len(self.date) or 0
             minimum = 8  # e.g. "01/01/22"
@@ -153,9 +138,6 @@ def build(submission, reference, weight=0):
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_desc(self):
             actual = len("".join(self.description))
             with open(reference) as fo:
@@ -186,9 +168,6 @@ def build(submission, reference, weight=0):
             )
             self.assertLessEqual(actual, maximum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_contributors(self):
             actual = len("".join(self.contributors))
             minimum = 4  # e.g. "None"
@@ -200,9 +179,6 @@ def build(submission, reference, weight=0):
 
             self.assertGreaterEqual(actual, minimum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
-
-        @weighted
         def test_docstring_integrity(self):
             actual_integrity = "\n".join(self.integrity) + "\n"
 
@@ -222,6 +198,5 @@ def build(submission, reference, weight=0):
 
             self.maxDiff = None
             self.assertEqual(actual_integrity, expected_integrity, msg=message)
-            self.set_score(self, weight)  # Full credit
 
     return TestDocstring
