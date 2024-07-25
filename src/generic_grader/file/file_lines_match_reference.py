@@ -7,13 +7,13 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str, oxford_list
-from generic_grader.utils.reference_test import file_reference_test
+from generic_grader.utils.reference_test import reference_test
 
 
 def doc_func(func, num, param):
     """Return parameterized docstring when checking lines in a file."""
 
-    o = param.kwargs["options"]
+    o = param.args[0]
 
     filenames = [f"`{filename}`" for filename in o.filenames]
     file_s = "file" if len(filenames) == 1 else "files"
@@ -40,7 +40,7 @@ def build(the_params):
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
-        @file_reference_test
+        @reference_test
         def test_file_lines_match_reference(self, options):
             """Check for extra or missing lines in a file."""
 
