@@ -1,6 +1,7 @@
 from parameterized import param
 
 from generic_grader.file import file_set_up
+from generic_grader.output import output_lines_match_reference
 from generic_grader.style import comments, docstring, program_length
 from generic_grader.utils.options import Options
 
@@ -46,6 +47,21 @@ test_03_TestProgramLength = program_length.build(
         param(
             Options(
                 sub_module="hello_user",
+            ),
+        ),
+    ]
+)
+
+test_04_TestOutput = output_lines_match_reference.build(
+    [
+        param(
+            Options(
+                weight=1,
+                obj_name="main",
+                sub_module="hello_user",
+                ref_module="tests.reference",
+                entries=("AJ",),
+                n_lines=2,
             ),
         ),
     ]
