@@ -66,7 +66,10 @@ cases = [
             ref_module="reference",
             weight=1,
         ),
-        "doc_func_test_string": "Check that the values on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
     },
     {  # Only nth (3rd) value matches - should pass as value_n=3 is specified
         "submission": "def main():\n    print('10,20,3,40,50')",
@@ -80,7 +83,10 @@ cases = [
             weight=1,
             value_n=3,
         ),
-        "doc_func_test_string": "Check that the 3rd value on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the 3rd value on output line 1 from your `main`"
+            " function when called as `main()` match the reference values."
+        ),
     },
     {  # Only nth (3rd) value does not match
         "submission": "def main():\n    print('1,2,30,4,5')",
@@ -92,9 +98,13 @@ cases = [
             sub_module="submission",
             ref_module="reference",
             weight=1,
+            value_n=3,
         ),
         "message": "Your output values did not match the expected values.",
-        "doc_func_test_string": "Check that the values on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the 3rd value on output line 1 from your `main`"
+            " function when called as `main()` match the reference values."
+        ),
     },
     {  # Some values match and some don't
         "submission": "def main():\n    print('10,2,3,40,50,6,7,8,90,10')",
@@ -108,7 +118,10 @@ cases = [
             weight=1,
         ),
         "message": "Your output values did not match the expected values.",
-        "doc_func_test_string": "Check that the values on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
     },
     {  # Not enough values in required line
         "submission": "def main():\n    print('10,20')",
@@ -122,7 +135,10 @@ cases = [
             weight=1,
         ),
         "message": "Your output values did not match the expected values.",
-        "doc_func_test_string": "Check that the values on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
     },
     {  # Too many values in required line
         "submission": "def main():\n    print('10,20,30,40')",
@@ -136,11 +152,24 @@ cases = [
             weight=1,
         ),
         "message": "Your output values did not match the expected values.",
-        "doc_func_test_string": "Check that the values on output line 1 from your `main` function when called as `main()` match the reference values.",
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
     },
     {  # Test to check if docstring is being correctly generated
-        "submission": "def main():\n    num1 = int(input('Enter a number: '))\n    num2 = int(input('Enter a number: '))\n    print(f'The sum of {num1} and {num2+10} = {num1*num2}')",
-        "reference": "def main():\n    num1 = int(input('Enter a number: '))\n    num2 = int(input('Enter a number: '))\n    print(f'The sum of {num1} and {num2} = {num1+num2}')",
+        "submission": (
+            "def main():\n"
+            "    num1 = int(input('Enter a number: '))\n"
+            "    num2 = int(input('Enter a number: '))\n"
+            "    print(f'The sum of {num1} and {num2+10} = {num1*num2}')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    num1 = int(input('Enter a number: '))\n"
+            "    num2 = int(input('Enter a number: '))\n"
+            "    print(f'The sum of {num1} and {num2} = {num1+num2}')"
+        ),
         "result": AssertionError,
         "score": 0,
         "options": Options(
@@ -156,11 +185,25 @@ cases = [
             value_n=2,
         ),
         "message": "Your output values did not match the expected values.",
-        "doc_func_test_string": "Check that the 2nd value on output line 3 from your `main` function when called as `main()` with entries=('10', '20') match the reference values.",
+        "doc_func_test_string": (
+            "Check that the 2nd value on output line 3 from your `main`"
+            " function when called as `main()` with entries=('10', '20')"
+            " match the reference values."
+        ),
     },
     {  # Index error case
-        "submission": "def main():\n    num1 = int(input('Enter a number: '))\n    num2 = int(input('Enter a number: '))\n    print(f'The sum of {num1} and {num2+10} = ')",
-        "reference": "def main():\n    num1 = int(input('Enter a number: '))\n    num2 = int(input('Enter a number: '))\n    print(f'The sum of {num1} and {num2} = {num1+num2}')",
+        "submission": (
+            "def main():\n"
+            "    num1 = int(input('Enter a number: '))\n"
+            "    num2 = int(input('Enter a number: '))\n"
+            "    print(f'The sum of {num1} and {num2+10} = ')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    num1 = int(input('Enter a number: '))\n"
+            "    num2 = int(input('Enter a number: '))\n"
+            "    print(f'The sum of {num1} and {num2} = {num1+num2}')"
+        ),
         "result": IndexError,
         "score": 0,
         "options": Options(
@@ -176,7 +219,11 @@ cases = [
             value_n=3,
         ),
         "message": "Looking for the 3rd value in the 3rd output line",
-        "doc_func_test_string": "Check that the 3rd value on output line 3 from your `main` function when called as `main()` with entries=('10', '20') match the reference values.",
+        "doc_func_test_string": (
+            "Check that the 3rd value on output line 3 from your `main`"
+            " function when called as `main()` with entries=('10', '20')"
+            " match the reference values."
+        ),
     },
 ]
 
