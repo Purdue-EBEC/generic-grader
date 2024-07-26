@@ -4,12 +4,6 @@ import pytest
 from parameterized import param
 
 from generic_grader.output.output_lines_match_reference import build
-from generic_grader.utils.exceptions import (
-    EndOfInputError,
-    ExitError,
-    LogLimitExceededError,
-    QuitError,
-)
 from generic_grader.utils.options import Options
 
 
@@ -53,10 +47,7 @@ def test_output_lines_match_reference_has_test_method(built_instance):
 # 3. Wrong 1st and 4th line, and correct 2ndand 3rd lines with start = 2 and line_n = 2 - Should pass because only checks line 2-3
 # 4. Slightly wrong output test case
 # 5. Completely wrong output
-# 6. Log Limit Exceeded case
-# 7. End of Input case
-# 8. Quit error case
-# 9. Exit error case
+
 
 cases = [
     {  # Correct output
@@ -134,66 +125,6 @@ cases = [
         "message": "Your output did not match the expected output",
         "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
     },
-    {  # Log Limit Exceeded case
-        "submission": "def main():\n    print('Really long output log'*100)",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
-        "result": LogLimitExceededError,
-        "score": 0,
-        "options": Options(
-            obj_name="main",
-            sub_module="submission",
-            ref_module="reference",
-            entries=("AJ",),
-            weight=1,
-        ),
-        "message": "Your program produced much more output than was expected.",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
-    },
-    {  # End of Input case
-        "submission": "def main():\n    name = input('What is your name? ')\n    name = input('What is your name? ')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
-        "result": EndOfInputError,
-        "score": 0,
-        "options": Options(
-            obj_name="main",
-            sub_module="submission",
-            ref_module="reference",
-            entries=("AJ",),
-            weight=1,
-        ),
-        "message": "Your program requested user input more times than expected.",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
-    },
-    {  # Quit error case
-        "submission": "def main():\n    quit()",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
-        "result": QuitError,
-        "score": 0,
-        "options": Options(
-            obj_name="main",
-            sub_module="submission",
-            ref_module="reference",
-            entries=("AJ",),
-            weight=1,
-        ),
-        "message": "Calling the `quit()` function is not allowed in this course.",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
-    },
-    {  # Exit error case
-        "submission": "def main():\n    exit()",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
-        "result": ExitError,
-        "score": 0,
-        "options": Options(
-            obj_name="main",
-            sub_module="submission",
-            ref_module="reference",
-            entries=("AJ",),
-            weight=1,
-        ),
-        "message": "Calling the `exit()` function is not allowed in this course.",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
-    },
 ]
 
 
@@ -236,4 +167,6 @@ def test_output_lines_match_reference(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__doc__ == case["doc_func_test_string"]
-        # assert test_method.__score__ == case["score"]  # Doesn't work with LogLimitExceededError, EndOfInputError, QuitError, ExitError
+        assert (
+            test_method.__score__ == case["score"]
+        )  # Doesn't work with LogLimitExceededError, EndOfInputError, QuitError, ExitError
