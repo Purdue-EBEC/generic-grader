@@ -43,16 +43,25 @@ def test_output_lines_match_reference_has_test_method(built_instance):
 
 # Cases Tested:
 # 1. Correct output
-# 2. Wrong first line and correct second line with start = 2 - Should pass because only checks second line
-# 3. Wrong 1st and 4th line, and correct 2ndand 3rd lines with start = 2 and line_n = 2 - Should pass because only checks line 2-3
+# 2. Wrong first line and correct second line with start = 2 - Should pass
+#    because only checks second line
+# 3. Wrong 1st and 4th line, and correct 2nd and 3rd lines with start = 2 and
+#    line_n = 2 - Should pass because only checks line 2-3
 # 4. Slightly wrong output test case
 # 5. Completely wrong output
 
-
 cases = [
     {  # Correct output
-        "submission": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
         "result": "pass",
         "score": 1,
         "options": Options(
@@ -62,11 +71,25 @@ cases = [
             entries=("AJ",),
             weight=1,
         ),
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
     },
-    {  # Wrong first line and correct second line with start = 2 - Should pass because only checks second line
-        "submission": "def main():\n    name = input('Wrong first line')\n    print(f'Hello, {name}!')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
+    {
+        # Wrong first line and correct second line with start = 2 - Should pass
+        # because only checks second line
+        "submission": (
+            "def main():\n"
+            "    name = input('Wrong first line')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
         "result": "pass",
         "score": 1,
         "options": Options(
@@ -77,11 +100,28 @@ cases = [
             weight=1,
             start=2,
         ),
-        "doc_func_test_string": "Check that the formatting of output lines 2 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 2 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
     },
-    {  # Wrong 1st and 4th line, and correct 2ndand 3rd lines with start = 2 and line_n = 2 - Should pass because only checks line 2-3
-        "submission": "def main():\n    name = input('Wrong first line')\n    print(f'Hello, {name}!')\n    print(f'Hello, {name}!')\n    print(f'Wrong output')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')\n    print(f'Hello, {name}!')\n    print(f'Hello, {name}!')",
+    {
+        # Wrong 1st and 4th line, and correct 2nd and 3rd lines with start = 2
+        # and line_n = 2 - Should pass because only checks line 2-3
+        "submission": (
+            "def main():\n"
+            "    name = input('Wrong first line')\n"
+            "    print(f'Hello, {name}!')\n"
+            "    print(f'Hello, {name}!')\n"
+            "    print(f'Wrong output')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')\n"
+            "    print(f'Hello, {name}!')"
+        ),
         "result": "pass",
         "score": 1,
         "options": Options(
@@ -93,11 +133,23 @@ cases = [
             start=2,
             n_lines=2,
         ),
-        "doc_func_test_string": "Check that the formatting of output lines 2 through 3 from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 2 through 3 from your"
+            " `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
     },
     {  # Slightly wrong output test case
-        "submission": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
         "result": AssertionError,
         "score": 0,
         "options": Options(
@@ -108,11 +160,23 @@ cases = [
             weight=1,
         ),
         "message": "Your output did not match the expected output",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
     },
     {  # Completely wrong output
-        "submission": "def main():\n    name = input('What is your name? ')\n    print(f'Wrong output')",
-        "reference": "def main():\n    name = input('What is your name? ')\n    print(f'Hello, {name}!')",
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Wrong output')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
         "result": AssertionError,
         "score": 0,
         "options": Options(
@@ -123,7 +187,11 @@ cases = [
             weight=1,
         ),
         "message": "Your output did not match the expected output",
-        "doc_func_test_string": "Check that the formatting of output lines 1 through the end from your `main` function when called as `main()` with entries=('AJ',) matches the reference formatting.",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
     },
 ]
 
@@ -167,6 +235,4 @@ def test_output_lines_match_reference(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__doc__ == case["doc_func_test_string"]
-        assert (
-            test_method.__score__ == case["score"]
-        )  # Doesn't work with LogLimitExceededError, EndOfInputError, QuitError, ExitError
+        assert test_method.__score__ == case["score"]
