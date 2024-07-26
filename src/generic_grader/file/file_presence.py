@@ -8,6 +8,8 @@ from pathlib import Path
 from gradescope_utils.autograder_utils.decorators import weight
 from parameterized import parameterized
 
+from generic_grader.utils.options import options_to_params
+
 # TODO
 # The prep() function is intended to run once before any tests are run.  It is
 # typically used to create solution image files for drawing exercises.  See
@@ -32,8 +34,10 @@ from parameterized import parameterized
 # the code more readable (less indentation).
 
 
-def build(the_params):
+def build(the_options):
     """Create a class for file presence tests."""
+
+    the_params = options_to_params(the_options)
 
     class TestFilePresence(unittest.TestCase):
         """A class for file tests."""

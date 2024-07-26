@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.file.file_presence import build
 from generic_grader.utils.options import Options
@@ -10,9 +9,7 @@ from generic_grader.utils.options import Options
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options()
-    the_params = param(o)
-    return build(the_params)
+    return build(Options())
 
 
 @pytest.fixture()
@@ -166,15 +163,12 @@ def case_test_method(request, tmp_path, monkeypatch):
         file_path.write_text("")
     monkeypatch.chdir(tmp_path)
 
-    the_params = [
-        param(
-            Options(
-                required_files=case["required"],
-                ignored_files=case["ignored"],
-            ),
-        )
-    ]
-    built_class = build(the_params)
+    built_class = build(
+        Options(
+            required_files=case["required"],
+            ignored_files=case["ignored"],
+        ),
+    )
     built_instance = built_class()
     test_method = built_instance.test_submitted_files_0
 

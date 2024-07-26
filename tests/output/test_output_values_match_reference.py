@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.output.output_values_match_reference import build
 from generic_grader.utils.options import Options
@@ -10,9 +9,7 @@ from generic_grader.utils.options import Options
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options()
-    the_params = param(o)
-    return build([the_params])
+    return build(Options())
 
 
 @pytest.fixture()
@@ -237,13 +234,7 @@ def case_test_method(request, fix_syspath):
     file_path = fix_syspath / f"{case['options'].ref_module}.py"
     file_path.write_text(case["reference"])
 
-    the_params = [
-        param(
-            case["options"],
-        )
-    ]
-
-    built_class = build(the_params)
+    built_class = build(case["options"])
     built_instance = built_class(methodName="test_output_values_match_reference_0")
     test_method = built_instance.test_output_values_match_reference_0
 

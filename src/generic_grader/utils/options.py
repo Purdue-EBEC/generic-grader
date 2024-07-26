@@ -2,6 +2,14 @@ import datetime
 from collections.abc import Callable
 
 from attrs import Factory, define
+from parameterized import param
+
+
+def options_to_params(options):
+    try:
+        return [param(o) for o in options]
+    except TypeError:  # non-iterable
+        return [param(options)]
 
 
 @define(kw_only=True, frozen=True)

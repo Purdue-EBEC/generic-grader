@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.file.file_closed import build
 from generic_grader.utils.options import Options
@@ -10,9 +9,7 @@ from generic_grader.utils.options import Options
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options()
-    the_params = [param(o)]
-    return build(the_params)
+    return build(Options())
 
 
 @pytest.fixture()
@@ -72,8 +69,7 @@ def test_passing_cases(case, fix_syspath):
     sub_file = fix_syspath / "sub.py"
     sub_file.write_text(case["file_text"])
     # Create the test parameters and build the test class.
-    the_params = [param(case["options"])]
-    built_class = build(the_params)
+    built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_closed_0")
     test_method = built_instance.test_file_closed_0
     # Run the test method.
@@ -124,8 +120,7 @@ def test_failing_cases(case, fix_syspath):
     sub_file = fix_syspath / "sub.py"
     sub_file.write_text(case["sub_file_text"])
     # Create the test parameters and build the test class.
-    the_params = [param(case["options"])]
-    built_class = build(the_params)
+    built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_closed_0")
     test_method = built_instance.test_file_closed_0
     # Run the test method.

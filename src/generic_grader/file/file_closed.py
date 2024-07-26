@@ -9,6 +9,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str, oxford_list
+from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
 
@@ -39,8 +40,10 @@ def catch_warnings(func):
     return wrapper
 
 
-def build(the_params):
+def build(the_options):
     """Create a class for file closing tests."""
+
+    the_params = options_to_params(the_options)
 
     class TestFileClosed(unittest.TestCase):
         """A class for file closing tests."""

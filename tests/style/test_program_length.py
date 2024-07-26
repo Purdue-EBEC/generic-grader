@@ -2,7 +2,6 @@ import os
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.style.program_length import build
 from generic_grader.utils.options import Options
@@ -11,9 +10,7 @@ from generic_grader.utils.options import Options
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options()
-    the_params = param(o)
-    return build(the_params)
+    return build(Options())
 
 
 @pytest.fixture()
@@ -82,16 +79,13 @@ def case_test_method(request, fix_syspath):
     file_path = fix_syspath / "submission.py"
     file_path.write_text(case["submission"])
 
-    the_params = [
-        param(
-            Options(
-                weight=case["weight"],
-                ref_module="reference",
-                sub_module="submission",
-            ),
-        )
-    ]
-    built_class = build(the_params)
+    built_class = build(
+        Options(
+            weight=case["weight"],
+            ref_module="reference",
+            sub_module="submission",
+        ),
+    )
     built_instance = built_class(methodName="test_program_length_0")
     test_method = built_instance.test_program_length_0
 
@@ -135,8 +129,7 @@ def test_submodule_program_length(fix_syspath):
     file_path.parent.mkdir(parents=True, exist_ok=True)
     file_path.write_text("pass # enough comments")
 
-    the_params = [param(options)]
-    built_class = build(the_params)
+    built_class = build(options)
     built_instance = built_class(methodName="test_program_length_0")
     test_method = built_instance.test_program_length_0
     test_method()  # should not raise an error

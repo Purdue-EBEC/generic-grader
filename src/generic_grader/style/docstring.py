@@ -2,6 +2,7 @@
 
 import ast
 import datetime
+import os
 import textwrap
 import unittest
 
@@ -45,7 +46,10 @@ def titlecase(phrase):
     return " ".join(word.capitalize() for word in phrase.split())
 
 
-def build(submission, reference):
+def build(options):
+    submission = options.sub_module.replace(".", os.path.sep) + ".py"
+    reference = options.ref_module.replace(".", os.path.sep) + ".py"
+
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
 

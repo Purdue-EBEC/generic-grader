@@ -3,12 +3,13 @@ import unittest
 import pytest
 
 from generic_grader.style.docstring import build
+from generic_grader.utils.options import Options
 
 
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    return build(submission=None, reference=None)
+    return build(Options())
 
 
 @pytest.fixture()
@@ -484,14 +485,17 @@ def case_test_method(request, tmp_path, monkeypatch):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
     file_path = tmp_path / "hello_user.py"
-    submission = file_path.name
     file_path.write_text(case["submission"])
     file_path = tmp_path / "reference.py"
-    reference = file_path.name
     file_path.write_text(case["reference"])
     monkeypatch.chdir(tmp_path)
 
-    built_class = build(submission, reference)
+    built_class = build(
+        Options(
+            ref_module="reference",
+            sub_module="hello_user",
+        )
+    )
     built_instance = built_class()
     test_method = getattr(built_instance, case["method"])
     custom_setup_method = getattr(built_instance, "setUp")

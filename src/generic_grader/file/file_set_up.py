@@ -7,9 +7,13 @@ from pathlib import Path
 
 from parameterized import parameterized
 
+from generic_grader.utils.options import options_to_params
 
-def build(the_params):
+
+def build(the_options):
     """Create a class to prepare files for other tests."""
+
+    the_params = options_to_params(the_options)
 
     class TestFileSetUp(unittest.TestCase):
         """A class for file tests."""

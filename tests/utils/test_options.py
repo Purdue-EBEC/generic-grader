@@ -1,6 +1,32 @@
 import pytest
+from parameterized import param
 
-from generic_grader.utils.options import ImageOptions, Options
+from generic_grader.utils.options import ImageOptions, Options, options_to_params
+
+
+def test_single_options_to_params():
+    # Arrange
+    single_option = Options()
+
+    # Act
+    the_params = options_to_params(single_option)
+
+    # Assert
+    assert the_params == [param(single_option)]
+
+
+def test_multiple_options_to_params():
+    # Arrange
+    sequence_options = (
+        Options(),
+        Options(),
+    )
+
+    # Act
+    the_params = options_to_params(sequence_options)
+
+    # Assert
+    assert the_params == [param(o) for o in sequence_options]
 
 
 def test_utils_options():

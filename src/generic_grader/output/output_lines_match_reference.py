@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str, make_line_range
+from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
 
@@ -27,8 +28,10 @@ def doc_func(func, num, param):
     return docstring
 
 
-def build(the_params):
+def build(the_options):
     """Create a class for output line tests."""
+
+    the_params = options_to_params(the_options)
 
     class TestOutputLinesMatchReference(unittest.TestCase):
         """A class for formatting tests."""

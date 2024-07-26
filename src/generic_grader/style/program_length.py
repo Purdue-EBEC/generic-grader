@@ -7,11 +7,14 @@ import unittest
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import get_tokens
 
 
-def build(the_params):
+def build(the_options):
     """Create a class for program length tests."""
+
+    the_params = options_to_params(the_options)
 
     class TestProgramLength(unittest.TestCase):
         """A class for program length check."""

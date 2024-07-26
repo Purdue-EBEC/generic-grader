@@ -1,7 +1,6 @@
 import unittest
 
 import pytest
-from parameterized import param
 
 from generic_grader.file.file_lines_match_reference import build
 from generic_grader.utils.options import Options
@@ -10,9 +9,7 @@ from generic_grader.utils.options import Options
 @pytest.fixture()
 def built_class():
     """Provide the class built by the build function."""
-    o = Options(filenames=("ref_file.txt",), sub_module="hello_user")
-    the_params = [param(o)]
-    return build(the_params)
+    return build(Options(filenames=("ref_file.txt",), sub_module="hello_user"))
 
 
 @pytest.fixture()
@@ -97,7 +94,7 @@ def test_passing_cases(case, fix_syspath):
     ref_file.write_text(case["ref_file"])
     sub_file = fix_syspath / "sub.py"
     sub_file.write_text(case["sub_file"])
-    built_class = build([param(case["options"])])
+    built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_match_reference_0")
     built_instance.test_file_lines_match_reference_0()
 
@@ -166,7 +163,7 @@ def test_failing_cases(case, fix_syspath):
     ref_file.write_text(case["ref_file"])
     sub_file = fix_syspath / "sub.py"
     sub_file.write_text(case["sub_file"])
-    built_class = build([param(case["options"])])
+    built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_match_reference_0")
     with pytest.raises(case["exception"]) as exc_info:
         built_instance.test_file_lines_match_reference_0()
