@@ -93,6 +93,8 @@ def build(options):
             self.assertIsNotNone(self.doc, msg=message)
 
         def test_docstring_author(self):
+            """Check assignment author exists."""
+
             actual = self.author and len(self.author) or 0
             minimum = 2
             message = "\n\nHint:\n" + self.wrapper.fill(
@@ -112,6 +114,8 @@ def build(options):
             self.assertIn("@purdue.edu", self.author.lower(), msg=message)
 
         def test_docstring_assignment_name(self):
+            """Check assignment name exists."""
+
             name = titlecase(submission.replace(".py", "").replace("_", " "))
             actual = self.assignment and len(self.assignment) or 0
             minimum = 7
@@ -132,6 +136,8 @@ def build(options):
             self.assertIn(name.lower(), self.assignment.lower(), msg=message)
 
         def test_docstring_date(self):
+            """Check assignment date exists."""
+
             actual = self.date and len(self.date) or 0
             minimum = 8  # e.g. "01/01/22"
             today = datetime.datetime.today().date().isoformat()
@@ -143,6 +149,8 @@ def build(options):
             self.assertGreaterEqual(actual, minimum, msg=message)
 
         def test_docstring_desc(self):
+            """Check description length of module level docstring."""
+
             actual = len("".join(self.description))
             with open(reference) as fo:
                 reference_doc = ast.get_docstring(ast.parse(fo.read()))
@@ -173,6 +181,8 @@ def build(options):
             self.assertLessEqual(actual, maximum, msg=message)
 
         def test_docstring_contributors(self):
+            """Check contributors length of module level docstring."""
+
             actual = len("".join(self.contributors))
             minimum = 4  # e.g. "None"
             message = "\n\nHint:\n" + self.wrapper.fill(
@@ -184,6 +194,8 @@ def build(options):
             self.assertGreaterEqual(actual, minimum, msg=message)
 
         def test_docstring_integrity(self):
+            """Check for academic integrity statement."""
+
             actual_integrity = "\n".join(self.integrity) + "\n"
 
             expected_integrity = "\n".join(

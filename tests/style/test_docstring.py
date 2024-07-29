@@ -198,6 +198,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_module",
+        "docstring_message": "Check for existence of module level docstring.",
     },
     {  # Parse error for module level docstring test
         "submission": parse_err,
@@ -205,6 +206,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_module",
+        "docstring_message": "Check for existence of module level docstring.",
     },
     {  # Missing module level docstring
         "submission": "",
@@ -212,6 +214,7 @@ cases = [
         "result": AssertionError,
         "message": "The program's docstring was not found",
         "method": "test_docstring_module",
+        "docstring_message": "Check for existence of module level docstring.",
     },
     #   - Author section test
     {  # Passing test case for author section
@@ -219,6 +222,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_author",
+        "docstring_message": "Check assignment author exists.",
     },
     {  # Parse error for author in docstring
         "submission": parse_err,
@@ -226,6 +230,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_author",
+        "docstring_message": "Check assignment author exists.",
     },
     {  # Missing Author name
         "submission": f'''"""{miss_auth}
@@ -238,6 +243,7 @@ cases = [
         "result": AssertionError,
         "message": "The author's name was not found",
         "method": "test_docstring_author",
+        "docstring_message": "Check assignment author exists.",
     },
     {  # Incomplete author name
         "submission": f'''"""{inc_auth}
@@ -250,6 +256,7 @@ cases = [
         "result": AssertionError,
         "message": "The author's name was not found",
         "method": "test_docstring_author",
+        "docstring_message": "Check assignment author exists.",
     },
     {  # Missing author email
         "submission": f'''"""{miss_email}
@@ -262,6 +269,7 @@ cases = [
         "result": AssertionError,
         "message": "The author's email address was not found",
         "method": "test_docstring_author",
+        "docstring_message": "Check assignment author exists.",
     },
     #   - Assignment name test
     {  # Passing test case for assignment name
@@ -269,6 +277,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_assignment_name",
+        "docstring_message": "Check assignment name exists.",
     },
     {  # Parse error for assignment name in docstring
         "submission": parse_err,
@@ -276,6 +285,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_assignment_name",
+        "docstring_message": "Check assignment name exists.",
     },
     {  # Missing assignment name
         "submission": f'''"""{comp_auth}
@@ -288,6 +298,7 @@ cases = [
         "result": AssertionError,
         "message": "The assignment's name was not found.",
         "method": "test_docstring_assignment_name",
+        "docstring_message": "Check assignment name exists.",
     },
     {  # Incomplete assignment name
         "submission": f'''"""{comp_auth}
@@ -300,6 +311,7 @@ cases = [
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
         "method": "test_docstring_assignment_name",
+        "docstring_message": "Check assignment name exists.",
     },
     {  # Wrong assignment name
         "submission": f'''"""{comp_auth}
@@ -312,6 +324,7 @@ cases = [
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
         "method": "test_docstring_assignment_name",
+        "docstring_message": "Check assignment name exists.",
     },
     #   - Assignment date test
     {  # Passing test case for assignment date
@@ -319,6 +332,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_date",
+        "docstring_message": "Check assignment date exists.",
     },
     {  # Parse error for date in docstring
         "submission": parse_err,
@@ -326,6 +340,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_date",
+        "docstring_message": "Check assignment date exists.",
     },
     {  # Missing assignment date
         "submission": f'''"""{comp_auth}
@@ -338,6 +353,7 @@ cases = [
         "result": AssertionError,
         "message": " The program's date was not found.",
         "method": "test_docstring_date",
+        "docstring_message": "Check assignment date exists.",
     },
     #   - Assignment description test
     {  # Passing test case for assignment description
@@ -345,6 +361,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_desc",
+        "docstring_message": "Check description length of module level docstring.",
     },
     {  # Parse error for description in docstring
         "submission": parse_err,
@@ -352,6 +369,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_desc",
+        "docstring_message": "Check description length of module level docstring.",
     },
     {  # Missing description
         "submission": f'''"""{comp_auth}
@@ -364,6 +382,7 @@ cases = [
         "result": AssertionError,
         "message": "The program's description was not found.",
         "method": "test_docstring_desc",
+        "docstring_message": "Check description length of module level docstring.",
     },
     {  # Description too short
         "submission": f'''"""{comp_auth}
@@ -376,6 +395,7 @@ cases = [
         "result": AssertionError,
         "message": "The program's description is too short.",
         "method": "test_docstring_desc",
+        "docstring_message": "Check description length of module level docstring.",
     },
     {  # Description too long
         "submission": f'''"""{comp_auth}
@@ -388,6 +408,7 @@ cases = [
         "result": AssertionError,
         "message": "The program's description is too long.",
         "method": "test_docstring_desc",
+        "docstring_message": "Check description length of module level docstring.",
     },
     #   - Contributor's section test
     {  # Passing test case for contributor's section (No contributors)
@@ -395,6 +416,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_contributors",
+        "docstring_message": "Check contributors length of module level docstring.",
     },
     {  # Single contributor (passes)
         "submission": f'''"""{comp_auth}
@@ -407,6 +429,7 @@ cases = [
         "result": "pass",
         "message": "Docstring is valid",
         "method": "test_docstring_contributors",
+        "docstring_message": "Check contributors length of module level docstring.",
     },
     {  # Multiple contributors (passes)
         "submission": f'''"""{comp_auth}
@@ -419,6 +442,7 @@ cases = [
         "result": "pass",
         "message": "Docstring is valid",
         "method": "test_docstring_contributors",
+        "docstring_message": "Check contributors length of module level docstring.",
     },
     {  # Parse error for contributor's section
         "submission": parse_err,
@@ -426,6 +450,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_contributors",
+        "docstring_message": "Check contributors length of module level docstring.",
     },
     {  # Missing contributor's section
         "submission": f'''"""{comp_auth}
@@ -438,6 +463,7 @@ cases = [
         "result": AssertionError,
         "message": "The program contributors section is missing or too short.",
         "method": "test_docstring_contributors",
+        "docstring_message": "Check contributors length of module level docstring.",
     },
     #   - Academic integrity statement test
     {  # Valid test case for academic integrity statement
@@ -445,6 +471,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "method": "test_docstring_integrity",
+        "docstring_message": "Check for academic integrity statement.",
     },
     {  # Parse error for academic integrity statement
         "submission": parse_err,
@@ -452,6 +479,7 @@ cases = [
         "result": AssertionError,
         "message": "Error while parsing",
         "method": "test_docstring_integrity",
+        "docstring_message": "Check for academic integrity statement.",
     },
     {  # Missing academic integrity statement
         "submission": f'''"""{comp_auth}
@@ -464,6 +492,7 @@ cases = [
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
         "method": "test_docstring_integrity",
+        "docstring_message": "Check for academic integrity statement.",
     },
     {  # Modified academic integrity statement
         "submission": f'''"""{comp_auth}
@@ -476,6 +505,7 @@ cases = [
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
         "method": "test_docstring_integrity",
+        "docstring_message": "Check for academic integrity statement.",
     },
 ]
 
@@ -518,3 +548,4 @@ def test_docstring(case_test_method):
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+    assert test_method.__doc__ == case["docstring_message"]
