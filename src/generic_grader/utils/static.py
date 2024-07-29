@@ -1,3 +1,4 @@
+import ast
 import tokenize
 from token import COMMENT, ENCODING, NEWLINE, NL
 
@@ -38,3 +39,29 @@ def get_comments(test, file_name):
             comments = body_comments  # Switch to which list we append
 
     return header_comments, body_comments
+
+
+class LoopDepthTracker(ast.NodeVisitor):
+    """A class to track the maximum depth of nested loops. This can be easily
+    fooled.  Extra depth can be created by writing loops that never run (e.g.
+    `while False: while False: pass`).  Depth can be under counted when a
+    function which contains a loop(s) is called from within in a loop.
+    """
+
+    def __init__(self):
+        self.current_depth = 0
+        self.max_depth = 0
+        super().__init__()
+
+    def track(self, node, name):
+        """Recursively traverse the abstract syntax tree."""
+        self.current_depth += 1
+        self.generic_visit(node)
+        self.max_depth = max(self.max_depth, self.current_depth)
+        self.current_depth -= 1
+
+    def visit_For(self, node):
+        self.track(node, "for")
+
+    def visit_While(self, node):
+        self.track(node, "while")
