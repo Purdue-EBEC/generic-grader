@@ -50,6 +50,7 @@ cases = [
         "result": "pass",
         "weight": 1,
         "score": 1,
+        "doc_func_test": "Check if the program is bigger than expected.",
     },
     {
         "submission": "pass\n" * 16,
@@ -58,6 +59,7 @@ cases = [
         "message": "a bit bigger than expected",
         "weight": 1,
         "score": 1,
+        "doc_func_test": "Check if the program is bigger than expected.",
     },
     {
         "submission": "pass\n" * 25,
@@ -66,6 +68,7 @@ cases = [
         "message": "a lot bigger than expected",
         "weight": 1,
         "score": 0,
+        "doc_func_test": "Check if the program is bigger than expected.",
     },
 ]
 
@@ -109,6 +112,7 @@ def test_program_length(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__score__ == case["score"]
+    assert test_method.__doc__ == case["doc_func_test"]
 
 
 def test_submodule_program_length(fix_syspath):

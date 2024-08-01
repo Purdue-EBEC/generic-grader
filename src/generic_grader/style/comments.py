@@ -11,6 +11,12 @@ from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import get_comments
 
 
+def doc_func(func, num, param):
+    """Return docstring when checking comments."""
+
+    return "Check if the program is well commented."
+
+
 def build(the_options):
     """Create a class for comment length tests."""
 
@@ -19,7 +25,7 @@ def build(the_options):
     class TestCommentLength(unittest.TestCase):
         """A class for comment length check."""
 
-        @parameterized.expand(the_params)
+        @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
         def test_comment_length(self, options):
             """Check if the program is well commented."""

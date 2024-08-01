@@ -11,6 +11,12 @@ from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import get_tokens
 
 
+def doc_func(func, num, param):
+    """Return docstring when checking program length."""
+
+    return "Check if the program is bigger than expected."
+
+
 def build(the_options):
     """Create a class for program length tests."""
 
@@ -20,10 +26,10 @@ def build(the_options):
         """A class for program length check."""
 
         # TODO: enable partial credit when program is only a little too long
-        @parameterized.expand(the_params)
+        @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
         def test_program_length(self, options):
-            """Check if the program is well bigger than expected."""
+            """Check if the program is bigger than expected."""
 
             submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
             actual = len(get_tokens(self, submission_file))

@@ -49,17 +49,20 @@ cases = [
         "reference": "pass # some comments",
         "result": AssertionError,
         "message": "too few comments",
+        "doc_func_test": "Check if the program is well commented.",
     },
     {
         "submission": "pass # too many comments\n" * 10,
         "reference": "pass # some comments",
         "result": AssertionError,
         "message": "a lot of comments",
+        "doc_func_test": "Check if the program is well commented.",
     },
     {
         "submission": "pass # enough comments",
         "reference": "pass # some comments",
         "result": "pass",
+        "doc_func_test": "Check if the program is well commented.",
     },
 ]
 
@@ -96,6 +99,7 @@ def test_comment_length(case_test_method):
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+    assert test_method.__doc__ == case["doc_func_test"]
 
 
 def test_submodule_comment_length(fix_syspath):
