@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str, oxford_list
+from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
 
@@ -32,8 +33,10 @@ def doc_func(func, num, param):
     return docstring
 
 
-def build(the_params):
+def build(options):
     """A class for file value range tests."""
+
+    the_params = options_to_params(options)
 
     class TestFileLinesSpanRange(unittest.TestCase):
         """A class for functionality tests."""
