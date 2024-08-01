@@ -1,15 +1,9 @@
-from generic_grader.file import file_set_up
+import unittest
+
 from generic_grader.output import output_lines_match_reference
 from generic_grader.style import comments, docstring, program_length
+from generic_grader.utils.file_set_up import file_set_up
 from generic_grader.utils.options import Options
-
-test_00_TestFileSetUp = file_set_up.build(
-    Options(
-        weight=0,
-        required_files=("hello_user*.py",),
-    )
-)
-
 
 comment_cases = [
     {
@@ -39,7 +33,12 @@ test_04_TestOutput = output_lines_match_reference.build(
         weight=1,
         obj_name="main",
         sub_module="hello_user",
-        ref_module="tests.reference",
+        ref_module="reference",
         entries=("AJ",),
     ),
 )
+
+
+if __name__ == "__main__":
+    with file_set_up(Options(required_files=("hello_user*.py",))):
+        unittest.main()
