@@ -11,7 +11,7 @@ def file_set_up(options):
     o = options
 
     if "" not in sys.path:
-        sys.path.insert(0, "")
+        sys.path.insert(0, "")  # pragma: no cover
 
     # Create symlinks to non-globbed form of each required file.
     setup_steps = []
@@ -40,9 +40,4 @@ def file_set_up(options):
 
     # Clean up the symlinks.
     for step in setup_steps:
-        if step["type"] in ["symlink", "file"]:
-            os.remove(step["dst"])
-        elif step["type"] == "dir":
-            os.rmdir(step["dst"])
-        else:
-            raise ValueError(f"Unknown setup step type: {step['type']}")
+        os.remove(step["dst"])
