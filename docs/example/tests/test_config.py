@@ -33,7 +33,6 @@ test_04_TestOutput = output_lines_match_reference.build(
         weight=1,
         obj_name="main",
         sub_module="hello_user",
-        ref_module="reference",
         entries=("AJ",),
     ),
 )
