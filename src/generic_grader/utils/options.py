@@ -63,6 +63,15 @@ class Options:
     relative_tolerance: float = 1e-7
     absolute_tolerance: int = 0
 
+    # Image
+    mode: str = "exactly"
+    ref_image: str = "sol_inv.png"
+    sub_image: str = "tests/output.png"
+    region_inner: str = ""
+    region_outer: str = ""
+    threshold: int = 0
+    delta: int = 0
+
     def __attrs_post_init__(self):
         for attr in self.__annotations__:
             if attr == "init":
@@ -87,38 +96,7 @@ class Options:
             s = set(attr)
             if len(s) != len(attr):
                 raise ValueError(f"Duplicate entries in {name}.")
-
-
-@define(kw_only=True, frozen=True)
-class ImageOptions:
-    init: Callable[[], None] | None = None
-    ref_module: str = "tests.reference"
-    sub_module: str = ""
-    obj_name: str = "main"
-    args: list = Factory(list)
-    kwargs: dict = Factory(dict)
-    entries: tuple = Factory(tuple)
-    A: str = ""
-    B: str = ""
-    region_a: str = ""
-    region_b: str = ""
-    mode: str = "exactly"
-    threshold: int = 0
-    delta: int = 0
-    hint: str = ""
-    patches: str = ""
-
-    def __attrs_post_init__(self):
-        for attr in self.__annotations__:
-            if attr == "init":
-                expected_type = (Callable, type(None))
-                error_msg = (
-                    f"`{attr}` must be of type <class 'function'> or {type(None)}. "
-                )
-            else:
-                expected_type = self.__annotations__[attr]
-                error_msg = f"`{attr}` must be of type {self.__annotations__[attr]}. "
-            if not isinstance(getattr(self, attr), expected_type):
-                raise ValueError(
-                    error_msg + f"Got {type(getattr(self, attr))} instead."
-                )
+        if self.mode not in ["exactly", "less than", "more than", "approximately"]:
+            raise ValueError(
+                "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'."
+            )

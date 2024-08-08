@@ -1,7 +1,7 @@
 import pytest
 from parameterized import param
 
-from generic_grader.utils.options import ImageOptions, Options, options_to_params
+from generic_grader.utils.options import Options, options_to_params
 
 
 def test_single_options_to_params():
@@ -51,6 +51,10 @@ typecheck_options = [
         "options": {"weight": "0"},
         "error": "`weight` must be of type <class 'int'>. Got <class 'str'> instead.",
     },
+    {
+        "options": {"mode": "unknown"},
+        "error": "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'.",
+    },
 ]
 
 
@@ -59,31 +63,6 @@ def test_typecheck_options(case):
     """Test that the runtime error is raised."""
     with pytest.raises(ValueError) as exc_info:
         Options(**case["options"])
-    assert str(exc_info.value) == case["error"]
-
-
-def test_utils_image_options():
-    """Test that ImageOptions can be instantiated."""
-    assert ImageOptions()
-
-
-typecheck_image_options = [
-    {
-        "options": {"init": "str"},
-        "error": "`init` must be of type <class 'function'> or <class 'NoneType'>. Got <class 'str'> instead.",
-    },
-    {
-        "options": {"obj_name": 0},
-        "error": "`obj_name` must be of type <class 'str'>. Got <class 'int'> instead.",
-    },
-]
-
-
-@pytest.mark.parametrize("case", typecheck_image_options)
-def test_typecheck_image_options(case):
-    """Test that the runtime error is raised."""
-    with pytest.raises(ValueError) as exc_info:
-        ImageOptions(**case["options"])
     assert str(exc_info.value) == case["error"]
 
 
