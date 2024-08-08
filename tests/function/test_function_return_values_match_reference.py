@@ -42,7 +42,8 @@ def test_function_return_values_match_reference_has_test_method(built_instance):
 # 1. Correct returned value
 # 2. Returned value is almost equal to expected value
 # 3. Type difference in returned values
-# 4. Value difference in returned values
+# 4. Value difference in returned values (int values)
+# 5. Value difference in returned values (float values)
 
 
 cases = [
@@ -50,7 +51,6 @@ cases = [
         "submission": "def test_function():\n    return [True, 1, 'abcd', [1,2]]",
         "reference": "def test_function():\n    return [True, 1, 'abcd', [1,2]]",
         "result": "pass",
-        "score": 1,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
@@ -67,7 +67,6 @@ cases = [
         "submission": "def test_function():\n    return 0.9999999999",
         "reference": "def test_function():\n    return 1.0",
         "result": "pass",
-        "score": 1,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
@@ -84,7 +83,6 @@ cases = [
         "submission": "def test_function():\n    return 1234",
         "reference": "def test_function():\n    return '1234'",
         "result": AssertionError,
-        "score": 0,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
@@ -98,11 +96,27 @@ cases = [
             """`test_function()` match the reference value(s)."""
         ),
     },
-    {  # Value difference in returned values
+    {  # Value difference in returned values (int values)
         "submission": "def test_function():\n    return 12345",
         "reference": "def test_function():\n    return 1234",
         "result": AssertionError,
-        "score": 0,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as """
+            """`test_function()` match the reference value(s)."""
+        ),
+    },
+    {  # Value difference in returned values (float values)
+        "submission": "def test_function():\n    return 12345.0",
+        "reference": "def test_function():\n    return 1234.0",
+        "result": AssertionError,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
@@ -143,7 +157,7 @@ def test_function_return_values_match_reference(case_test_method):
 
     if case["result"] == "pass":
         test_method()  # should not raise an error
-        assert test_method.__score__ == case["score"]
+        assert test_method.__score__ == case["options"].weight
         assert test_method.__doc__ == case["doc_func_test_string"]
 
     else:
@@ -153,4 +167,4 @@ def test_function_return_values_match_reference(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__doc__ == case["doc_func_test_string"]
-        assert test_method.__score__ == case["score"]
+        assert test_method.__score__ == 0
