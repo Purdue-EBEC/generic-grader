@@ -1,43 +1,9 @@
-import unittest
 from pathlib import Path
 
 import pytest
 
-from generic_grader.file.file_set_up import build
+from generic_grader.utils.file_set_up import file_set_up
 from generic_grader.utils.options import Options
-
-
-@pytest.fixture()
-def built_class():
-    """Provide the class built by the build function."""
-    return build(Options())
-
-
-@pytest.fixture()
-def built_instance(built_class):
-    """Provide an instance of the built class."""
-    return built_class()
-
-
-def test_file_set_up_build_class(built_class):
-    """Test that the file presence build function returns a class."""
-    assert issubclass(built_class, unittest.TestCase)
-
-
-def test_file_set_up_build_class_name(built_class):
-    """Test that the built_class has the correct name."""
-    assert built_class.__name__ == "TestFileSetUp"
-
-
-def test_file_set_up_built_instance_type(built_instance):
-    """Test that the built_class returns instances of unittest.TestCase."""
-    assert isinstance(built_instance, unittest.TestCase)
-
-
-def test_file_set_up_instance_has_test_method(built_instance):
-    """Test that instances of the built_class have test method."""
-    assert hasattr(built_instance, "test_file_set_up_0")
-
 
 # |          present |   required | ignored | expected result                          |
 # |-----------------:|-----------:|--------:|:-----------------------------------------|
@@ -156,31 +122,23 @@ set_up_cases = [
 
 
 @pytest.fixture(params=set_up_cases)
-def set_up_case_test_method(request, tmp_path, monkeypatch):
+def set_up_case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
     for file_name in case["present"]:
-        file_path = tmp_path / file_name
+        file_path = fix_syspath / file_name
         file_path.write_text("")
-    monkeypatch.chdir(tmp_path)
-
-    built_class = build(
-        Options(
-            required_files=case["required"],
-            ignored_files=case.get("ignored", tuple()),
-        ),
+    o = Options(
+        required_files=case["required"], ignored_files=case.get("ignored", tuple())
     )
-    built_instance = built_class()
-    test_method = built_instance.test_file_set_up_0
-
-    return case, test_method
+    return case, o
 
 
 def test_file_setup(set_up_case_test_method):
-    """Test that the file setup function returns a class."""
-    case, test_method = set_up_case_test_method
-    test_method()
+    case, o = set_up_case_test_method
 
-    # Check for the expected symlinks.
-    actual_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
-    assert actual_symlinks == case["expected_symlinks"]
+    with file_set_up(o):
+        actual_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
+        assert actual_symlinks == case["expected_symlinks"]
+    removed_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
+    assert not removed_symlinks
