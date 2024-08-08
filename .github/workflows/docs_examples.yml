@@ -1,0 +1,30 @@
+name: Test Docs Examples
+
+on:
+    push:
+      branches: [ "main" ]
+    pull_request:
+      branches: [ "main" ]
+    workflow_dispatch:
+
+
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                python: ["3.12.4", "3.11.9"]
+
+        steps:
+            - uses: actions/checkout@v4
+            - name: Set up Python
+              uses: actions/setup-python@v5
+              with:
+                python-version: ${{ matrix.python }}
+            - name: Upgrade pip
+              run: python -m pip install --upgrade pip
+            - name: Install Project
+              run: pip install .[dev]
+            - name: Run Unittest Example
+              working-directory: ./docs/example
+              run: python tests/test_config.py
