@@ -60,8 +60,6 @@ def build(options):
 
         @weighted
         def setUp(self):
-            self.set_score(self, 0)  # No credit by default for all tests
-
             with open(submission) as fo:
                 fail_msg = None
                 try:
@@ -84,7 +82,6 @@ def build(options):
                 self.integrity,
             ) = parse_docstring(self.doc or "")
 
-        @weighted
         def test_docstring_module(self):
             """Check for existence of module level docstring."""
 
@@ -101,7 +98,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_author(self):
             """Check assignment author exists."""
 
@@ -125,7 +121,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_assignment_name(self):
             """Check assignment name exists."""
 
@@ -150,7 +145,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_date(self):
             """Check assignment date exists."""
 
@@ -166,7 +160,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_desc(self):
             """Check description length of module level docstring."""
 
@@ -201,7 +194,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_contributors(self):
             """Check contributors length of module level docstring."""
 
@@ -217,7 +209,6 @@ def build(options):
 
             self.set_score(self, weight)  # Full credit
 
-        @weighted
         def test_docstring_integrity(self):
             """Check for academic integrity statement."""
 
