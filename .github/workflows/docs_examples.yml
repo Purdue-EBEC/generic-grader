@@ -1,4 +1,4 @@
-name: Test Suite
+name: Test Docs Examples
 
 on:
     push:
@@ -23,7 +23,8 @@ jobs:
                 python-version: ${{ matrix.python }}
             - name: Upgrade pip
               run: python -m pip install --upgrade pip
-            - name: Install Tox
-              run: pip install tox
-            - name: Run Tox
-              run: tox
+            - name: Install Project
+              run: pip install .[dev]
+            - name: Run Unittest Example
+              working-directory: ./docs/example
+              run: python tests/test_config.py
