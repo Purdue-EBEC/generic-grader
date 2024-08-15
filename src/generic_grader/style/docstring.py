@@ -60,7 +60,7 @@ def build(options):
 
         @weighted
         def setUp(self):
-            self.set_score(self, 0)  # No credit
+            self.set_score(self, 0)  # No credit by default for all tests
 
             with open(submission) as fo:
                 fail_msg = None
