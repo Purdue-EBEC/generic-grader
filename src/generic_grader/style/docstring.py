@@ -6,6 +6,8 @@ import os
 import textwrap
 import unittest
 
+from generic_grader.utils.decorators import weighted
+
 
 def parse_docstring(docstring):
     """Parse the doc string to find required components."""
@@ -49,13 +51,17 @@ def titlecase(phrase):
 def build(options):
     submission = options.sub_module.replace(".", os.path.sep) + ".py"
     reference = options.ref_module.replace(".", os.path.sep) + ".py"
+    weight = options.weight
 
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
 
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
+        @weighted
         def setUp(self):
+            self.set_score(self, 0)  # No credit
+
             with open(submission) as fo:
                 fail_msg = None
                 try:
@@ -78,6 +84,7 @@ def build(options):
                 self.integrity,
             ) = parse_docstring(self.doc or "")
 
+        @weighted
         def test_docstring_module(self):
             """Check for existence of module level docstring."""
 
@@ -92,6 +99,9 @@ def build(options):
             )
             self.assertIsNotNone(self.doc, msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_author(self):
             """Check assignment author exists."""
 
@@ -113,6 +123,9 @@ def build(options):
             )
             self.assertIn("@purdue.edu", self.author.lower(), msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_assignment_name(self):
             """Check assignment name exists."""
 
@@ -135,6 +148,9 @@ def build(options):
             )
             self.assertIn(name.lower(), self.assignment.lower(), msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_date(self):
             """Check assignment date exists."""
 
@@ -148,6 +164,9 @@ def build(options):
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_desc(self):
             """Check description length of module level docstring."""
 
@@ -180,6 +199,9 @@ def build(options):
             )
             self.assertLessEqual(actual, maximum, msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_contributors(self):
             """Check contributors length of module level docstring."""
 
@@ -193,6 +215,9 @@ def build(options):
 
             self.assertGreaterEqual(actual, minimum, msg=message)
 
+            self.set_score(self, weight)  # Full credit
+
+        @weighted
         def test_docstring_integrity(self):
             """Check for academic integrity statement."""
 
@@ -214,5 +239,6 @@ def build(options):
 
             self.maxDiff = None
             self.assertEqual(actual_integrity, expected_integrity, msg=message)
+            self.set_score(self, weight)  # Full credit
 
     return TestDocstring
