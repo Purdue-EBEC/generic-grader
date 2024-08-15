@@ -15,7 +15,7 @@ def options_to_params(options):
 @define(kw_only=True, frozen=True)
 class Options:
     # Base
-    weight: int = 0
+    weight: int | float = 0
     init: Callable[[], None] | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
@@ -64,6 +64,7 @@ class Options:
     absolute_tolerance: int = 0
 
     def __attrs_post_init__(self):
+        """Check that the attributes are of the correct type."""
         for attr in self.__annotations__:
             if attr == "init":
                 expected_type = (Callable, type(None))

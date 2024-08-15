@@ -49,7 +49,7 @@ typecheck_options = [
     },
     {
         "options": {"weight": "0"},
-        "error": "`weight` must be of type <class 'int'>. Got <class 'str'> instead.",
+        "error": "`weight` must be of type int | float. Got <class 'str'> instead.",
     },
 ]
 
