@@ -46,8 +46,6 @@ def build(the_options):
 
             o = options
 
-            self.set_score(self, 0)  # No credit
-
             # Get the actual and expected values.
             actual = self.student_user.read_log()
             expected = self.ref_user.read_log()

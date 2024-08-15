@@ -37,7 +37,6 @@ def build(the_options):
             reference_file = options.ref_module.replace(".", os.path.sep) + ".py"
             expected = len(get_tokens(self, reference_file))
 
-            self.set_score(self, 0)  # No credit
             maximum = int(2 * expected)
             message = "\n\nHint:\n" + textwrap.fill(
                 "Your program is a lot bigger than expected."

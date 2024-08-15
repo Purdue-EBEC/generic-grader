@@ -49,6 +49,9 @@ def weighted(func):
         # Inject a set_score method into the test case instance.
         self.set_score = set_score
 
+        # Set the score to 0 by default.
+        self.set_score(self, 0)
+
         func(self, *args, **kwargs)
 
     return wrapper

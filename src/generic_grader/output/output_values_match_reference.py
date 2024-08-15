@@ -46,8 +46,6 @@ def build(the_options):
         def test_output_values_match_reference(self, options):
             """Compare values in the output to reference values."""
 
-            self.set_score(self, 0)  # No credit
-
             o = options
 
             line_nth = ordinalize(o.line_n)

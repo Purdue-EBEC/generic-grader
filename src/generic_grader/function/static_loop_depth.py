@@ -38,8 +38,6 @@ def build(the_options):
         def test_static_loop_depth(self, options):
             o = options
 
-            self.set_score(self, 0)  # No credit
-
             """Check that loop depth meets requirements."""
 
             with open(o.sub_module + ".py") as fo:
