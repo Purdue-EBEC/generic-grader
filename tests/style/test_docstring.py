@@ -550,14 +550,14 @@ def case_test_method(request, tmp_path, monkeypatch):
     file_path.write_text(case["reference"])
     monkeypatch.chdir(tmp_path)
 
-    
-    built_instance = built_class()
     built_class = build(
         Options(
             ref_module="reference",
             sub_module="hello_user",
             weight=1,
-        ))
+        )
+    )
+    built_instance = built_class()
     built_instance = built_class(methodName=f'{case["method"]}')
     test_method = getattr(built_instance, case["method"])
     custom_setup_method = getattr(built_instance, "setUp")
@@ -583,4 +583,3 @@ def test_docstring(case_test_method):
         assert case["message"] in message
         assert test_method.__score__ == case["score"]
     assert test_method.__doc__ == case["docstring_message"]
-        
