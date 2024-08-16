@@ -85,6 +85,10 @@ def build(options):
         def test_docstring_module(self):
             """Check for existence of module level docstring."""
 
+            test_method = getattr(type(self), self._testMethodName)
+            test_method.__weight__ = 0
+
+
             message = "\n\nHint:\n" + self.wrapper.fill(
                 "The program's docstring was not found."
                 "  A docstring is the first triple quoted string"
@@ -96,7 +100,6 @@ def build(options):
             )
             self.assertIsNotNone(self.doc, msg=message)
 
-            self.set_score(self, weight)  # Full credit
 
         def test_docstring_author(self):
             """Check assignment author exists."""

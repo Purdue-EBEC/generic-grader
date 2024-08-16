@@ -199,7 +199,8 @@ cases = [
         "result": "pass",
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
-        "score": 1,
+        "score": 0,
+        "weight": 0,
     },
     {  # Parse error for module level docstring test
         "submission": parse_err,
@@ -209,6 +210,7 @@ cases = [
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
         "score": 0,
+        "weight": 0,
     },
     {  # Missing module level docstring
         "submission": "",
@@ -218,6 +220,7 @@ cases = [
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
         "score": 0,
+        "weight": 0,
     },
     #   - Author section test
     {  # Passing test case for author section
@@ -227,6 +230,7 @@ cases = [
         "method": "test_docstring_author",
         "docstring_message": "Check assignment author exists.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for author in docstring
         "submission": parse_err,
@@ -236,6 +240,7 @@ cases = [
         "method": "test_docstring_author",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing Author name
         "submission": f'''"""{miss_auth}
@@ -250,6 +255,7 @@ cases = [
         "method": "test_docstring_author",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Incomplete author name
         "submission": f'''"""{inc_auth}
@@ -264,6 +270,7 @@ cases = [
         "method": "test_docstring_author",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing author email
         "submission": f'''"""{miss_email}
@@ -278,6 +285,7 @@ cases = [
         "method": "test_docstring_author",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
+        "weight": 1,
     },
     #   - Assignment name test
     {  # Passing test case for assignment name
@@ -287,6 +295,7 @@ cases = [
         "method": "test_docstring_assignment_name",
         "docstring_message": "Check assignment name exists.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for assignment name in docstring
         "submission": parse_err,
@@ -296,6 +305,7 @@ cases = [
         "method": "test_docstring_assignment_name",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing assignment name
         "submission": f'''"""{comp_auth}
@@ -310,6 +320,7 @@ cases = [
         "method": "test_docstring_assignment_name",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Incomplete assignment name
         "submission": f'''"""{comp_auth}
@@ -324,6 +335,7 @@ cases = [
         "method": "test_docstring_assignment_name",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Wrong assignment name
         "submission": f'''"""{comp_auth}
@@ -338,6 +350,7 @@ cases = [
         "method": "test_docstring_assignment_name",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
+        "weight": 1,
     },
     #   - Assignment date test
     {  # Passing test case for assignment date
@@ -347,6 +360,7 @@ cases = [
         "method": "test_docstring_date",
         "docstring_message": "Check assignment date exists.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for date in docstring
         "submission": parse_err,
@@ -356,6 +370,7 @@ cases = [
         "method": "test_docstring_date",
         "docstring_message": "Check assignment date exists.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing assignment date
         "submission": f'''"""{comp_auth}
@@ -370,6 +385,7 @@ cases = [
         "method": "test_docstring_date",
         "docstring_message": "Check assignment date exists.",
         "score": 0,
+        "weight": 1,
     },
     #   - Assignment description test
     {  # Passing test case for assignment description
@@ -379,6 +395,7 @@ cases = [
         "method": "test_docstring_desc",
         "docstring_message": "Check description length of module level docstring.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for description in docstring
         "submission": parse_err,
@@ -388,6 +405,7 @@ cases = [
         "method": "test_docstring_desc",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing description
         "submission": f'''"""{comp_auth}
@@ -402,6 +420,7 @@ cases = [
         "method": "test_docstring_desc",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     {  # Description too short
         "submission": f'''"""{comp_auth}
@@ -416,6 +435,7 @@ cases = [
         "method": "test_docstring_desc",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     {  # Description too long
         "submission": f'''"""{comp_auth}
@@ -430,6 +450,7 @@ cases = [
         "method": "test_docstring_desc",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     #   - Contributor's section test
     {  # Passing test case for contributor's section (No contributors)
@@ -439,6 +460,7 @@ cases = [
         "method": "test_docstring_contributors",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
+        "weight": 1,
     },
     {  # Single contributor (passes)
         "submission": f'''"""{comp_auth}
@@ -453,6 +475,7 @@ cases = [
         "method": "test_docstring_contributors",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
+        "weight": 1,
     },
     {  # Multiple contributors (passes)
         "submission": f'''"""{comp_auth}
@@ -467,6 +490,7 @@ cases = [
         "method": "test_docstring_contributors",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for contributor's section
         "submission": parse_err,
@@ -476,6 +500,7 @@ cases = [
         "method": "test_docstring_contributors",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing contributor's section
         "submission": f'''"""{comp_auth}
@@ -490,6 +515,7 @@ cases = [
         "method": "test_docstring_contributors",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 0,
+        "weight": 1,
     },
     #   - Academic integrity statement test
     {  # Valid test case for academic integrity statement
@@ -499,6 +525,7 @@ cases = [
         "method": "test_docstring_integrity",
         "docstring_message": "Check for academic integrity statement.",
         "score": 1,
+        "weight": 1,
     },
     {  # Parse error for academic integrity statement
         "submission": parse_err,
@@ -508,6 +535,7 @@ cases = [
         "method": "test_docstring_integrity",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
+        "weight": 1,
     },
     {  # Missing academic integrity statement
         "submission": f'''"""{comp_auth}
@@ -522,6 +550,7 @@ cases = [
         "method": "test_docstring_integrity",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
+        "weight": 1,
     },
     {  # Modified academic integrity statement
         "submission": f'''"""{comp_auth}
@@ -536,6 +565,7 @@ cases = [
         "method": "test_docstring_integrity",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
+        "weight": 1,
     },
 ]
 
@@ -554,25 +584,25 @@ def case_test_method(request, tmp_path, monkeypatch):
         Options(
             ref_module="reference",
             sub_module="hello_user",
-            weight=1,
+            weight=case["weight"],
         )
     )
-    built_instance = built_class()
     built_instance = built_class(methodName=f'{case["method"]}')
     test_method = getattr(built_instance, case["method"])
     custom_setup_method = getattr(built_instance, "setUp")
-
-    return case, test_method, custom_setup_method
+    
+    return case, test_method, custom_setup_method, built_instance
 
 
 def test_docstring(case_test_method):
     """Test docstring of test_submitted_files function."""
-    case, test_method, custom_setup_method = case_test_method
+    case, test_method, custom_setup_method, built_instance = case_test_method
 
     if case["result"] == "pass":
         custom_setup_method()
         test_method()  # should not raise an error
         assert test_method.__score__ == case["score"]
+        
 
     else:
         error = case["result"]
@@ -582,4 +612,6 @@ def test_docstring(case_test_method):
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__score__ == case["score"]
+
     assert test_method.__doc__ == case["docstring_message"]
+    
