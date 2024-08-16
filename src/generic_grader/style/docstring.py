@@ -51,15 +51,13 @@ def titlecase(phrase):
 def build(options):
     submission = options.sub_module.replace(".", os.path.sep) + ".py"
     reference = options.ref_module.replace(".", os.path.sep) + ".py"
-    weight = options.weight
 
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
 
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
-        @weighted
-        def setUp(self):
+        def set_up(self):
             with open(submission) as fo:
                 fail_msg = None
                 try:
@@ -82,12 +80,15 @@ def build(options):
                 self.integrity,
             ) = parse_docstring(self.doc or "")
 
+        @weighted
         def test_docstring_module(self):
             """Check for existence of module level docstring."""
 
+            # Override the weight of this test method.
             test_method = getattr(type(self), self._testMethodName)
             test_method.__weight__ = 0
 
+            self.set_up()
 
             message = "\n\nHint:\n" + self.wrapper.fill(
                 "The program's docstring was not found."
@@ -100,9 +101,10 @@ def build(options):
             )
             self.assertIsNotNone(self.doc, msg=message)
 
-
-        def test_docstring_author(self):
+        @weighted
+        def test_docstring_author(self, options):
             """Check assignment author exists."""
+            self.set_up()
 
             actual = self.author and len(self.author) or 0
             minimum = 2
@@ -122,10 +124,12 @@ def build(options):
             )
             self.assertIn("@purdue.edu", self.author.lower(), msg=message)
 
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
-        def test_docstring_assignment_name(self):
+        @weighted
+        def test_docstring_assignment_name(self, options):
             """Check assignment name exists."""
+            self.set_up()
 
             name = titlecase(submission.replace(".py", "").replace("_", " "))
             actual = self.assignment and len(self.assignment) or 0
@@ -146,10 +150,12 @@ def build(options):
             )
             self.assertIn(name.lower(), self.assignment.lower(), msg=message)
 
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
-        def test_docstring_date(self):
+        @weighted
+        def test_docstring_date(self, options):
             """Check assignment date exists."""
+            self.set_up()
 
             actual = self.date and len(self.date) or 0
             minimum = 8  # e.g. "01/01/22"
@@ -161,10 +167,12 @@ def build(options):
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
-        def test_docstring_desc(self):
+        @weighted
+        def test_docstring_desc(self, options):
             """Check description length of module level docstring."""
+            self.set_up()
 
             actual = len("".join(self.description))
             with open(reference) as fo:
@@ -195,10 +203,12 @@ def build(options):
             )
             self.assertLessEqual(actual, maximum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
-        def test_docstring_contributors(self):
+        @weighted
+        def test_docstring_contributors(self, options):
             """Check contributors length of module level docstring."""
+            self.set_up()
 
             actual = len("".join(self.contributors))
             minimum = 4  # e.g. "None"
@@ -210,10 +220,12 @@ def build(options):
 
             self.assertGreaterEqual(actual, minimum, msg=message)
 
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
-        def test_docstring_integrity(self):
+        @weighted
+        def test_docstring_integrity(self, options):
             """Check for academic integrity statement."""
+            self.set_up()
 
             actual_integrity = "\n".join(self.integrity) + "\n"
 
@@ -233,6 +245,6 @@ def build(options):
 
             self.maxDiff = None
             self.assertEqual(actual_integrity, expected_integrity, msg=message)
-            self.set_score(self, weight)  # Full credit
+            self.set_score(self, options.weight)  # Full credit
 
     return TestDocstring

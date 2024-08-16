@@ -200,7 +200,7 @@ cases = [
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
         "score": 0,
-        "weight": 0,
+        "weight": 1,
     },
     {  # Parse error for module level docstring test
         "submission": parse_err,
@@ -210,7 +210,7 @@ cases = [
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
         "score": 0,
-        "weight": 0,
+        "weight": 1,
     },
     {  # Missing module level docstring
         "submission": "",
@@ -220,7 +220,7 @@ cases = [
         "method": "test_docstring_module",
         "docstring_message": "Check for existence of module level docstring.",
         "score": 0,
-        "weight": 0,
+        "weight": 1,
     },
     #   - Author section test
     {  # Passing test case for author section
@@ -565,7 +565,7 @@ cases = [
         "method": "test_docstring_integrity",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
-        "weight": 1,
+        "weight": 4,
     },
 ]
 
@@ -580,38 +580,43 @@ def case_test_method(request, tmp_path, monkeypatch):
     file_path.write_text(case["reference"])
     monkeypatch.chdir(tmp_path)
 
-    built_class = build(
-        Options(
-            ref_module="reference",
-            sub_module="hello_user",
-            weight=case["weight"],
-        )
+    options = Options(
+        ref_module="reference",
+        sub_module="hello_user",
+        weight=case["weight"],
     )
+    built_class = build(options)
     built_instance = built_class(methodName=f'{case["method"]}')
     test_method = getattr(built_instance, case["method"])
-    custom_setup_method = getattr(built_instance, "setUp")
-    
-    return case, test_method, custom_setup_method, built_instance
+
+    return case, options, test_method
 
 
 def test_docstring(case_test_method):
     """Test docstring of test_submitted_files function."""
-    case, test_method, custom_setup_method, built_instance = case_test_method
+    case, options, test_method = case_test_method
 
     if case["result"] == "pass":
-        custom_setup_method()
-        test_method()  # should not raise an error
+        # should not raise an error
+        if case["method"] == "test_docstring_module":
+            test_method()
+        else:
+            test_method(options)
         assert test_method.__score__ == case["score"]
-        
 
     else:
         error = case["result"]
         with pytest.raises(error) as exc_info:
-            custom_setup_method()
-            test_method()
+            if case["method"] == "test_docstring_module":
+                test_method()
+            else:
+                test_method(options)
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__score__ == case["score"]
 
+    if case["method"] == "test_docstring_module":
+        assert test_method.__weight__ == 0
+    else:
+        assert test_method.__weight__ == case["weight"]
     assert test_method.__doc__ == case["docstring_message"]
-    
