@@ -6,7 +6,10 @@ import os
 import textwrap
 import unittest
 
+from parameterized import parameterized
+
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.options import options_to_params
 
 
 def parse_docstring(docstring):
@@ -48,9 +51,11 @@ def titlecase(phrase):
     return " ".join(word.capitalize() for word in phrase.split())
 
 
-def build(options):
-    submission = options.sub_module.replace(".", os.path.sep) + ".py"
-    reference = options.ref_module.replace(".", os.path.sep) + ".py"
+def build(the_options):
+    submission = the_options.sub_module.replace(".", os.path.sep) + ".py"
+    reference = the_options.ref_module.replace(".", os.path.sep) + ".py"
+
+    the_params = options_to_params(the_options)
 
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
@@ -101,6 +106,7 @@ def build(options):
             )
             self.assertIsNotNone(self.doc, msg=message)
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_author(self, options):
             """Check assignment author exists."""
@@ -126,6 +132,7 @@ def build(options):
 
             self.set_score(self, options.weight)  # Full credit
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_assignment_name(self, options):
             """Check assignment name exists."""
@@ -152,6 +159,7 @@ def build(options):
 
             self.set_score(self, options.weight)  # Full credit
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_date(self, options):
             """Check assignment date exists."""
@@ -169,6 +177,7 @@ def build(options):
 
             self.set_score(self, options.weight)  # Full credit
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_desc(self, options):
             """Check description length of module level docstring."""
@@ -205,6 +214,7 @@ def build(options):
 
             self.set_score(self, options.weight)  # Full credit
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_contributors(self, options):
             """Check contributors length of module level docstring."""
@@ -222,6 +232,7 @@ def build(options):
 
             self.set_score(self, options.weight)  # Full credit
 
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted
         def test_docstring_integrity(self, options):
             """Check for academic integrity statement."""

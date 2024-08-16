@@ -227,7 +227,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_author",
+        "method": "test_docstring_author_0",
         "docstring_message": "Check assignment author exists.",
         "score": 1,
         "weight": 1,
@@ -237,7 +237,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_author",
+        "method": "test_docstring_author_0",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
         "weight": 1,
@@ -252,7 +252,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's name was not found",
-        "method": "test_docstring_author",
+        "method": "test_docstring_author_0",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
         "weight": 1,
@@ -267,7 +267,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's name was not found",
-        "method": "test_docstring_author",
+        "method": "test_docstring_author_0",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
         "weight": 1,
@@ -282,7 +282,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The author's email address was not found",
-        "method": "test_docstring_author",
+        "method": "test_docstring_author_0",
         "docstring_message": "Check assignment author exists.",
         "score": 0,
         "weight": 1,
@@ -292,7 +292,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_assignment_name",
+        "method": "test_docstring_assignment_name_0",
         "docstring_message": "Check assignment name exists.",
         "score": 1,
         "weight": 1,
@@ -302,7 +302,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_assignment_name",
+        "method": "test_docstring_assignment_name_0",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
         "weight": 1,
@@ -317,7 +317,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment's name was not found.",
-        "method": "test_docstring_assignment_name",
+        "method": "test_docstring_assignment_name_0",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
         "weight": 1,
@@ -332,7 +332,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
-        "method": "test_docstring_assignment_name",
+        "method": "test_docstring_assignment_name_0",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
         "weight": 1,
@@ -347,7 +347,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The assignment name doesn't match the required name",
-        "method": "test_docstring_assignment_name",
+        "method": "test_docstring_assignment_name_0",
         "docstring_message": "Check assignment name exists.",
         "score": 0,
         "weight": 1,
@@ -357,7 +357,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_date",
+        "method": "test_docstring_date_0",
         "docstring_message": "Check assignment date exists.",
         "score": 1,
         "weight": 1,
@@ -367,7 +367,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_date",
+        "method": "test_docstring_date_0",
         "docstring_message": "Check assignment date exists.",
         "score": 0,
         "weight": 1,
@@ -382,7 +382,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": " The program's date was not found.",
-        "method": "test_docstring_date",
+        "method": "test_docstring_date_0",
         "docstring_message": "Check assignment date exists.",
         "score": 0,
         "weight": 1,
@@ -392,7 +392,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_desc",
+        "method": "test_docstring_desc_0",
         "docstring_message": "Check description length of module level docstring.",
         "score": 1,
         "weight": 1,
@@ -402,7 +402,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_desc",
+        "method": "test_docstring_desc_0",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -417,7 +417,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program's description was not found.",
-        "method": "test_docstring_desc",
+        "method": "test_docstring_desc_0",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -432,7 +432,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program's description is too short.",
-        "method": "test_docstring_desc",
+        "method": "test_docstring_desc_0",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -447,7 +447,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program's description is too long.",
-        "method": "test_docstring_desc",
+        "method": "test_docstring_desc_0",
         "docstring_message": "Check description length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -457,7 +457,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_contributors",
+        "method": "test_docstring_contributors_0",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
         "weight": 1,
@@ -472,7 +472,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "message": "Docstring is valid",
-        "method": "test_docstring_contributors",
+        "method": "test_docstring_contributors_0",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
         "weight": 1,
@@ -487,7 +487,7 @@ cases = [
         "reference": comp,
         "result": "pass",
         "message": "Docstring is valid",
-        "method": "test_docstring_contributors",
+        "method": "test_docstring_contributors_0",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 1,
         "weight": 1,
@@ -497,7 +497,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_contributors",
+        "method": "test_docstring_contributors_0",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -512,7 +512,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The program contributors section is missing or too short.",
-        "method": "test_docstring_contributors",
+        "method": "test_docstring_contributors_0",
         "docstring_message": "Check contributors length of module level docstring.",
         "score": 0,
         "weight": 1,
@@ -522,7 +522,7 @@ cases = [
         "submission": comp,
         "reference": comp,
         "result": "pass",
-        "method": "test_docstring_integrity",
+        "method": "test_docstring_integrity_0",
         "docstring_message": "Check for academic integrity statement.",
         "score": 1,
         "weight": 1,
@@ -532,7 +532,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "Error while parsing",
-        "method": "test_docstring_integrity",
+        "method": "test_docstring_integrity_0",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
         "weight": 1,
@@ -547,7 +547,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
-        "method": "test_docstring_integrity",
+        "method": "test_docstring_integrity_0",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
         "weight": 1,
@@ -562,7 +562,7 @@ cases = [
         "reference": comp,
         "result": AssertionError,
         "message": "The Academic Integrity Statement is missing or modified.",
-        "method": "test_docstring_integrity",
+        "method": "test_docstring_integrity_0",
         "docstring_message": "Check for academic integrity statement.",
         "score": 0,
         "weight": 4,
@@ -593,24 +593,17 @@ def case_test_method(request, tmp_path, monkeypatch):
 
 
 def test_docstring(case_test_method):
-    """Test docstring of test_submitted_files function."""
+    """Test docstrings of test_docstring functions."""
     case, options, test_method = case_test_method
 
     if case["result"] == "pass":
-        # should not raise an error
-        if case["method"] == "test_docstring_module":
-            test_method()
-        else:
-            test_method(options)
+        test_method()  # should not raise an error
         assert test_method.__score__ == case["score"]
 
     else:
         error = case["result"]
         with pytest.raises(error) as exc_info:
-            if case["method"] == "test_docstring_module":
-                test_method()
-            else:
-                test_method(options)
+            test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
         assert test_method.__score__ == case["score"]
