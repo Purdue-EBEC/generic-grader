@@ -71,6 +71,7 @@ def test_entries_doc_func():
 pixel_cases = [
     {
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="exactly",
@@ -82,6 +83,7 @@ pixel_cases = [
     },
     {
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="exactly",
@@ -94,6 +96,7 @@ pixel_cases = [
     {
         # Check that the sub_image has less than 100 pixels in the ref_image.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="less than",
@@ -105,6 +108,7 @@ pixel_cases = [
     },
     {  # Check that even when the ref_image has no pixels the mode passes.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="less than",
@@ -116,6 +120,7 @@ pixel_cases = [
     },
     {  # Check that the sub_image has more than 100 pixels in the ref_image.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="more than",
@@ -128,6 +133,7 @@ pixel_cases = [
     {  # Check that even when the ref_image more pixels than
         # the sub_image the mode passes.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="more than",
@@ -139,6 +145,7 @@ pixel_cases = [
     },
     {  # Check that the sub_image has approximately 100 pixels in the ref_image.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="approximately",
@@ -151,6 +158,7 @@ pixel_cases = [
     },
     {  # Check that when the two images are the same the approximately mode passes.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="approximately",
@@ -163,6 +171,7 @@ pixel_cases = [
     },
     {  # Check that even when sub_image has more pixels than ref_image the mode passes.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="approximately",
@@ -175,6 +184,7 @@ pixel_cases = [
     },
     {  # Check that when the two images are different the exactly mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="exactly",
@@ -186,6 +196,7 @@ pixel_cases = [
     },
     {  # Check that when the sub_image has more pixels than expected the mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="less than",
@@ -197,6 +208,7 @@ pixel_cases = [
     },
     {  # Check that when the two images are on the threshold the less than mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="less than",
@@ -208,6 +220,7 @@ pixel_cases = [
     },
     {  # Check that when the sub_image has less pixels than expected the mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="more than",
@@ -219,6 +232,7 @@ pixel_cases = [
     },
     {  # Check that when the two images are on the threshold the more than mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="more than",
@@ -230,6 +244,7 @@ pixel_cases = [
     },
     {  # Check that when the sub_image has no pixels the mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="more than",
@@ -241,6 +256,7 @@ pixel_cases = [
     },
     {  # Check that when the sub_image is outside the delta the mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="approximately",
@@ -253,6 +269,7 @@ pixel_cases = [
     },
     {  # Check that when the sub_image has no pixels the mode fails.
         "options": Options(
+            weight=1,
             ref_image="ref_image.png",
             sub_image="sub_image.png",
             mode="approximately",
@@ -291,11 +308,14 @@ def test_pixel_overlap(case, fix_syspath):
     # Create the built class and instance.
     built_class = build(o)
     instance = built_class(methodName="test_pixel_overlap_0")
+    test_method = instance.test_pixel_overlap_0
     if case["error"]:
         with pytest.raises(case["error"]):
-            instance.test_pixel_overlap_0()
+            test_method()
+        assert test_method.__score__ == 0
     else:
-        instance.test_pixel_overlap_0()
+        test_method()
+        assert test_method.__score__ == test_method.__weight__
 
 
 def test_init(fix_syspath, capsys):

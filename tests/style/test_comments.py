@@ -80,6 +80,7 @@ def case_test_method(request, fix_syspath):
         Options(
             ref_module="reference",
             sub_module="submission",
+            weight=1,
         ),
     )
     built_instance = built_class(methodName="test_comment_length_0")
@@ -93,12 +94,14 @@ def test_comment_length(case_test_method):
     case, test_method = case_test_method
     if case["result"] == "pass":
         test_method()  # should not raise an error
+        assert test_method.__score__ == test_method.__weight__
     else:
         error = case["result"]
         with pytest.raises(error) as exc_info:
             test_method()
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+        assert test_method.__score__ == 0
     assert test_method.__doc__ == case["doc_func_test"]
 
 

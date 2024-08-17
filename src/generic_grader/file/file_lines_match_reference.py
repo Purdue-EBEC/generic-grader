@@ -84,4 +84,6 @@ def build(the_options):
             self.maxDiff = None
             self.assertEqual(sub_lines, ref_lines, msg=message)
 
+            self.set_score(self, options.weight)
+
     return TestFileLinesMatchReference

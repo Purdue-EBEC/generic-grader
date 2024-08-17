@@ -82,4 +82,6 @@ def build(the_options):
 
             self.assertEqual(len(unclosed_files), 0, message)
 
+            self.set_score(self, options.weight)
+
     return TestFileClosed

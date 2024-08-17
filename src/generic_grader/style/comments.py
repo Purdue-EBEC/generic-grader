@@ -52,5 +52,6 @@ def build(the_options):
                 "  See if you can make your comments more concise."
             )
             self.assertLessEqual(actual, maximum, msg=message)
+            self.set_score(self, options.weight)
 
     return TestCommentLength

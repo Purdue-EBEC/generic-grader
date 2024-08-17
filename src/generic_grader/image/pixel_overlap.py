@@ -83,4 +83,6 @@ def build(options):
                 )
                 self.assertAlmostEqual(pixels, o.threshold, msg=message, delta=o.delta)
 
+            self.set_score(self, options.weight)
+
     return TestPixelOverlap

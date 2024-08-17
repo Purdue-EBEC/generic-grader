@@ -47,15 +47,19 @@ def test_doc_func(built_instance):
 passing_cases = [
     {
         "file_text": "def main():\n    pass\n",
-        "options": Options(ref_module="ref", sub_module="sub"),
+        "options": Options(weight=1, ref_module="ref", sub_module="sub"),
     },
     {
         "file_text": "def main():\n    with open('file.txt', 'w') as f:\n        pass\n",
-        "options": Options(ref_module="ref", sub_module="sub", filenames=("file.txt",)),
+        "options": Options(
+            weight=1, ref_module="ref", sub_module="sub", filenames=("file.txt",)
+        ),
     },
     {
         "file_text": "def main():\n    f = open('file.txt', 'w')\n    f.close()\n",
-        "options": Options(ref_module="ref", sub_module="sub", filenames=("file.txt",)),
+        "options": Options(
+            weight=1, ref_module="ref", sub_module="sub", filenames=("file.txt",)
+        ),
     },
 ]
 
@@ -74,20 +78,26 @@ def test_passing_cases(case, fix_syspath):
     test_method = built_instance.test_file_closed_0
     # Run the test method.
     test_method()
+    assert test_method.__score__ == test_method.__weight__
 
 
 failing_cases = [
     {  # One file is not closed.
         "sub_file_text": "def main():\n    open('file.txt', 'w')\n",
         "ref_file_text": "def main():\n    with open('file.txt', 'w') as f:\n        pass\n",
-        "options": Options(ref_module="ref", sub_module="sub", filenames=("file.txt",)),
+        "options": Options(
+            weight=1, ref_module="ref", sub_module="sub", filenames=("file.txt",)
+        ),
         "message": "Your `main` function failed to close the file `file.txt` when called\n  as `main()`.",
     },
     {  # Two files are not closed.
         "sub_file_text": "def main():\n    f = open('file.txt', 'w')\n    x = open('file2.txt', 'w')\n",
         "ref_file_text": "def main():\n    with open('file.txt', 'w') as f:\n        pass\n    with open('file2.txt', 'w') as x:\n        pass\n",
         "options": Options(
-            ref_module="ref", sub_module="sub", filenames=("file.txt", "file2.txt")
+            weight=1,
+            ref_module="ref",
+            sub_module="sub",
+            filenames=("file.txt", "file2.txt"),
         ),
         "message": "Your `main` function failed to close the files `file.txt` and\n  `file2.txt` when called as `main()`.",
     },
@@ -95,6 +105,7 @@ failing_cases = [
         "sub_file_text": "def main():\n    open('file.txt', 'w')\n",
         "ref_file_text": "def main():\n    with open('file.txt', 'w') as f:\n        pass\n",
         "options": Options(
+            weight=1,
             ref_module="ref",
             sub_module="sub",
             filenames=("file.txt",),
@@ -105,7 +116,7 @@ failing_cases = [
     {  # The student opens a file not opened in the reference.
         "sub_file_text": "def main():\n    open('file.txt', 'w')\n",
         "ref_file_text": "def main():\n    pass\n",
-        "options": Options(ref_module="ref", sub_module="sub"),
+        "options": Options(weight=1, ref_module="ref", sub_module="sub"),
         "message": "Your `main` function failed to close the file `file.txt` when called\n  as `main()`.",
     },
 ]
@@ -128,3 +139,4 @@ def test_failing_cases(case, fix_syspath):
         test_method()
     # Check that the correct message is raised.
     assert case["message"] in str(exc_info.value)
+    assert test_method.__score__ == 0

@@ -70,19 +70,26 @@ passing_cases = [
     {  # Check that it works with a single file
         "ref_file": hello_world,
         "sub_file": hello_world,
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            weight=1, filenames=("file.txt",), sub_module="sub", ref_module="ref"
+        ),
     },
     {  # Check that it works with multiple files
         "ref_file": hello_goodbye,
         "sub_file": hello_goodbye,
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            weight=1,
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
         ),
     },
     {  # Check that only specified files are tested
         "ref_file": hello_world,
         "sub_file": hello_goodbye,
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            weight=1, filenames=("file.txt",), sub_module="sub", ref_module="ref"
+        ),
     },
 ]
 
@@ -96,14 +103,18 @@ def test_passing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_match_reference_0")
-    built_instance.test_file_lines_match_reference_0()
+    test_method = built_instance.test_file_lines_match_reference_0
+    test_method()
+    assert test_method.__score__ == test_method.__weight__
 
 
 failing_cases = [
     {  # Check that it fails when single file contents do not match
         "ref_file": hello_world,
         "sub_file": goodbye_world,
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            weight=1, filenames=("file.txt",), sub_module="sub", ref_module="ref"
+        ),
         "exception": AssertionError,
         "error": (
             "{'file.txt': ['Goodbye, world!']} != {'file.txt': ['Hello, world!']}\n"
@@ -124,7 +135,10 @@ failing_cases = [
         "ref_file": hello_goodbye,
         "sub_file": goodbye_hello,
         "options": Options(
-            sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
+            weight=1,
+            sub_module="sub",
+            ref_module="ref",
+            filenames=("file.txt", "file2.txt"),
         ),
         "exception": AssertionError,
         "error": (
@@ -146,7 +160,7 @@ failing_cases = [
     {  # Check that it fails when their are no files to check
         "ref_file": noop,
         "sub_file": noop,
-        "options": Options(sub_module="sub", ref_module="ref"),
+        "options": Options(weight=1, sub_module="sub", ref_module="ref"),
         "exception": ValueError,
         "error": (
             "There are no files to check."
@@ -165,6 +179,8 @@ def test_failing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_match_reference_0")
+    test_method = built_instance.test_file_lines_match_reference_0
     with pytest.raises(case["exception"]) as exc_info:
-        built_instance.test_file_lines_match_reference_0()
+        test_method()
     assert case["error"] == str(exc_info.value)
+    assert test_method.__score__ == 0
