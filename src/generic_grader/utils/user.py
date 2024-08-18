@@ -10,6 +10,7 @@ from copy import deepcopy
 from io import StringIO
 from unittest.mock import patch
 
+from attrs import evolve
 from freezegun import freeze_time
 
 from generic_grader.utils.docs import make_call_str, ordinalize
@@ -153,6 +154,8 @@ class __User__:
 
     def format_log(self):
         """Return a formatted string of the IO log."""
+        old_options = self.options
+        self.options = evolve(old_options, n_lines=None, start=1)
         lines = self.read_log_lines()
         if lines:
             string = (
@@ -162,6 +165,7 @@ class __User__:
             )
         else:
             string = ""
+        self.options = old_options
         return string
 
     def get_value(self):
