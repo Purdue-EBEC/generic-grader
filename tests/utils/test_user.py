@@ -508,3 +508,19 @@ def test_disallow_User():
     """Test that the User class is not directly instantiated."""
     with pytest.raises(UserInitializationError):
         __User__(FakeTest(), Options())
+
+
+def test_full_user_log(fix_syspath):
+    """Test that the User class log attribute is properly formatted."""
+    o = Options(sub_module="submission", start=2)
+    test = FakeTest()
+    fake_file = fix_syspath / "submission.py"
+    fake_file.write_text('def main():\n    print("Hello World\\nGoodbye World\\n")\n')
+    user = SubUser(test, o)
+    user.call_obj()
+    expected_log = """\n\nline |Input/Output Log:
+----------------------------------------------------------------------
+   1 |Hello World
+   2 |Goodbye World
+   3 |\n"""
+    assert user.format_log() == expected_log
