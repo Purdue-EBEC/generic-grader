@@ -71,6 +71,7 @@ class Options:
     region_outer: str = ""
     threshold: int = 0
     delta: int = 0
+    expected_words: str = ""
 
     def __attrs_post_init__(self):
         """Check that the attributes are of the correct type."""
