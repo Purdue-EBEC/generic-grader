@@ -3,7 +3,6 @@ import os
 import sys
 import threading
 from contextlib import contextmanager
-from pathlib import Path
 
 
 @contextmanager
@@ -30,13 +29,26 @@ def file_set_up(options):
             src = files[0]
             dst = file_pattern.replace("*", "")  # deglobbed file pattern
             try:
-                Path.symlink_to(dst, src)
+                os.symlink(src, dst)
 
                 # Log the symlink for later removal.
                 step = {"type": "symlink", "src": src, "dst": dst}
                 setup_steps.append(step)
             except FileExistsError:
                 pass  # symlink already exists or is unnecessary
+    """
+    There is a problem, possibly with the way the symlinks are being created, that
+    causes any tests that attempt to use the importer class to fail. However, we
+    know that the file is being created properly both because the tests that just
+    open the file pass, however the tests that use the importer class fail.
+
+    Things that have been tried and confirmed to have failed to resolve the issue:
+        1. Using the Path class to create the symlink
+        2. Using the os.symlink() function to create the symlink
+        3. Using threading.Lock() to ensure that the symlinks are created in a thread-safe manner
+
+
+    """
 
     yield
 
