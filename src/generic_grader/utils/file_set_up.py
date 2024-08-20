@@ -1,6 +1,7 @@
 import glob
 import os
 import sys
+import threading
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -15,26 +16,27 @@ def file_set_up(options):
 
     # Create symlinks to non-globbed form of each required file.
     setup_steps = []
-    for file_pattern in o.required_files:
-        if "*" not in file_pattern:  # dst will already exist
-            continue
+    with threading.Lock():
+        for file_pattern in o.required_files:
+            if "*" not in file_pattern:  # dst will already exist
+                continue
 
-        files = glob.glob(file_pattern)
-        files = [file for file in files if file not in o.ignored_files]
+            files = glob.glob(file_pattern)
+            files = [file for file in files if file not in o.ignored_files]
 
-        if len(files) != 1:  # src missing or ambiguous
-            continue
+            if len(files) != 1:  # src missing or ambiguous
+                continue
 
-        src = files[0]
-        dst = file_pattern.replace("*", "")  # deglobbed file pattern
-        try:
-            Path.symlink_to(dst, src)
+            src = files[0]
+            dst = file_pattern.replace("*", "")  # deglobbed file pattern
+            try:
+                Path.symlink_to(dst, src)
 
-            # Log the symlink for later removal.
-            step = {"type": "symlink", "src": src, "dst": dst}
-            setup_steps.append(step)
-        except FileExistsError:
-            pass  # symlink already exists or is unnecessary
+                # Log the symlink for later removal.
+                step = {"type": "symlink", "src": src, "dst": dst}
+                setup_steps.append(step)
+            except FileExistsError:
+                pass  # symlink already exists or is unnecessary
 
     yield
 
