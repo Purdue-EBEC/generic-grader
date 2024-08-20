@@ -1,8 +1,9 @@
 import glob
 import os
 import sys
-import threading
+import time
 from contextlib import contextmanager
+from pathlib import Path
 
 
 @contextmanager
@@ -15,27 +16,26 @@ def file_set_up(options):
 
     # Create symlinks to non-globbed form of each required file.
     setup_steps = []
-    with threading.Lock():
-        for file_pattern in o.required_files:
-            if "*" not in file_pattern:  # dst will already exist
-                continue
+    for file_pattern in o.required_files:
+        if "*" not in file_pattern:  # dst will already exist
+            continue
 
-            files = glob.glob(file_pattern)
-            files = [file for file in files if file not in o.ignored_files]
+        files = glob.glob(file_pattern)
+        files = [file for file in files if file not in o.ignored_files]
 
-            if len(files) != 1:  # src missing or ambiguous
-                continue
+        if len(files) != 1:  # src missing or ambiguous
+            continue
 
-            src = files[0]
-            dst = file_pattern.replace("*", "")  # deglobbed file pattern
-            try:
-                os.symlink(src, dst)
+        src = files[0]
+        dst = file_pattern.replace("*", "")  # deglobbed file pattern
+        try:
+            Path.symlink_to(dst, src)
 
-                # Log the symlink for later removal.
-                step = {"type": "symlink", "src": src, "dst": dst}
-                setup_steps.append(step)
-            except FileExistsError:
-                pass  # symlink already exists or is unnecessary
+            # Log the symlink for later removal.
+            step = {"type": "symlink", "src": src, "dst": dst}
+            setup_steps.append(step)
+        except FileExistsError:
+            pass  # symlink already exists or is unnecessary
     """
     There is a problem, possibly with the way the symlinks are being created, that
     causes any tests that attempt to use the importer class to fail. However, we
@@ -45,11 +45,11 @@ def file_set_up(options):
     Things that have been tried and confirmed to have failed to resolve the issue:
         1. Using the Path class to create the symlink
         2. Using the os.symlink() function to create the symlink
-        3. Using threading.Lock() to ensure that the symlinks are created in a thread-safe manner
-
+        3. Using threading.Lock() to ensure that the symlinks are created
+        4. Using time.sleep() to ensure that the symlinks are created
 
     """
-
+    time.sleep(2)
     yield
 
     # Clean up the symlinks.
