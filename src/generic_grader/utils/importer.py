@@ -1,6 +1,7 @@
 """Handle importing objects from student code."""
 
 import os
+import sys
 import textwrap
 import unittest
 from pathlib import Path
@@ -67,10 +68,11 @@ class Importer:
         except Exception as e:
             fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
             fail_msg += f"\ncwd: {os.getcwd()}"
-            fail_msg += f"\files: {os.listdir()}"
+            fail_msg += f"\nfiles: {os.listdir()}"
             sym_links = [p.name for p in Path().iterdir() if p.is_symlink()]
             fail_msg += f"\nsym_links: {sym_links})"
-            fail_msg += "v1.1"
+            fail_msg += f"\n{sys.path}"
+            fail_msg += "v1.2"
             test.failureException = type(e)
 
         # Fail outside of the except block
