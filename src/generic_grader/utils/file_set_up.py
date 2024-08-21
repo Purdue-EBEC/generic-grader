@@ -1,9 +1,8 @@
 import glob
 import os
+import shutil
 import sys
-import time
 from contextlib import contextmanager
-from pathlib import Path
 
 
 @contextmanager
@@ -29,7 +28,7 @@ def file_set_up(options):
         src = files[0]
         dst = file_pattern.replace("*", "")  # deglobbed file pattern
         try:
-            Path.symlink_to(dst, src)
+            shutil.copy(src, dst)
 
             # Log the symlink for later removal.
             step = {"type": "symlink", "src": src, "dst": dst}
@@ -47,9 +46,10 @@ def file_set_up(options):
         2. Using the os.symlink() function to create the symlink
         3. Using threading.Lock() to ensure that the symlinks are created
         4. Using time.sleep() to ensure that the symlinks are created
+        5. Using shutil.copy() to create a copy of the file instead of a symlink
 
     """
-    time.sleep(2)
+
     yield
 
     # Clean up the symlinks.
