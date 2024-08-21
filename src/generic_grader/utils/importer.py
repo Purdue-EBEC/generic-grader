@@ -72,7 +72,8 @@ class Importer:
             sym_links = [p.name for p in Path().iterdir() if p.is_symlink()]
             fail_msg += f"\nsym_links: {sym_links})"
             fail_msg += f"\n{sys.path}"
-            fail_msg += "v1.6"
+            fail_msg += "v1.7"
+            fail_msg += f"\nmodules{sys.modules}"
             test.failureException = type(e)
 
         # Fail outside of the except block
