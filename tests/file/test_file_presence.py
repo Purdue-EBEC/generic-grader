@@ -73,6 +73,7 @@ cases = [
         # "message": "Submissions must contain at least one file.",
         "result": "pass",
         "message": "Found all required files.",
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py",),
@@ -80,6 +81,7 @@ cases = [
         "ignored": (),
         "result": "pass",
         "message": "Found all required files.",
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py",),
@@ -87,6 +89,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "bar*.py".',
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py", "foot_login.py"),
@@ -94,6 +97,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": 'too many files matching the pattern "foo*.py".',
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py", "foot_login.py"),
@@ -101,6 +105,7 @@ cases = [
         "ignored": ("foot*.py",),
         "result": "pass",
         "message": "Found all required files.",
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py", "bar_login.py"),
@@ -108,6 +113,7 @@ cases = [
         "ignored": (),
         "result": "pass",
         "message": "Found all required files.",
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("bar_login.py",),
@@ -115,6 +121,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "foo*.py".',
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py",),
@@ -122,6 +129,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": 'Cannot find any files matching the pattern "bar*.py".',
+        "doc_func_test": "Check for submission of required files.",
     },
     # { # TODO this should have a better error message.
     #    "present": (),
@@ -136,6 +144,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": 'too many files matching the pattern "bar*.py".',
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo_login.py", "bar_login.py", "barf_login.py"),
@@ -143,6 +152,7 @@ cases = [
         "ignored": ("barf*.py",),
         "result": "pass",
         "message": "Found all required files.",
+        "doc_func_test": "Check for submission of required files.",
     },
     {
         "present": ("foo.py",),
@@ -150,6 +160,7 @@ cases = [
         "ignored": (),
         "result": AssertionError,
         "message": '"foo.py" does not meet this exercise\'s file naming requirements',
+        "doc_func_test": "Check for submission of required files.",
     },
 ]
 
@@ -186,3 +197,4 @@ def test_file_presence(case_test_method, capsys):
         with pytest.raises(error) as exc_info:
             test_method()
         assert case["message"] in " ".join(str(exc_info.value).split())
+    assert test_method.__doc__ == case["doc_func_test"]
