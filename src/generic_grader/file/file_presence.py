@@ -44,7 +44,7 @@ def build(the_options):
 
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
-        @parameterized.expand(the_params)  # , doc_func=doc_func)
+        @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weight(0)
         def test_submitted_files(self, options):
             """Check for submission of required files."""
