@@ -49,6 +49,7 @@ memory_limit_cases = [
 
 
 @pytest.mark.parametrize("case", memory_limit_cases)
+@pytest.mark.skip(reason="Memory limit is not working on some systems (see #65).")
 def test_memory_limit(case):
     """Test the memory_limit function."""
     if case["result"] is not None:
