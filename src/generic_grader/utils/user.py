@@ -280,10 +280,10 @@ class __User__:
         prompt for user interaction `interaction`.
         """
         interaction = self.options.interaction
-        n_lines = self.options.n_lines
-        start = self.options.start
         self.log.seek(self.interactions[interaction])
+        start = self.options.start
         start = start - 1 if start else 0
+        n_lines = self.options.n_lines
         stop = start + n_lines if n_lines else n_lines
         return self.log.readlines()[start:stop]
 
