@@ -178,6 +178,7 @@ def case_test_method(request, tmp_path, monkeypatch):
         Options(
             required_files=case["required"],
             ignored_files=case["ignored"],
+            weight=1,
         ),
     )
     built_instance = built_class(methodName="test_submitted_files_0")
@@ -192,9 +193,11 @@ def test_file_presence(case_test_method, capsys):
     if case["result"] == "pass":
         test_method()
         assert case["message"] in capsys.readouterr().out.rstrip()
+        assert test_method.__score__ == test_method.__weight__
     else:
         error = case["result"]
         with pytest.raises(error) as exc_info:
             test_method()
         assert case["message"] in " ".join(str(exc_info.value).split())
+        assert test_method.__score__ == 0
     assert test_method.__doc__ == case["doc_func_test"]
