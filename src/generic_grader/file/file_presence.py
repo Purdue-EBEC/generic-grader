@@ -5,9 +5,9 @@ import textwrap
 import unittest
 from pathlib import Path
 
-from gradescope_utils.autograder_utils.decorators import weight
 from parameterized import parameterized
 
+from generic_grader.utils.decorators import weighted
 from generic_grader.utils.options import options_to_params
 
 # TODO
@@ -45,7 +45,7 @@ def build(the_options):
         wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
 
         @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
-        @weight(0)
+        @weighted
         def test_submitted_files(self, options):
             """Check for submission of required files."""
 

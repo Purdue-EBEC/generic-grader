@@ -15,7 +15,7 @@ def built_class():
 @pytest.fixture()
 def built_instance(built_class):
     """Provide an instance of the built class."""
-    return built_class()
+    return built_class(methodName="test_submitted_files_0")
 
 
 def test_file_presence_build_class(built_class):
@@ -180,7 +180,7 @@ def case_test_method(request, tmp_path, monkeypatch):
             ignored_files=case["ignored"],
         ),
     )
-    built_instance = built_class()
+    built_instance = built_class(methodName="test_submitted_files_0")
     test_method = built_instance.test_submitted_files_0
 
     return case, test_method
