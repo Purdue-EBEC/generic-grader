@@ -17,6 +17,7 @@ from generic_grader.utils.docs import make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
     EndOfInputError,
     ExitError,
+    ExtraEntriesError,
     LogLimitExceededError,
     QuitError,
     UserInitializationError,
@@ -360,7 +361,7 @@ class __User__:
             except StopIteration:
                 pass  # The expected result.
             else:
-                self.test.failureException = EndOfInputError
+                self.test.failureException = ExtraEntriesError
                 msg = (
                     error_msg
                     + "\n\nHint:\n"

@@ -122,6 +122,17 @@ class EndOfInputError(Exception):
         return self.msg
 
 
+class ExtraEntriesError(Exception):
+    """Custom Exception to raise when submitted code requests not enough input."""
+
+    def __init__(self, hint=None):
+        error_msg = "Your program requested user input less times than expected."
+        self.msg = format_error_msg(error_msg, hint)
+
+    def __str__(self):
+        return self.msg
+
+
 class ExcessFunctionCallError(Exception):
     """Custom Exception to raise when submitted code calls a function more
     times than expected.

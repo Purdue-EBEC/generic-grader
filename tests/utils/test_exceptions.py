@@ -4,6 +4,7 @@ from generic_grader.utils.exceptions import (
     EndOfInputError,
     ExcessFunctionCallError,
     ExitError,
+    ExtraEntriesError,
     LogLimitExceededError,
     QuitError,
     RefFileNotFoundError,
@@ -99,6 +100,14 @@ custom_errors = [
     {
         "error": EndOfInputError("this is a hint"),
         "expected": "  Your program requested user input more times than expected.\n\nHint:\n  this is a hint  Make sure your program isn't stuck in an infinite\n  loop.",
+    },
+    {
+        "error": ExtraEntriesError(),
+        "expected": "  Your program requested user input less times than expected.",
+    },
+    {
+        "error": ExtraEntriesError("this is a hint"),
+        "expected": "  Your program requested user input less times than expected.\n\nHint:\n  this is a hint",
     },
     {
         "error": TurtleWriteError(),
