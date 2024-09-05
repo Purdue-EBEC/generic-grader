@@ -8,6 +8,7 @@ from attrs import evolve
 from generic_grader.utils.exceptions import (
     EndOfInputError,
     ExitError,
+    ExtraEntriesError,
     LogLimitExceededError,
     QuitError,
     UserInitializationError,
@@ -162,7 +163,7 @@ call_obj_fail = [
         "options": Options(sub_module="hello_user", entries=("Jack",)),
         "file_text": "def main():\n    print('Hello, User!')",
         "result": "Hello, User!\n",
-        "error": EndOfInputError,
+        "error": ExtraEntriesError,
     },
     {  # Missing entry
         "options": Options(sub_module="input_user"),
@@ -234,7 +235,7 @@ def test_failing_call_obj_error(fix_syspath):
     )
     test = FakeTest()
     user = SubUser(test, options)
-    with pytest.raises(EndOfInputError) as exc_info:
+    with pytest.raises(ExtraEntriesError) as exc_info:
         user.call_obj()
     assert (
         f"Your `{options.obj_name}` malfunctioned when called as `main()` with entries\n  {options.entries}."
