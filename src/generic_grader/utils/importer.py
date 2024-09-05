@@ -61,7 +61,15 @@ class Importer:
                 )
             )
             test.failureException = cls.InputError
-
+        except ModuleNotFoundError:
+            test.failureException = ModuleNotFoundError
+            fail_msg = (
+                cls.wrapper.fill(f"Unable to import `{module}`.")
+                + "\n\nHint:\n"
+                + cls.wrapper.fill(
+                    f"Make sure you have submitted a file named `{module}.py and it contains the definition of `{obj_name}`."
+                )
+            )
         except Exception as e:
             fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
             test.failureException = type(e)
