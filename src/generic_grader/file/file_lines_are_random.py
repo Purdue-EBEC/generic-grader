@@ -68,9 +68,29 @@ def build(options):
             # Create new user and re-run the submitted code.
             self.student_user_2 = SubUser(self, o)
             self.student_user_2.call_obj()
+            message = ""
             for filename in o.filenames:
-                # Silent overwrite if exists.
-                os.replace(filename, f"sub_{filename}")
+                try:
+                    # Silent overwrite if exists.
+                    os.replace(filename, f"sub_{filename}")
+                except FileNotFoundError:  # pragma: no cover
+                    # This error can only occur if the user does not create the file every time.
+                    self.failureException = FileNotFoundError  # pragma: no cover
+                    call_str = make_call_str(
+                        o.obj_name, o.args, o.kwargs
+                    )  # pragma: no cover
+                    message = (
+                        "\n\nHint:\n"
+                        + self.wrapper.fill(
+                            f"The file `{filename}` was not found.  Make sure your"
+                            f" `{o.obj_name}` function creates a file named"
+                            f" `{filename}` when called as `{call_str}` every time it runs"
+                            + (o.entries and f" with entries={o.entries}." or ".")
+                        )  # pragma: no cover
+                        + f"\n\n{self.student_user_2.format_log()}"
+                    )
+                if message:
+                    self.fail(message)  # pragma: no cover
 
             # Get the second set of values.
             second_files = []
