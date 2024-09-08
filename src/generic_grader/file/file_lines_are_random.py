@@ -73,12 +73,10 @@ def build(options):
                 try:
                     # Silent overwrite if exists.
                     os.replace(filename, f"sub_{filename}")
-                except FileNotFoundError:  # pragma: no cover
+                except FileNotFoundError:
                     # This error can only occur if the user does not create the file every time.
-                    self.failureException = FileNotFoundError  # pragma: no cover
-                    call_str = make_call_str(
-                        o.obj_name, o.args, o.kwargs
-                    )  # pragma: no cover
+                    self.failureException = FileNotFoundError
+                    call_str = make_call_str(o.obj_name, o.args, o.kwargs)
                     message = (
                         "\n\nHint:\n"
                         + self.wrapper.fill(
@@ -86,11 +84,11 @@ def build(options):
                             f" `{o.obj_name}` function creates a file named"
                             f" `{filename}` when called as `{call_str}` every time it runs"
                             + (o.entries and f" with entries={o.entries}." or ".")
-                        )  # pragma: no cover
+                        )
                         + f"\n\n{self.student_user_2.format_log()}"
                     )
                 if message:
-                    self.fail(message)  # pragma: no cover
+                    self.fail(message)
 
             # Get the second set of values.
             second_files = []

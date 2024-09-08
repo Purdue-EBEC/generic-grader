@@ -56,6 +56,7 @@ one_file = (
 two_files = one_file + (
     "    with open('file2.txt', 'w') as f:\n        f.write('Goodbye, world!')\n"
 )
+outside_main = "with open('file.txt', 'w') as f:\n    f.write('Hello, world!')\ndef main():\n    pass\n"
 empty_file = "def main():\n    pass\n"
 failing_cases = [
     {  # The case where no file name is provided
@@ -76,6 +77,11 @@ failing_cases = [
         "options": Options(
             sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
         ),
+    },
+    {
+        "error": FileNotFoundError,
+        "file_text": outside_main,
+        "options": Options(sub_module="sub", ref_module="ref", filenames=("file.txt",)),
     },
 ]
 
