@@ -52,7 +52,6 @@ def build(options):
 
             actual_words = [f"{w}\n" for w in actual_words.lower().strip().split()]
             expected_words = [f"{w}\n" for w in expected_words.lower().strip().split()]
-
             message = (
                 "\n"
                 + "".join(difflib.ndiff(actual_words, expected_words))

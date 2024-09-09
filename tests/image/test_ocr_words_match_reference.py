@@ -46,17 +46,31 @@ def test_doc_func(built_instance):
     assert 'Check the drawing for the words: "test words".' == docstring
 
 
-def test_passing(tmp_path):
+passing_cases = [
+    {
+        "expected_words": "bed\nbed",
+        "file_name": "bed_bed.png",
+    },
+    {
+        "expected_words": "bed",
+        "file_name": "bed.png",
+    },
+]
+
+
+@pytest.mark.parametrize("case", passing_cases)
+def test_passing(case, tmp_path):
     cwd = os.getcwd()
     os.chdir(tmp_path)
 
     def init(self, options):
         shutil.copy(
-            cwd + os.sep + f"tests{os.sep}image{os.sep}b_d.png", tmp_path / "sol.png"
+            cwd + os.sep + f"tests{os.sep}image{os.sep}{case['file_name']}",
+            tmp_path / "sol.png",
         )
 
     try:
-        o = Options(expected_words="b d", init=init)
+        o = Options(expected_words=case["expected_words"], init=init)
         built_class = build(o)
         instance = built_class(methodName="test_ocr_words_match_reference_0")
         test_method = instance.test_ocr_words_match_reference_0
@@ -71,11 +85,11 @@ def test_failing(tmp_path):
 
     def init(self, options):
         shutil.copy(
-            cwd + os.sep + f"tests{os.sep}image{os.sep}bcd.png", tmp_path / "sol.png"
+            cwd + os.sep + f"tests{os.sep}image{os.sep}bed.png", tmp_path / "sol.png"
         )
 
     try:
-        o = Options(expected_words="bcd", init=init)
+        o = Options(expected_words="not the bed", init=init)
         built_class = build(o)
         instance = built_class(methodName="test_ocr_words_match_reference_0")
         test_method = instance.test_ocr_words_match_reference_0
