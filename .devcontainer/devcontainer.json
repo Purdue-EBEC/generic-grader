@@ -13,7 +13,18 @@
 		},
 		"ghcr.io/devcontainers-contrib/features/ruff:1": {
 			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/desktop-lite:1": {
+			"password": "generic-grader"
 		}
+	},
+
+	// Use 'forwardPorts' to make a list of ports inside the container available locally.
+	"forwardPorts": [6080],
+	"portsAttributes": {
+	  "6080": {
+		"label": "desktop"
+	  }
 	},
 
 	// Use 'postCreateCommand' to run commands after the container is created.
