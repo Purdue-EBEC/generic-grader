@@ -44,7 +44,7 @@ def test_make_mock_function():
     mock_name, mocked_func = make_mock_function(func_name, return_values)
 
     for val in return_values:
-        assert val == mocked_func()
+        assert val == mocked_func("str", 1, spam="spam")
 
     with pytest.raises(ExcessFunctionCallError) as exc_info:
         mocked_func()

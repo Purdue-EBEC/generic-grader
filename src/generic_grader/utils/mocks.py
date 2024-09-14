@@ -5,7 +5,7 @@ from generic_grader.utils.exceptions import ExcessFunctionCallError
 
 
 def make_mock_function_noop(func_name):
-    """Create a mock version of func_name does nothing."""
+    """Create a mock version of func_name that does nothing."""
 
     def mock(*args, **kwargs):
         pass
@@ -15,9 +15,10 @@ def make_mock_function_noop(func_name):
 
 def make_mock_function(func_name, iterable):
     """
-    Create a mock version of func_name that returns the next value in iterable
-    each time it gets called, and raises our ExcessFunctionCallError if it gets
-    called more times than expected.
+    Create a mock version of func_name that returns values from iterable.
+
+    The mocked version returns the next value in iterable each time it gets called, and
+    raises our ExcessFunctionCallError if it gets called more times than expected.
     """
 
     # Use separate copies of the iterable in each mocked function to prevent
