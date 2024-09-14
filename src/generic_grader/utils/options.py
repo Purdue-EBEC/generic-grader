@@ -42,7 +42,7 @@ class Options:
 
     # Callable
     obj_name: str = "main"
-    args: list = Factory(list)
+    args: tuple = ()
     kwargs: dict = Factory(dict)
     expected_set: set = Factory(set)
     expected_perms: set = Factory(set)

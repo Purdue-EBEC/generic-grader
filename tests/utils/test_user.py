@@ -103,7 +103,7 @@ call_obj_pass = [
     },
     {
         "options": Options(
-            sub_module="print_user_arg", args=(["Jack"]), obj_name="user_func"
+            sub_module="print_user_arg", args=("Jack",), obj_name="user_func"
         ),
         "file_text": "def user_func(user):\n    print(f'Hello, {user}!')",
         "result": "Hello, Jack!\n",
