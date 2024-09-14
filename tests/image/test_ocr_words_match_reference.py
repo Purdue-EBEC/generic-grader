@@ -1,6 +1,7 @@
 import os
 import shutil
 import unittest
+from pathlib import Path
 
 import pytest
 
@@ -65,7 +66,7 @@ def test_passing(case, tmp_path):
 
     def init(self, options):
         shutil.copy(
-            cwd + os.sep + f"tests{os.sep}image{os.sep}{case['file_name']}",
+            Path(cwd) / "tests" / "image" / case["file_name"],
             tmp_path / "sol.png",
         )
 
@@ -85,7 +86,8 @@ def test_failing(tmp_path):
 
     def init(self, options):
         shutil.copy(
-            cwd + os.sep + f"tests{os.sep}image{os.sep}bed.png", tmp_path / "sol.png"
+            Path(cwd) / "tests" / "image" / "bed.png",
+            tmp_path / "sol.png",
         )
 
     try:
@@ -95,7 +97,6 @@ def test_failing(tmp_path):
         test_method = instance.test_ocr_words_match_reference_0
         with pytest.raises(AssertionError) as exc_info:
             test_method()
-        print(exc_info.value)
         expected = "Hint:\n  The words found in your solution are not sufficiently similar to the\n  expected words."
         assert expected in str(exc_info.value)
     finally:
