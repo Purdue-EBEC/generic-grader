@@ -20,8 +20,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - name: Install tesseract-ocr
-        run: sudo apt install tesseract-ocr
+      - name: Install Dependencies
+        run: sudo apt install tesseract-ocr xvfb
+      - name: Setup Virtual Display
+        run: Xvfb :1 & export DISPLAY=:1
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
       - name: Install Tox
