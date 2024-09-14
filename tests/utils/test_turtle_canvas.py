@@ -1,3 +1,5 @@
+"""Make sure that when running these tests a display is configured."""
+
 import turtle
 import unittest
 
@@ -21,7 +23,6 @@ def close_turtle():
 
 def test_save_canvas(fix_syspath):
     """Test the save_canvas function. This has to be done first to ensure the rest of the tests behave as expected."""
-
     # Create a simple canvas.
     screen = turtle.Screen()
     canvas = screen.getcanvas()
@@ -44,11 +45,10 @@ def test_save_canvas(fix_syspath):
 
 #     # Save the canvas.
 #     save_canvas()
-#     import os
-#     print(os.listdir())
+
 #     # Load the image and check it.
 #     img = Image.open("test_save_canvas.png")
-
+#     raise Exception(img.getpixel((0, 0)))
 #     assert img.getpixel((0, 0)) == 255
 
 
@@ -58,51 +58,36 @@ def test_save_cavas_color(fix_syspath):
     # Create a simple canvas.
     screen = turtle.Screen()
     screen.tracer(0)
-    turtle.goto(-564 / 2, -564 / 2)
-    turtle.begin_fill()
-    turtle.fillcolor("blue")
-    turtle.goto(564 / 2, -564 / 2)
-    turtle.goto(564 / 2, 564 / 2)
-    turtle.goto(-564 / 2, 564 / 2)
-    turtle.goto(-564 / 2, -564 / 2)
-    turtle.end_fill()
+    turtle.pencolor("blue")
+    turtle.pensize(100)
+    turtle.circle(20)
     screen.update()
     canvas = screen.getcanvas()
-    canvas.update()
-    turtle.reset()
 
-    save_color_canvas(canvas, "test_save_canvas_color.png", invert=False)
-    screen.clear()
+    save_color_canvas(
+        canvas=canvas, filename="test_save_canvas_color.png", invert=False
+    )
     # Load the image and check it.
     img = Image.open("test_save_canvas_color.png")
     img_center = img.getpixel((img.width // 2, img.height // 2))
     assert img_center == (0, 0, 255)
 
 
-def test_save_color_canvas_invert(fix_syspath):
+def test_save_cavas_color_invert(fix_syspath):
+    """Test the save_canvas function. This has to be done first to ensure the rest of the tests behave as expected."""
+
     # Create a simple canvas.
     screen = turtle.Screen()
     screen.tracer(0)
-    t = turtle.Turtle()
-    t.pencolor("blue")
-    t.pensize(100)
-    turtle.goto(-564 / 2, -564 / 2)
-    turtle.begin_fill()
-    turtle.fillcolor("blue")
-    turtle.goto(564 / 2, -564 / 2)
-    turtle.goto(564 / 2, 564 / 2)
-    turtle.goto(-564 / 2, 564 / 2)
-    turtle.goto(-564 / 2, -564 / 2)
-    turtle.end_fill()
+    turtle.pencolor("blue")
+    turtle.pensize(100)
+    turtle.circle(20)
     screen.update()
     canvas = screen.getcanvas()
-    canvas.update()
-    turtle.reset()
 
-    save_color_canvas(canvas, "test_save_canvas_color_inv.png", invert=True)
-    screen.clear()
+    save_color_canvas(canvas=canvas, filename="test_save_canvas_color.png", invert=True)
     # Load the image and check it.
-    img = Image.open("test_save_canvas_color_inv.png")
+    img = Image.open("test_save_canvas_color.png")
     img_center = img.getpixel((img.width // 2, img.height // 2))
     assert img_center == (255, 255, 0)
 
