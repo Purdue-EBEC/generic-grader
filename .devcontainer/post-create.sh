@@ -1,4 +1,4 @@
-sudo apt-get update && sudo apt-get install -y tesseract-ocr
+sudo apt-get update && sudo apt-get install -y tesseract-ocr ghostscript
 
 # Install this package and its dependencies in editable mode
 pip3 install --upgrade pip
