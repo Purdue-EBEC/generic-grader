@@ -20,13 +20,13 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
+      - name: Setup headless display
+        uses: pyvista/setup-headless-display-action@v2
       - name: Install Dependencies
         run: sudo apt install tesseract-ocr xvfb
       - name: Upgrade pip
         run: python -m pip install --upgrade pip
       - name: Install Tox
         run: pip install tox
-      - name: Setup Xvfb
-        run: Xvfb :1 & export DISPLAY=:1
       - name: Run Tox
         run: tox
