@@ -59,6 +59,7 @@ def test_save_cavas_color(fix_syspath):
     screen = turtle.Screen()
     screen.tracer(0)
     t = turtle.Turtle()
+    screen.bgcolor("blue")
     t.pencolor("blue")
     t.pensize(100)
     t.circle(50)
