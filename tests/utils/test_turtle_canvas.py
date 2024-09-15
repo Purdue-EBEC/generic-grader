@@ -29,7 +29,7 @@ def test_save_canvas(fix_syspath):
     canvas.update()
 
     # Save the canvas.
-    save_canvas(canvas, "test_save_canvas.png", invert=False, bw=True)
+    save_canvas(filename="test_save_canvas.png", invert=False, bw=True)
     screen.clear()
 
     # Load the image and check it.
@@ -39,17 +39,17 @@ def test_save_canvas(fix_syspath):
     assert img_center == 255
 
 
-# def test_save_canvas_defaults(fix_syspath):
-#     """Test the save_canvas function. This has to be done first to ensure the rest of the tests behave as expected."""
+def test_save_canvas_defaults(fix_syspath):
+    """Test that the save_canvas function raises an exception when no filename is provided."""
 
+    # Save the canvas.
+    with pytest.raises(ValueError) as exc_info:
+        save_canvas(invert=False, bw=True)
 
-#     # Save the canvas.
-#     save_canvas()
-
-#     # Load the image and check it.
-#     img = Image.open("test_save_canvas.png")
-#     raise Exception(img.getpixel((0, 0)))
-#     assert img.getpixel((0, 0)) == 255
+    assert (
+        exc_info.value.args[0]
+        == "Filename must be provided in order to use this function."
+    )
 
 
 def test_save_cavas_color(fix_syspath):
@@ -165,9 +165,9 @@ def test_save_sub_canvas(fix_syspath, case):
 def test_shortcut_sub_canvas(fix_syspath):
     file_1 = fix_syspath / "sol.png"
     file_2 = fix_syspath / "sol_inv.png"
-    file_1.write_text("")
+    file_1.write_text("Check that the file is not overwritten.")
     file_2.write_text("")
     mock_test = MockTest()
     mock_test.mock_save_sub_canvas(Options())
 
-    assert not hasattr(mock_test, "ref_start_user")
+    assert file_1.read_text() == "Check that the file is not overwritten."

@@ -1,8 +1,6 @@
-import inspect
 import turtle
 from io import BytesIO
 from os.path import isfile
-from pathlib import Path
 
 from attrs import evolve
 from PIL import Image, ImageChops
@@ -51,9 +49,6 @@ def save_sub_canvas(self, options):
     # Initialize the turtle window using the reference modules start().
     self.ref_start_user.call_obj()
 
-    # Do we want to force the log limit to be 0? End users may want to have some output and an image created
-    # log_limit = calc_log_limit([])
-
     # Skip animation
     turtle.tracer(0)
 
@@ -75,8 +70,11 @@ def save_canvas(canvas=None, filename=None, invert=True, bw=True):
         canvas = turtle.getcanvas()
 
     if not filename:
-        filename = Path(inspect.stack()[1].filename).with_suffix(".png")
-
+        # Commenting this out to maintain the original call structure.
+        # filename = Path(inspect.stack()[1].filename).with_suffix(".png")
+        raise ValueError(
+            "Filename must be provided in order to use this function."
+        )  # Non student facing error message.
     # There has to be a better way to capture the canvas window.
 
     # # Things I've Tried:
