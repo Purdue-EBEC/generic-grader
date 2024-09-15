@@ -109,28 +109,44 @@ pip install generic-grader
 
    - on Windows, download the latest installers from https://github.com/UB-Mannheim/tesseract/wiki
 
-5. Install the package.  Note that this installs the package as editable, so
+5. Install ghostscript
+
+   - on Linux
+
+     ``` bash
+     sudo apt install ghostscript
+     ```
+
+   - on macOS
+
+     ``` bash
+     brew install ghostscript
+     ```
+
+   - on Windows, download the latest installers from https://ghostscript.com/releases/gsdnld.html
+
+6. Install the package.  Note that this installs the package as editable, so
    edits will be automatically reflected in the installed package.
 
    ``` bash
    pip install -e .[dev]
    ```
 
-6. Install the pre-commit hooks.
+7. Install the pre-commit hooks.
 
    ``` bash
    pre-commit install
    ```
 
-7. Run the tests.
+8. Run the tests.
 
    ``` bash
    pytest
    ```
 
-8. Make changes ...
+9. Make changes ...
 
-9. Deactivate the virtual environment.
+10. Deactivate the virtual environment.
 
    ``` bash
    deactivate

@@ -6,9 +6,9 @@ build-backend = "hatchling.build"
 name = "generic-grader"
 version = "0.1.10"
 authors = [
-  { name="John Cole", email="jhcole@purdue.edu" },
-  { name="Jack Scarfo", email="jscarfo@purdue.edu" },
-  { name="Advait Jawaji", email="ajawaji@purdue.edu"},
+    { name = "John Cole", email = "jhcole@purdue.edu" },
+    { name = "Jack Scarfo", email = "jscarfo@purdue.edu" },
+    { name = "Advait Jawaji", email = "ajawaji@purdue.edu" },
 ]
 description = "A collection of parameterizable tests for automatic grading."
 readme = "README.md"
@@ -37,32 +37,13 @@ classifiers = [
 "Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"
 
 [project.optional-dependencies]
-dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine", "tox"]
+dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit~=3.0", "twine"]
 
 [tool.hatch.build]
-exclude = [
-    "docs/",
-    "htmlcov/",
-    "tests/",
-]
+exclude = ["docs/", "htmlcov/", "tests/"]
 
 # pyproject.toml
 [tool.pytest.ini_options]
 minversion = "6.0"
 addopts = "-ra --quiet --cov=generic_grader --cov=tests --cov-report=term-missing --cov-report=xml --cov-report=html"
-testpaths = [
-    "tests",
-]
-
-[tool.tox]
-legacy_tox_ini = """
-    [tox]
-    min_version = 4.0
-    isolated_build = True
-
-    [testenv]
-    deps =
-        pytest
-        pytest-cov
-    commands = python -m pytest
-"""
+testpaths = ["tests"]
