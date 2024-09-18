@@ -43,6 +43,9 @@ def test_style_comments_instance_has_test_method(built_instance):
 #   - too few comments
 #   - too many comments
 #   - just the right number of comments
+#   - reference has 0 comments, submission has between 10 and 100 comments, should pass
+#   - reference has 0 comments, submission has < 10 comments, should fail
+#   - reference has 0 comments, submission has > 100 comments, should fail
 cases = [
     {
         "submission": "pass",
@@ -62,6 +65,26 @@ cases = [
         "submission": "pass # enough comments",
         "reference": "pass # some comments",
         "result": "pass",
+        "doc_func_test": "Check if the program is well commented.",
+    },
+    {
+        "submission": "pass # some comments",
+        "reference": "pass",
+        "result": "pass",
+        "doc_func_test": "Check if the program is well commented.",
+    },
+    {
+        "submission": "pass # too few",
+        "reference": "pass",
+        "result": AssertionError,
+        "message": "too few comments",
+        "doc_func_test": "Check if the program is well commented.",
+    },
+    {
+        "submission": "pass # too many comments\n" * 10,
+        "reference": "pass",
+        "result": AssertionError,
+        "message": "a lot of comments",
         "doc_func_test": "Check if the program is well commented.",
     },
 ]

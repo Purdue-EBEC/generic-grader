@@ -38,15 +38,14 @@ def build(the_options):
             _, ref_body_comments = get_comments(self, reference_file)
             expected = sum([len(c) for c in ref_body_comments])
 
-            minimum = int(0.5 * expected)
+            minimum = max(int(0.5 * expected), 10)  # Require at least 10 characters.
             message = "\n\nHint:\n" + textwrap.fill(
                 "Your program has too few comments."
                 "  Add more comments to better explain your code."
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
-            # TODO: add a lower bound
-            maximum = int(5 * expected)
+            maximum = max(int(5 * expected), 100)  # Always allow up to 100 characters.
             message = "\n\nHint:\n" + textwrap.fill(
                 "Your program has a lot of comments."
                 "  See if you can make your comments more concise."
