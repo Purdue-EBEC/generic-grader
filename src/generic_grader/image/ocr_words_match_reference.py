@@ -1,7 +1,6 @@
 """Test calculation results."""
 
 import difflib
-import textwrap
 import unittest
 
 import pytesseract
@@ -9,6 +8,7 @@ from parameterized import parameterized
 from PIL import Image
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.options import options_to_params
 
 
@@ -30,7 +30,7 @@ def build(options):
     class OCRWordsMatchReference(unittest.TestCase):
         """A class for functionality tests."""
 
-        wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+        wrapper = get_wrapper()
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted

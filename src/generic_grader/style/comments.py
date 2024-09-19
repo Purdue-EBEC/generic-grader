@@ -1,12 +1,12 @@
 """Test for appropriate comment length."""
 
 import os
-import textwrap
 import unittest
 
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import get_comments
 
@@ -25,6 +25,8 @@ def build(the_options):
     class TestCommentLength(unittest.TestCase):
         """A class for comment length check."""
 
+        wrapper = get_wrapper()
+
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
         def test_comment_length(self, options):
@@ -39,14 +41,14 @@ def build(the_options):
             expected = sum([len(c) for c in ref_body_comments])
 
             minimum = max(int(0.5 * expected), 10)  # Require at least 10 characters.
-            message = "\n\nHint:\n" + textwrap.fill(
+            message = "\n\nHint:\n" + self.wrapper.fill(
                 "Your program has too few comments."
                 "  Add more comments to better explain your code."
             )
             self.assertGreaterEqual(actual, minimum, msg=message)
 
             maximum = max(int(5 * expected), 100)  # Always allow up to 100 characters.
-            message = "\n\nHint:\n" + textwrap.fill(
+            message = "\n\nHint:\n" + self.wrapper.fill(
                 "Your program has a lot of comments."
                 "  See if you can make your comments more concise."
             )

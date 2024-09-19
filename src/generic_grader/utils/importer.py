@@ -1,16 +1,16 @@
 """Handle importing objects from student code."""
 
-import textwrap
 import unittest
 from unittest.mock import patch
 
+from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.exceptions import handle_error
 
 
 class Importer:
     """A class for object import handling."""
 
-    wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+    wrapper = get_wrapper()
 
     class InputError(Exception):
         """Custom Exception type."""

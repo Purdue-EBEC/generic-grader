@@ -3,15 +3,14 @@
 import difflib
 import functools
 import os
-import textwrap
 
 from attrs import evolve
 
-from generic_grader.utils.docs import calc_log_limit, make_call_str
+from generic_grader.utils.docs import calc_log_limit, get_wrapper, make_call_str
 from generic_grader.utils.exceptions import RefFileNotFoundError
 from generic_grader.utils.user import RefUser, SubUser
 
-text_wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+text_wrapper = get_wrapper()
 
 
 def reference_test(func):

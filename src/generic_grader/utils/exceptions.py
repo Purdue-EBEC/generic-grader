@@ -1,14 +1,12 @@
-import textwrap
 import traceback
 from os import path
+
+from generic_grader.utils.docs import get_wrapper
 
 inf_loop_hint = "Make sure your program isn't stuck in an infinite loop."
 return_hint = "Try using a `return` statement instead."
 
-wrapper = textwrap.TextWrapper(
-    initial_indent="  ",
-    subsequent_indent="  ",
-)
+wrapper = get_wrapper()
 
 
 def indent(string, pad="  "):

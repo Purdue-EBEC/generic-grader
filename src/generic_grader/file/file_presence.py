@@ -1,13 +1,13 @@
 """Test for presence of required files."""
 
 import glob
-import textwrap
 import unittest
 from pathlib import Path
 
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.options import options_to_params
 
 # TODO
@@ -42,7 +42,7 @@ def build(the_options):
     class TestFilePresence(unittest.TestCase):
         """A class for file tests."""
 
-        wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+        wrapper = get_wrapper()
 
         @parameterized.expand(the_params, doc_func=lambda func, n, p: func.__doc__)
         @weighted

@@ -1,7 +1,10 @@
+import textwrap
+
 import pytest
 
 from generic_grader.utils.docs import (
     calc_log_limit,
+    get_wrapper,
     make_call_str,
     make_line_range,
     ordinalize,
@@ -112,3 +115,12 @@ oxford_cases = [
 def test_oxford_list(case):
     """Test oxford_list to ensure it formats lists correctly."""
     assert oxford_list(case["sequence"]) == case["expected"]
+
+
+def test_get_wrapper():
+    """Test get_wrapper to ensure it returns the correct wrapper."""
+    wrapper = get_wrapper()
+    assert isinstance(wrapper, textwrap.TextWrapper)
+
+    assert wrapper.initial_indent == "  "
+    assert wrapper.subsequent_indent == "  "

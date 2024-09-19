@@ -1,5 +1,7 @@
 """Functions to generate customized docstrings for parameterized tests."""
 
+import textwrap
+
 
 def make_call_str(func_name="main", args=[], kwargs={}):
     """Construct and return a function call string from its name, and
@@ -58,3 +60,8 @@ def oxford_list(sequence):
         last = sequence[-1]
         not_last = ", ".join(sequence[:-1])
         return f"{not_last}, and {last}"
+
+
+def get_wrapper() -> textwrap.TextWrapper:
+    """Return an instance of the text wrapper used across tests."""
+    return textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
