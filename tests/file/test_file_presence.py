@@ -166,13 +166,12 @@ cases = [
 
 
 @pytest.fixture(params=cases)
-def case_test_method(request, tmp_path, monkeypatch):
+def case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
     for file_name in case["present"]:
-        file_path = tmp_path / file_name
+        file_path = fix_syspath / file_name
         file_path.write_text("")
-    monkeypatch.chdir(tmp_path)
 
     built_class = build(
         Options(

@@ -571,14 +571,13 @@ cases = [
 
 
 @pytest.fixture(params=cases)
-def case_test_method(request, tmp_path, monkeypatch):
+def case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
     case = request.param
-    file_path = tmp_path / "hello_user.py"
+    file_path = fix_syspath / "hello_user.py"
     file_path.write_text(case["submission"])
-    file_path = tmp_path / "reference.py"
+    file_path = fix_syspath / "reference.py"
     file_path.write_text(case["reference"])
-    monkeypatch.chdir(tmp_path)
 
     options = Options(
         ref_module="reference",
