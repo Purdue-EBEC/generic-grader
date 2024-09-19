@@ -1,12 +1,11 @@
 """Test calculation results."""
 
-import textwrap
 import unittest
 
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
-from generic_grader.utils.docs import make_call_str
+from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
@@ -35,7 +34,7 @@ def build(the_options):
     class TestFunctionReturnValuesMatchReference(unittest.TestCase):
         """A class for functionality tests."""
 
-        wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+        wrapper = get_wrapper()
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted

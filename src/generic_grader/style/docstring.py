@@ -3,12 +3,12 @@
 import ast
 import datetime
 import os
-import textwrap
 import unittest
 
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.options import options_to_params
 
 
@@ -60,7 +60,7 @@ def build(the_options):
     class TestDocstring(unittest.TestCase):
         """A class for docstring tests."""
 
-        wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+        wrapper = get_wrapper()
 
         def set_up(self):
             with open(submission) as fo:

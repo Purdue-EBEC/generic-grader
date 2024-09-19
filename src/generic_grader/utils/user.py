@@ -4,7 +4,6 @@ import re
 import resource
 import signal
 import sys
-import textwrap
 from contextlib import ExitStack, contextmanager
 from copy import deepcopy
 from io import StringIO
@@ -13,7 +12,7 @@ from unittest.mock import patch
 from attrs import evolve
 from freezegun import freeze_time
 
-from generic_grader.utils.docs import make_call_str, ordinalize
+from generic_grader.utils.docs import get_wrapper, make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
     EndOfInputError,
     ExitError,
@@ -93,7 +92,7 @@ def memory_limit(max_gibibytes):
 class __User__:
     """Manages interactions with parts of the submitted code."""
 
-    wrapper = textwrap.TextWrapper(initial_indent="  ", subsequent_indent="  ")
+    wrapper = get_wrapper()
 
     class LogIO(StringIO):
         """A string io object with a character limit."""
