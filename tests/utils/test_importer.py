@@ -90,7 +90,7 @@ def test_error_exception(fix_syspath, case):
 
 
 @pytest.mark.parametrize("case", error_cases)
-def test_error_message(monkeypatch, fix_syspath, case):
+def test_error_message(fix_syspath, case):
     """Test the Importer's ability to provide helpful error messages."""
     if case["error"] is not ModuleNotFoundError:
         fake_file = fix_syspath / (case["module"] + ".py")
