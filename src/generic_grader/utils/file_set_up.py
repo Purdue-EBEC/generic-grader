@@ -13,6 +13,9 @@ def file_set_up(options):
     if "" not in sys.path:
         sys.path.insert(0, "")  # pragma: no cover
 
+    if o.init:
+        o.init()
+
     # Create symlinks to non-globbed form of each required file.
     setup_steps = []
     for file_pattern in o.required_files:
