@@ -346,7 +346,6 @@ class __User__:
                         patch(
                             *p.get("args", ()),  # permit missing args
                             **p.get("kwargs", {}),  # permit missing kwargs
-                            create=True,
                         )
                     )
 
