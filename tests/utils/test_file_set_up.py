@@ -142,3 +142,16 @@ def test_file_setup(set_up_case_test_method):
         assert actual_symlinks == case["expected_symlinks"]
     removed_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
     assert not removed_symlinks
+
+
+def test_init(capsys):
+    """Test that an init gets run"""
+
+    def init():
+        print("init")
+
+    o = Options(init=init)
+    with file_set_up(o):
+        pass
+    captured = capsys.readouterr()
+    assert captured.out == "init\n"
