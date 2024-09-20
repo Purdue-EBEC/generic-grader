@@ -10,6 +10,9 @@ def file_set_up(options):
     """Create symlinks to the required files that later tests depend on."""
     o = options
 
+    if o.init:
+        o.init()
+
     if "" not in sys.path:
         sys.path.insert(0, "")  # pragma: no cover
 
