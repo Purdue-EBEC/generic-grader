@@ -33,7 +33,7 @@ class Options:
     n_lines: int | None = None
     line_n: int = 1
     value_n: int | None = None
-    ratio: int = 1  # exact match
+    ratio: float = 1.0  # exact match
     log_limit: int = 0
     fixed_time: bool | datetime.datetime | str = False
     debug: bool = False
