@@ -78,7 +78,7 @@ def build(options):
 
             elif o.mode == "approximately":
                 message = str(
-                    f"\nThe {o.region_inner} should have approximately {o.threshold}"
+                    f"\nThe {o.region_inner} should have approximately {o.threshold} "
                     f"pixels in the {o.region_outer}." + (o.hint and f" {o.hint}" or "")
                 )
                 self.assertAlmostEqual(pixels, o.threshold, msg=message, delta=o.delta)
