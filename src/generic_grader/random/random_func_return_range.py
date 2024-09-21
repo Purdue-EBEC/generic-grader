@@ -9,7 +9,7 @@ from parameterized import parameterized
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
 from generic_grader.utils.options import options_to_params
-from generic_grader.utils.reference_test import reference_test
+from generic_grader.utils.user import SubUser
 
 
 def doc_func(func, num, param):
@@ -71,7 +71,6 @@ def build(the_options):
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
-        @reference_test
         def test_random_func_return_range(self, options):
             """Check for extra or missing values from a function's range."""
 
@@ -82,7 +81,7 @@ def build(the_options):
                 o.init()
 
             # Create the student user.
-            # self.student_user = User(self, o.sub_module, o.obj_name, o.patches)
+            self.student_user = SubUser(self, o)
 
             # Collect the actual set by repeated calls to the function.
             actual_set = set()
