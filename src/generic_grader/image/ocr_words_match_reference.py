@@ -67,5 +67,6 @@ def build(options):
                 "".join(expected_words),
             ).ratio()
             self.assertGreaterEqual(ratio, o.ratio, msg=message)
+            self.set_score(self, options.weight)
 
     return OCRWordsMatchReference
