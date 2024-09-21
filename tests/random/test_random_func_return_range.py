@@ -40,14 +40,15 @@ def test_random_func_return_range_has_test_method(built_instance):
 
 # Cases Tested:
 # 1. Correct returned value
-# 2. Expected set is larger than the returned set
-# 3. Returned set is larger than the expected set
+# 2. Passing case with init options specified
+# 3. Expected set is larger than the returned set
+# 4. Returned set is larger than the expected set
 
 
 cases = [
     {  # Correct returned value
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
+        "reference": "pass",
         "result": "pass",
         "options": Options(
             obj_name="test_function",
@@ -63,9 +64,28 @@ cases = [
             """ matches the expected range."""
         ),
     },
+    {  # Passing case with init options specified
+        "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
+        "reference": "pass",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+            init=lambda: None,
+        ),
+        "doc_func_test_string": (
+            """Check the range of value(s) returned from your"""
+            """ `submission.test_function` function"""
+            """ when called as `test_function()`"""
+            """ matches the expected range."""
+        ),
+    },
     {  # Expected set is larger than the returned set
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
+        "reference": "pass",
         "result": AssertionError,
         "options": Options(
             obj_name="test_function",
@@ -84,7 +104,7 @@ cases = [
     },
     {  # Returned set is larger than the expected set
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
+        "reference": "pass",
         "result": AssertionError,
         "options": Options(
             obj_name="test_function",
