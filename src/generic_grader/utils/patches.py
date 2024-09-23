@@ -1,5 +1,8 @@
 from generic_grader.utils.exceptions import TurtleDoneError, TurtleWriteError
-from generic_grader.utils.mocks import make_mock_function_raise_error
+from generic_grader.utils.mocks import (
+    make_mock_function_noop,
+    make_mock_function_raise_error,
+)
 
 
 def make_turtle_done_patches(modules):
@@ -27,4 +30,13 @@ def make_turtle_write_patches(modules):
     return [
         {"args": make_mock_function_raise_error(f"{module}.write", TurtleWriteError)}
         for module in ["turtle", *modules]
+    ]
+
+
+def make_pyplot_noop_patches(modules):
+    """Patch `matplotlib.pyplt.show` with a noop."""
+    return [
+        {"args": make_mock_function_noop(f"{module}.{func}")}
+        for func in ["savefig", "show"]
+        for module in ["matplotlib.pyplot", *modules]
     ]
