@@ -74,6 +74,29 @@ passing_cases = [
         ),
         "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef main():\n    funcs = [func1, func2]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n",
     },
+    {  # Check that it works even if the students code has a local call_list variable.
+        "options": Options(
+            sub_module="sub",
+            weight=2,
+            random_func_calls=["sub.func1", "sub.func2"],
+            expected_perms={("sub.func1", "sub.func2"), ("sub.func2", "sub.func1")},
+        ),
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "    pass\n"
+            "def func2():\n"
+            "    pass\n"
+            "def main():\n"
+            "    call_list = ['spam']\n"
+            "    funcs = [func1, func2]\n"
+            "    random.shuffle(funcs)\n"
+            "    for func in funcs:\n"
+            "        call_list = ['more spam']\n"
+            "        func()\n"
+            "    call_list = ['eggs']\n"
+        ),
+    },
 ]
 
 

@@ -43,23 +43,22 @@ def build(the_options):
 
             o = options
             call_list = []
-            # We need to create this local variables value here because eval does not have acess to values outside of its scope
-            # and since the loop is technically its own scope we need to manually set locals.
-            # We also need to use eval here because otherwise `func` does not get evaluated until it is called.
-            local_variables = locals()
 
             if o.init:
                 o.init()
 
+            def wrapper(func):
+                """Return a lambda that appends the function name to the call_list.
+
+                This wrapper creates a closure containing `func`` to make sure that it
+                has the correct value at the time the labmda is called.  Otherwise, the
+                value of `func`` will be the last value it was assigned in the loop.
+                """
+                return lambda *args, **kwargs: call_list.append(func)
+
             new_patches = [
                 {
-                    "args": [
-                        func,
-                        eval(
-                            f'lambda *args, **kwargs: call_list.append("{func}")',
-                            local_variables,
-                        ),
-                    ],
+                    "args": [func, wrapper(func)],
                     "kwargs": {"create": True},
                 }
                 for func in o.random_func_calls
