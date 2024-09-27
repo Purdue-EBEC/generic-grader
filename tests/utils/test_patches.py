@@ -2,6 +2,7 @@ import pytest
 
 from generic_grader.utils.options import Options
 from generic_grader.utils.patches import (
+    make_exit_quit_patches,
     make_pyplot_noop_patches,
     make_turtle_done_patches,
     make_turtle_write_patches,
@@ -75,5 +76,26 @@ def test_make_turtle_done_patches_names():
 def test_make_turtle_done_patches_format():
     """Make sure the patches are properly formatted and load into Options properly."""
     result = make_turtle_done_patches(["sub_module"])
+
+    assert Options(patches=result)
+
+
+def test_make_exit_quit_patches_names():
+    result = make_exit_quit_patches()
+
+    exit_func_name, _ = result[0]["args"]
+
+    quit_func_name, _ = result[1]["args"]
+
+    assert exit_func_name == "builtins.exit"
+    assert quit_func_name == "builtins.quit"
+
+    with pytest.raises(IndexError):
+        result[2]
+
+
+def test_make_exit_quit_patches_format():
+    """Make sure the patches are properly formatted and load into Options properly."""
+    result = make_exit_quit_patches()
 
     assert Options(patches=result)

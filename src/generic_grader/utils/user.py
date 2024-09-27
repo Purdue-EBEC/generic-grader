@@ -1,10 +1,7 @@
 """Provide a mock user for code under test."""
 
 import re
-import resource
-import signal
-import sys
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack
 from copy import deepcopy
 from io import StringIO
 from unittest.mock import patch
@@ -15,78 +12,15 @@ from freezegun import freeze_time
 from generic_grader.utils.docs import get_wrapper, make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
     EndOfInputError,
-    ExitError,
     ExtraEntriesError,
     LogLimitExceededError,
-    QuitError,
     UserInitializationError,
-    UserTimeoutError,
     handle_error,
 )
 from generic_grader.utils.importer import Importer
 from generic_grader.utils.options import Options
-
-
-# Change to Lamda functions
-def raise_exit_error(*args, **kwargs):
-    """Raise a custom ExitError."""
-    raise ExitError()
-
-
-def raise_quit_error(*args, **kwargs):
-    """Raise a custom QuitError."""
-    raise QuitError()
-
-
-@contextmanager
-def time_limit(seconds):
-    """A context manager to limit the execution time of an enclosed block.
-    Adapted from https://stackoverflow.com/a/601168
-    """
-
-    def handler(signum, frame):
-        raise UserTimeoutError(
-            f"The time limit for this test is {seconds}"
-            + ((seconds == 1 and " second.") or " seconds.")
-        )
-
-    signal.signal(signal.SIGALRM, handler)
-
-    signal.alarm(seconds)  # Set an alarm to interrupt after seconds seconds.
-
-    try:
-        yield
-    finally:
-        # Cancel the alarm.
-        signal.alarm(0)
-
-
-@contextmanager
-def memory_limit(max_gibibytes):
-    """A context manager to limit memory usage while running submitted code.
-    For soft limits above 20 MiB, the error was found experimentally to be
-    raised when the total memory usage was about 10 MiB below the soft limit.
-    For all soft limits less than 20 MiB, the error was raised when the total
-    memory usage was about 9.2 MiB.
-    """
-    GiB = 2**30
-    max_bytes = int(max_gibibytes * GiB)
-
-    soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-    resource.setrlimit(resource.RLIMIT_AS, (max_bytes, hard))
-    try:
-        yield
-    except MemoryError:
-        # Restore the previous limits
-        resource.setrlimit(resource.RLIMIT_AS, (soft, hard))
-        message = (
-            "Your program used more than the maximum allowed memory"
-            f" of {max_gibibytes} GiB."
-        )
-        raise MemoryError(message).with_traceback(sys.exc_info()[2])
-    else:
-        # Restore the previous limits
-        resource.setrlimit(resource.RLIMIT_AS, (soft, hard))
+from generic_grader.utils.patches import make_exit_quit_patches
+from generic_grader.utils.resource_limits import memory_limit, time_limit
 
 
 class __User__:
@@ -130,25 +64,13 @@ class __User__:
         self.interactions = [self.log.tell()]
 
         # Import the test modules obj_name object.
-        self.obj = Importer.import_obj(test, self.module, self.options.obj_name)
+        self.obj = Importer.import_obj(test, self.module, self.options)
         self.returned_values = None
 
         self.patches = [
             {"args": ["sys.stdout", self.log]},
             {"args": ["builtins.input", self.responder]},
-            {
-                "args": [
-                    "builtins.exit",
-                    raise_exit_error,
-                ],
-            },
-            {
-                "args": [
-                    "builtins.quit",
-                    raise_quit_error,
-                ],
-            },
-        ]
+        ] + make_exit_quit_patches()
         if options.patches:
             self.patches.extend(options.patches)
 
