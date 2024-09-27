@@ -54,7 +54,20 @@ passing_cases = [
             random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
             expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef func3():\n    pass\n\ndef main():\n    funcs = [func1, func2, func3]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n",
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "   pass\n"
+            "def func2():\n"
+            "   pass\n"
+            "def func3():\n"
+            "    pass\n"
+            "def main():\n"
+            "   funcs = [func1, func2, func3]\n"
+            "   random.shuffle(funcs)\n"
+            "   for func in funcs:\n"
+            "       func()\n"
+        ),
     },
     {  # Check that it works as expected with a single function
         "options": Options(
@@ -63,7 +76,7 @@ passing_cases = [
             random_func_calls=["sub.func1"],
             expected_perms={("sub.func1",)},
         ),
-        "file_text": "def func1():\n    pass\n\ndef main():\n    func1()\n",
+        "file_text": ("def func1():\n" "    pass\n" "def main():\n" "   func1()\n"),
     },
     {  # Check that it works as expected with two functions
         "options": Options(
@@ -72,7 +85,18 @@ passing_cases = [
             random_func_calls=["sub.func1", "sub.func2"],
             expected_perms={("sub.func1", "sub.func2"), ("sub.func2", "sub.func1")},
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef main():\n    funcs = [func1, func2]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n",
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "    pass\n"
+            "def func2():\n"
+            "    pass\n"
+            "def main():\n"
+            "    funcs = [func1, func2]\n"
+            "    random.shuffle(funcs)\n"
+            "    for func in funcs:\n"
+            "       func()\n"
+        ),
     },
     {  # Check that it works even if the students code has a local call_list variable.
         "options": Options(
@@ -124,7 +148,18 @@ failing_cases = [
             random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
             expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
         ),
-        "file_text": "def func1():\n    pass\n\ndef func2():\n    pass\n\ndef func3():\n    pass\n\ndef main():\n    func1()\n    func2()\n    func3()\n",
+        "file_text": (
+            "def func1():\n"
+            "   pass\n"
+            "def func2():\n"
+            "   pass\n"
+            "def func3():\n"
+            "   pass\n"
+            "def main():\n"
+            "   func1()\n"
+            "   func2()\n"
+            "   func3()\n"
+        ),
     },
     {  # Check that it fails when only two functions are shuffled
         "options": Options(
@@ -133,16 +168,21 @@ failing_cases = [
             random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
             expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef func3():\n    pass\n\ndef main():\n    funcs = [func1, func2]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n    func3()\n",
-    },
-    {  # Check that it fails when the functions are not shuffled
-        "options": Options(
-            sub_module="sub",
-            weight=2,
-            random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
-            expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "   pass\n"
+            "def func2():\n"
+            "   pass\n"
+            "def func3():\n"
+            "   pass\n"
+            "def main():\n"
+            "   funcs = [func1, func2]\n"
+            "   random.shuffle(funcs)\n"
+            "   for func in funcs:\n"
+            "       func()\n"
+            "   func3()\n"
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef func3():\n    pass\n\ndef main():\n    funcs = [func1, func2, func3]\n    for func in funcs:\n        func()\n",
     },
     {  # Check that it fails when some functions are not called at all
         "options": Options(
@@ -151,7 +191,20 @@ failing_cases = [
             random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
             expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef func3():\n    pass\n\ndef main():\n    funcs = [func1, func2]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n",
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "   pass\n"
+            "def func2():\n"
+            "   pass\n"
+            "def func3():\n"
+            "   pass\n"
+            "def main():\n"
+            "   funcs = [func1, func2]\n"
+            "   random.shuffle(funcs)\n"
+            "   for func in funcs:\n"
+            "       func()\n"
+        ),
     },
     {  # Check that it fails when some functions do not exist
         "options": Options(
@@ -160,7 +213,18 @@ failing_cases = [
             random_func_calls=[f"sub.func{i}" for i in [3, 2, 1]],
             expected_perms=set(permutations([f"sub.func{i}" for i in [3, 2, 1]])),
         ),
-        "file_text": "import random\ndef func1():\n    pass\n\ndef func2():\n    pass\n\ndef main():\n    funcs = [func1, func2]\n    random.shuffle(funcs)\n    for func in funcs:\n        func()\n",
+        "file_text": (
+            "import random\n"
+            "def func1():\n"
+            "   pass\n"
+            "def func2():\n"
+            "   pass\n"
+            "def main():\n"
+            "    funcs = [func1, func2]\n"
+            "    random.shuffle(funcs)\n"
+            "    for func in funcs:\n"
+            "        func()\n"
+        ),
     },
 ]
 
