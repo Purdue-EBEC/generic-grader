@@ -73,6 +73,11 @@ class Options:
     delta: int = 0
     expected_words: str = ""
 
+    # Random_func_calls
+    random_func_calls: list[str] = Factory(list)
+    random_chance_tolerance: int = 9
+    # This is the probabilty that we miss a possible outcome, by default it is set to 1 in a billion
+
     def __attrs_post_init__(self):
         """Check that the attributes are of the correct type."""
         for attr in self.__annotations__:
@@ -80,6 +85,9 @@ class Options:
                 expected_type = (Callable, type(None))
                 attr_type = f"<class 'function'> or {type(None)}. "
             elif attr == "patches":
+                expected_type = list
+                attr_type = f"{list}. "
+            elif attr == "random_func_calls":
                 expected_type = list
                 attr_type = f"{list}. "
             else:
