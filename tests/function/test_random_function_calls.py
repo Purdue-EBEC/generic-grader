@@ -42,7 +42,8 @@ def test_random_function_calls_has_test_method(built_instance):
 def test_random_function_calls_docstring(built_instance):
     """Make sure the docstring is correct."""
     assert built_instance.test_random_function_calls_0.__doc__ == (
-        "Check the randomness of the functions(s) called from within function call `main()` in your `sub` module with entries=(7,)."
+        "Check the randomness of the functions(s) called from within function call "
+        "`main()` in your `sub` module with entries=(7,)."
     )
 
 
@@ -245,7 +246,8 @@ def test_failing_random_function_calls(fix_syspath, case):
     assert test_method.__score__ == 0
     # Make sure the error message is correct
     assert (
-        "It does not appear that your functions are being called randomly.\n  Please ensure that you are calling the functions in a random order."
+        "It does not appear that your functions are being called randomly.\n  "
+        "Please ensure that you are calling the functions in a random order."
         in str(exc_info.value)
     )
 

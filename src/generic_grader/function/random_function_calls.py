@@ -50,9 +50,9 @@ def build(the_options):
             def wrapper(func):
                 """Return a lambda that appends the function name to the call_list.
 
-                This wrapper creates a closure containing `func`` to make sure that it
+                This wrapper creates a closure containing `func` to make sure that it
                 has the correct value at the time the labmda is called.  Otherwise, the
-                value of `func`` will be the last value it was assigned in the loop.
+                value of `func` would be the last value it was assigned in the loop.
                 """
                 return lambda *args, **kwargs: call_list.append(func)
 
