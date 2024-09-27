@@ -48,12 +48,10 @@ def test_random_func_return_range_has_test_method(built_instance):
 cases = [
     {  # Correct returned value
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "pass",
         "result": "pass",
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
-            ref_module="reference",
             weight=1,
             expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
         ),
@@ -66,12 +64,10 @@ cases = [
     },
     {  # Passing case with init options specified
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "pass",
         "result": "pass",
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
-            ref_module="reference",
             weight=1,
             expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
             init=lambda: None,
@@ -85,12 +81,10 @@ cases = [
     },
     {  # Expected set is larger than the returned set
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "pass",
         "result": AssertionError,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
-            ref_module="reference",
             weight=1,
             expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11},
         ),
@@ -104,12 +98,10 @@ cases = [
     },
     {  # Returned set is larger than the expected set
         "submission": "import random as r\ndef test_function():\n    return r.randint(1, 10)",
-        "reference": "pass",
         "result": AssertionError,
         "options": Options(
             obj_name="test_function",
             sub_module="submission",
-            ref_module="reference",
             weight=1,
             expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9},
         ),
@@ -130,8 +122,6 @@ def case_test_method(request, fix_syspath):
     case = request.param
     file_path = fix_syspath / f"{case['options'].sub_module}.py"
     file_path.write_text(case["submission"])
-    file_path = fix_syspath / f"{case['options'].ref_module}.py"
-    file_path.write_text(case["reference"])
 
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_random_func_return_range_0")
