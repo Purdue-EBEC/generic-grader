@@ -1,4 +1,9 @@
-from generic_grader.utils.exceptions import TurtleDoneError, TurtleWriteError
+from generic_grader.utils.exceptions import (
+    ExitError,
+    QuitError,
+    TurtleDoneError,
+    TurtleWriteError,
+)
 from generic_grader.utils.mocks import (
     make_mock_function_noop,
     make_mock_function_raise_error,
@@ -39,4 +44,14 @@ def make_pyplot_noop_patches(modules):
         {"args": make_mock_function_noop(f"{module}.{func}")}
         for func in ["savefig", "show"]
         for module in ["matplotlib.pyplot", *modules]
+    ]
+
+
+def make_exit_quit_patches():
+    """Patch `sys.exit` and `quit`"""
+    return [
+        {
+            "args": make_mock_function_raise_error("builtins.exit", ExitError),
+        },
+        {"args": make_mock_function_raise_error("builtins.quit", QuitError)},
     ]

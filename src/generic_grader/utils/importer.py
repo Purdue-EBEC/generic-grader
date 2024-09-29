@@ -1,10 +1,14 @@
 """Handle importing objects from student code."""
 
 import unittest
+from contextlib import ExitStack
 from unittest.mock import patch
 
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.exceptions import handle_error
+from generic_grader.utils.options import Options
+from generic_grader.utils.patches import make_exit_quit_patches
+from generic_grader.utils.resource_limits import memory_limit, time_limit
 
 
 class Importer:
@@ -21,18 +25,35 @@ class Importer:
         raise cls.InputError()
 
     @classmethod
-    def import_obj(cls, test: unittest.TestCase, module: str, obj_name: str):
+    def import_obj(cls, test: unittest.TestCase, module: str, o: Options):
         """Import and return the requested object from module. Special
         handling is applied to catch input() statements and missing
         objects."""
+        obj_name = o.obj_name
 
         imp_obj = None
         try:
             fail_msg = False
             # Override input() to raise an exception if it gets called.
-            with patch(
-                "builtins.input", lambda *args, **kwargs: cls.raise_input_error()
-            ):
+            with ExitStack() as stack:
+                stack.enter_context(time_limit(o.time_limit))
+                stack.enter_context(memory_limit(o.memory_limit_GB))
+                patches = o.patches or [] + make_exit_quit_patches() + [
+                    {
+                        "args": [
+                            "builtins.input",
+                            lambda *args, **kwargs: cls.raise_input_error(),
+                        ]
+                    }
+                ]
+                for p in patches:
+                    stack.enter_context(
+                        patch(
+                            *p.get("args", ()),  # permit missing args
+                            **p.get("kwargs", {}),  # permit missing kwargs
+                        )
+                    )
+
                 # Try to import student's object
                 imp_obj = getattr(__import__(module, fromlist=[obj_name]), obj_name)
 

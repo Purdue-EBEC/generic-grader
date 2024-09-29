@@ -23,6 +23,10 @@ class Options:
     ignored_files: tuple = ()
     hint: str = ""
     patches: list[dict[str, list[str, Callable]]] = Factory(list)
+    """
+    There are some functions that cannot be patched due to other functions being dependent on their behavior.
+    As of right now, those functions are `str` and `int`.
+    """
 
     # Input
     entries: tuple = ()
