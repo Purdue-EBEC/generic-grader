@@ -1,13 +1,10 @@
 """Provide a mock user for code under test."""
 
 import re
-from contextlib import ExitStack
 from copy import deepcopy
 from io import StringIO
-from unittest.mock import patch
 
 from attrs import evolve
-from freezegun import freeze_time
 
 from generic_grader.utils.docs import get_wrapper, make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
@@ -19,8 +16,7 @@ from generic_grader.utils.exceptions import (
 )
 from generic_grader.utils.importer import Importer
 from generic_grader.utils.options import Options
-from generic_grader.utils.patches import make_exit_quit_patches
-from generic_grader.utils.resource_limits import memory_limit, time_limit
+from generic_grader.utils.patches import custom_stack
 
 
 class __User__:
@@ -70,7 +66,7 @@ class __User__:
         self.patches = [
             {"args": ["sys.stdout", self.log]},
             {"args": ["builtins.input", self.responder]},
-        ] + make_exit_quit_patches()
+        ]
         if options.patches:
             self.patches.extend(options.patches)
 
@@ -250,26 +246,8 @@ class __User__:
             + ((o.entries) and f" with entries {o.entries}." or ".")
         )
         try:
-            with ExitStack() as stack:
-                # Limit execution time to 1 second.
-                stack.enter_context(time_limit(o.time_limit))
-
-                # Limit memory to 1.4 GB.
-                stack.enter_context(memory_limit(o.memory_limit_GB))
-
-                if o.fixed_time:
-                    # Freeze time
-                    stack.enter_context(freeze_time(o.fixed_time))
-
-                # Apply patches, this must be done last because any patches added also affect our code
-                for p in self.patches:
-                    stack.enter_context(
-                        patch(
-                            *p.get("args", ()),  # permit missing args
-                            **p.get("kwargs", {}),  # permit missing kwargs
-                        )
-                    )
-
+            stack_o = evolve(o, patches=self.patches)
+            with custom_stack(stack_o):
                 # Call the attached object with copies of r args and kwargs.
                 self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
         except Exception as e:

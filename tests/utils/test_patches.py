@@ -1,7 +1,13 @@
+import datetime
+import time
+
 import pytest
 
+from generic_grader.utils.exceptions import ExitError, QuitError, UserTimeoutError
+from generic_grader.utils.mocks import make_mock_function_raise_error
 from generic_grader.utils.options import Options
 from generic_grader.utils.patches import (
+    custom_stack,
     make_exit_quit_patches,
     make_pyplot_noop_patches,
     make_turtle_done_patches,
@@ -81,6 +87,7 @@ def test_make_turtle_done_patches_format():
 
 
 def test_make_exit_quit_patches_names():
+    """Test that the exit and quit functions are properly patched."""
     result = make_exit_quit_patches()
 
     exit_func_name, _ = result[0]["args"]
@@ -99,3 +106,48 @@ def test_make_exit_quit_patches_format():
     result = make_exit_quit_patches()
 
     assert Options(patches=result)
+
+
+def test_stack_time():
+    """Test that the custom stack properly freezes time."""
+    o = Options(fixed_time=datetime.datetime(2000, 1, 1, 1))
+    with custom_stack(o):
+        assert datetime.datetime.now() == datetime.datetime(2000, 1, 1, 1)
+
+
+def test_stack_exit():
+    """Test that the custom stack properly patches exit and quit."""
+    o = Options(patches=make_exit_quit_patches())
+    with custom_stack(o):
+        with pytest.raises(ExitError):
+            exit()
+        with pytest.raises(QuitError):
+            quit()
+
+
+def test_stack_timelimit():
+    """Test that the custom stack properly patches time limit."""
+    o = Options(time_limit=1)
+    with custom_stack(o):
+        with pytest.raises(UserTimeoutError):
+            while True:
+                time.sleep(1)
+
+
+@pytest.mark.skip(reason="Memory limit is not working on some systems (see #65).")
+def test_stack_memorylimit():
+    """Test that the custom stack properly patches memory limit."""
+    o = Options()
+    with custom_stack(o):
+        with pytest.raises(MemoryError):
+            [1] * 100000000000
+
+
+def test_stack_extra_patches():
+    """Test that the custom stack properly patches extra patches."""
+    o = Options(
+        patches=[{"args": make_mock_function_raise_error("builtins.print", ValueError)}]
+    )
+    with custom_stack(o):
+        with pytest.raises(ValueError):
+            print("Hello, world!")
