@@ -3,7 +3,6 @@ import textwrap
 import pytest
 
 from generic_grader.utils.docs import (
-    calc_log_limit,
     get_wrapper,
     make_call_str,
     make_line_range,
@@ -65,20 +64,6 @@ ord_cases = [
 def test_ordinalize(case):
     """Test ordinalize to ensure it formats numbers correctly."""
     assert ordinalize(case["n"]) == case["expected"]
-
-
-calc_log_cases = [
-    {"expected_log": "", "expected": 200},
-    {"expected_log": "log message", "expected": 216},
-    {"expected_log": "log message" * 10, "expected": 365},
-    {"expected_log": "log message" * 100, "expected": 1850},
-]
-
-
-@pytest.mark.parametrize("case", calc_log_cases)
-def test_calc_log_limit(case):
-    """Test calc_log_limit to ensure it calculates log limits correctly."""
-    assert calc_log_limit(case["expected_log"]) == case["expected"]
 
 
 line_range_cases = [

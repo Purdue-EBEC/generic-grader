@@ -1,6 +1,6 @@
 import pytest
 
-from generic_grader.utils.math_utils import n_trials
+from generic_grader.utils.math_utils import calc_log_limit, n_trials
 
 cases = [
     # Input, Expected
@@ -21,3 +21,17 @@ cases = [
 def test_n_trials(num_cases, tolerance, expected):
     """Test that the n_trials function returns the expected value."""
     assert n_trials(num_cases, tolerance) == expected
+
+
+calc_log_cases = [
+    {"expected_log": "", "expected": 200},
+    {"expected_log": "log message", "expected": 216},
+    {"expected_log": "log message" * 10, "expected": 365},
+    {"expected_log": "log message" * 100, "expected": 1850},
+]
+
+
+@pytest.mark.parametrize("case", calc_log_cases)
+def test_calc_log_limit(case):
+    """Test calc_log_limit to ensure it calculates log limits correctly."""
+    assert calc_log_limit(case["expected_log"]) == case["expected"]

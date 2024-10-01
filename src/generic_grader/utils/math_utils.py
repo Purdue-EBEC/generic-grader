@@ -32,4 +32,8 @@ def n_trials(n, tolerance):
     return int(1 + tolerance / log10((n + 1) / n))
 
 
-# Add calc_log_limit here after this PR is merged:
+def calc_log_limit(expected_log):
+    """Calculate a log character limit as some minimum number of
+    characters plus a multiple of the length of the expected log.
+    """
+    return int(200 + 1.5 * len(expected_log))

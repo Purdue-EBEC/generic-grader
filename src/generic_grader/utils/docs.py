@@ -34,13 +34,6 @@ def ordinalize(n):
     return f"{n}{suffix}"
 
 
-def calc_log_limit(expected_log):
-    """Calculate a log character limit as some minimum number of
-    characters plus a multiple of the length of the expected log.
-    """
-    return int(200 + 1.5 * len(expected_log))
-
-
 def make_line_range(start, n_lines):
     """Return the range of lines being checked expressed in words."""
     if n_lines == 1:

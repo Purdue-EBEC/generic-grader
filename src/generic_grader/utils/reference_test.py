@@ -6,8 +6,9 @@ import os
 
 from attrs import evolve
 
-from generic_grader.utils.docs import calc_log_limit, get_wrapper, make_call_str
+from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.exceptions import RefFileNotFoundError
+from generic_grader.utils.math_utils import calc_log_limit
 from generic_grader.utils.user import RefUser, SubUser
 
 text_wrapper = get_wrapper()
