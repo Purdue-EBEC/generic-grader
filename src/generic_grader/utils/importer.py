@@ -1,14 +1,13 @@
 """Handle importing objects from student code."""
 
 import unittest
-from contextlib import ExitStack
-from unittest.mock import patch
+
+from attrs import evolve
 
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.exceptions import handle_error
 from generic_grader.utils.options import Options
-from generic_grader.utils.patches import make_exit_quit_patches
-from generic_grader.utils.resource_limits import memory_limit, time_limit
+from generic_grader.utils.patches import custom_stack
 
 
 class Importer:
@@ -32,28 +31,15 @@ class Importer:
         obj_name = o.obj_name
 
         imp_obj = None
+        fail_msg = False
         try:
-            fail_msg = False
+            stack_o = evolve(
+                o,
+                patches=(o.patches or [])
+                + [{"args": ["builtins.input", cls.raise_input_error]}],
+            )
             # Override input() to raise an exception if it gets called.
-            with ExitStack() as stack:
-                stack.enter_context(time_limit(o.time_limit))
-                stack.enter_context(memory_limit(o.memory_limit_GB))
-                patches = o.patches or [] + make_exit_quit_patches() + [
-                    {
-                        "args": [
-                            "builtins.input",
-                            lambda *args, **kwargs: cls.raise_input_error(),
-                        ]
-                    }
-                ]
-                for p in patches:
-                    stack.enter_context(
-                        patch(
-                            *p.get("args", ()),  # permit missing args
-                            **p.get("kwargs", {}),  # permit missing kwargs
-                        )
-                    )
-
+            with custom_stack(stack_o):
                 # Try to import student's object
                 imp_obj = getattr(__import__(module, fromlist=[obj_name]), obj_name)
 
