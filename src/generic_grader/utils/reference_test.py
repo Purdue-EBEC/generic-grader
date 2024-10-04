@@ -38,6 +38,7 @@ def reference_test(func):
         # Create the reference user.
         self.ref_user = RefUser(self, options=o)
         reloads = []
+        importlib.invalidate_caches()
         for key in sys.modules.keys():
             if key == "data":
                 reloads.append(key)
