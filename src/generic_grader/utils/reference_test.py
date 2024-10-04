@@ -36,13 +36,13 @@ def reference_test(func):
                 pass
 
         # Create the reference user.
+        self.ref_user = RefUser(self, options=o)
         reloads = []
         for key in sys.modules.keys():
             if key == "data":
                 reloads.append(key)
         for key in reloads:
             importlib.reload(sys.modules[key])
-        self.ref_user = RefUser(self, options=o)
 
         # Run the reference code.
         self.ref_user.call_obj()
