@@ -2,7 +2,9 @@
 
 import difflib
 import functools
+import importlib
 import os
+import sys
 
 from attrs import evolve
 
@@ -34,6 +36,12 @@ def reference_test(func):
                 pass
 
         # Create the reference user.
+        reloads = []
+        for key in sys.modules.keys():
+            if key == "data":
+                reloads.append(key)
+        for key in reloads:
+            importlib.reload(sys.modules[key])
         self.ref_user = RefUser(self, options=o)
 
         # Run the reference code.
