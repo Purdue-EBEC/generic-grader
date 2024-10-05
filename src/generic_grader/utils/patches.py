@@ -26,7 +26,10 @@ def make_turtle_done_patches(modules):
     `modules = ["vowels", "random_vowels"]`.
     """
     return [
-        {"args": make_mock_function_raise_error(f"{module}.{func}", TurtleDoneError)}
+        {
+            "args": make_mock_function_raise_error(f"{module}.{func}", TurtleDoneError),
+            "kwargs": {"create": True},
+        }
         for func in ["done", "mainloop"]
         for module in ["turtle", *modules]
     ]
@@ -40,7 +43,10 @@ def make_turtle_write_patches(modules):
     E.g. `modules = ["vowels", "random_vowels"]`.
     """
     return [
-        {"args": make_mock_function_raise_error(f"{module}.write", TurtleWriteError)}
+        {
+            "args": make_mock_function_raise_error(f"{module}.write", TurtleWriteError),
+            "kwargs": {"create": True},
+        }
         for module in ["turtle", *modules]
     ]
 
@@ -48,7 +54,10 @@ def make_turtle_write_patches(modules):
 def make_pyplot_noop_patches(modules):
     """Patch `matplotlib.pyplt.show` with a noop."""
     return [
-        {"args": make_mock_function_noop(f"{module}.{func}")}
+        {
+            "args": make_mock_function_noop(f"{module}.{func}"),
+            "kwargs": {"create": True},
+        }
         for func in ["savefig", "show"]
         for module in ["matplotlib.pyplot", *modules]
     ]
