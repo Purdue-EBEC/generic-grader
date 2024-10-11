@@ -32,6 +32,12 @@ def test_make_pyplot_noop_patches_names():
         result[4]
 
 
+def test_pyplot_create():
+    """Make sure create is set to True."""
+    for patch in make_pyplot_noop_patches(["sub_module"]):
+        assert patch["kwargs"]["create"] is True
+
+
 def test_make_pyplot_noop_patches_format():
     """Make sure the patches are properly formatted and load into Options properly."""
     result = make_pyplot_noop_patches(["sub_module"])
@@ -51,6 +57,12 @@ def test_make_turtle_write_patches_names():
 
     with pytest.raises(IndexError):
         result[2]
+
+
+def test_turtle_write_create():
+    """Make sure create is set to True."""
+    for patch in make_turtle_write_patches(["sub_module"]):
+        assert patch["kwargs"]["create"] is True
 
 
 def test_make_turtle_write_patches_format():
@@ -77,6 +89,12 @@ def test_make_turtle_done_patches_names():
 
     with pytest.raises(IndexError):
         result[4]
+
+
+def test_turtle_done_create():
+    """Make sure create is set to True."""
+    for patch in make_turtle_done_patches(["sub_module"]):
+        assert patch["kwargs"]["create"] is True
 
 
 def test_make_turtle_done_patches_format():
