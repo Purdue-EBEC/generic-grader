@@ -52,24 +52,39 @@ passing_cases = [
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n1\\n2\\n1')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
+        ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n1\\n2')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
+        ),
     },
 ]
 
@@ -83,27 +98,36 @@ def test_passing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_lines_span_range_0")
-    built_instance.test_lines_span_range_0()
+    test_method = built_instance.test_lines_span_range_0
+    test_method()
+    assert test_method.__score__ == case["options"].weight
 
 
 failing_cases = [
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n6\\n')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
         "error": "Hint:\n  The values written to your output file do not span the expected set\n  of values.  Double check the values written to the file `file.txt`\n  by your `main` function when called as `main()`.",
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
         "error": "Hint:\n  The values written to your output file do not span the expected set\n  of values.  Double check the values written to the file `file.txt`\n  by your `main` function when called as `main()`.",
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n6\\n')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
         "error": "Hint:\n  The values written to your output files do not span the expected set\n  of values.  Double check the values written to the files `file.txt`\n  and `file2.txt` by your `main` function when called as `main()`.",
     },
@@ -111,7 +135,10 @@ failing_cases = [
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n5\\n')\n    with open('file2.txt', 'w') as f:\n        f.write('1\\n2\\n3\\n4\\n')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
         "error": "Hint:\n  The values written to your output files do not span the expected set\n  of values.  Double check the values written to the files `file.txt`\n  and `file2.txt` by your `main` function when called as `main()`.",
     },
@@ -127,6 +154,8 @@ def test_failing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_lines_span_range_0")
+    test_method = built_instance.test_lines_span_range_0
     with pytest.raises(AssertionError) as exc_info:
-        built_instance.test_lines_span_range_0()
+        test_method()
     assert case["error"] in str(exc_info.value)
+    assert test_method.__score__ == 0

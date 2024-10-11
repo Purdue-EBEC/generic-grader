@@ -52,24 +52,33 @@ passing_cases = [
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1 + spam')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1 no spam')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
     },
 ]
 
@@ -83,27 +92,36 @@ def test_passing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_has_n_lines_0")
-    built_instance.test_file_has_n_lines_0()
+    test_method = built_instance.test_file_has_n_lines_0
+    test_method()
+    assert test_method.__score__ == case["options"].weight
 
 
 failing_cases = [
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
         "error": "Lists differ: [2] != [1]\n\nFirst differing element 0:\n2\n1\n\n- [2]\n+ [1] : \n\nHint:\n  Your output file does not have the expected number of lines.  Double\n  check the number of lines written to the file `file.txt` by your\n  `main` function when called as `main()`.",
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
-        "options": Options(filenames=("file.txt",), sub_module="sub", ref_module="ref"),
+        "options": Options(
+            filenames=("file.txt",), sub_module="sub", ref_module="ref", weight=1
+        ),
         "error": "Lists differ: [1] != [2]\n\nFirst differing element 0:\n1\n2\n\n- [1]\n+ [2] : \n\nHint:\n  Your output file does not have the expected number of lines.  Double\n  check the number of lines written to the file `file.txt` by your\n  `main` function when called as `main()`.",
     },
     {
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
         "error": "Lists differ: [1, 2] != [1, 1]\n\nFirst differing element 1:\n2\n1\n\n- [1, 2]\n?     ^\n\n+ [1, 1]\n?     ^\n : \n\nHint:\n  Your output files do not have the expected number of lines.  Double\n  check the number of lines written to the files `file.txt` and\n  `file2.txt` by your `main` function when called as `main()`.",
     },
@@ -111,7 +129,10 @@ failing_cases = [
         "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1\\nLine 2')\n",
         "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n    with open('file2.txt', 'w') as f:\n        f.write('Line 1')\n",
         "options": Options(
-            filenames=("file.txt", "file2.txt"), sub_module="sub", ref_module="ref"
+            filenames=("file.txt", "file2.txt"),
+            sub_module="sub",
+            ref_module="ref",
+            weight=1,
         ),
         "error": "Lists differ: [1, 1] != [1, 2]\n\nFirst differing element 1:\n1\n2\n\n- [1, 1]\n?     ^\n\n+ [1, 2]\n?     ^\n : \n\nHint:\n  Your output files do not have the expected number of lines.  Double\n  check the number of lines written to the files `file.txt` and\n  `file2.txt` by your `main` function when called as `main()`.",
     },
@@ -127,6 +148,9 @@ def test_failing_cases(case, fix_syspath):
     sub_file.write_text(case["sub_file"])
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_has_n_lines_0")
+    test_method = built_instance.test_file_has_n_lines_0
+
     with pytest.raises(AssertionError) as e:
-        built_instance.test_file_has_n_lines_0()
+        test_method()
     assert case["error"] == str(e.value)
+    assert test_method.__score__ == 0

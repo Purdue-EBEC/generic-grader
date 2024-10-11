@@ -62,26 +62,33 @@ failing_cases = [
     {  # The case where no file name is provided
         "error": ValueError,
         "file_text": empty_file,
-        "options": Options(sub_module="sub", ref_module="ref", filenames=()),
+        "options": Options(sub_module="sub", ref_module="ref", filenames=(), weight=1),
     },
     {
         # The case where one file matches
         "error": AssertionError,
         "file_text": one_file,
-        "options": Options(sub_module="sub", ref_module="ref", filenames=("file.txt",)),
+        "options": Options(
+            sub_module="sub", ref_module="ref", filenames=("file.txt",), weight=1
+        ),
     },
     {
         # The case where two files match
         "error": AssertionError,
         "file_text": two_files,
         "options": Options(
-            sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
+            sub_module="sub",
+            ref_module="ref",
+            filenames=("file.txt", "file2.txt"),
+            weight=1,
         ),
     },
     {
         "error": FileNotFoundError,
         "file_text": outside_main,
-        "options": Options(sub_module="sub", ref_module="ref", filenames=("file.txt",)),
+        "options": Options(
+            sub_module="sub", ref_module="ref", filenames=("file.txt",), weight=1
+        ),
     },
 ]
 
@@ -95,8 +102,10 @@ def test_failing_cases(case, fix_syspath):
     ref_file.write_text(two_files)
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_are_random_0")
+    test_method = built_instance.test_file_lines_are_random_0
     with pytest.raises(case["error"]):
-        built_instance.test_file_lines_are_random_0()
+        test_method()
+    assert test_method.__score__ == 0
 
 
 """In order to generate "random" files, we need to have a way to check that the files are different from one run to the next.
@@ -115,12 +124,17 @@ two_files_time = one_file_time + (
 passing_cases = [
     {
         "file_text": one_file_time,
-        "options": Options(sub_module="sub", ref_module="ref", filenames=("file.txt",)),
+        "options": Options(
+            sub_module="sub", ref_module="ref", filenames=("file.txt",), weight=1
+        ),
     },
     {
         "file_text": two_files_time,
         "options": Options(
-            sub_module="sub", ref_module="ref", filenames=("file.txt", "file2.txt")
+            sub_module="sub",
+            ref_module="ref",
+            filenames=("file.txt", "file2.txt"),
+            weight=1,
         ),
     },
 ]
@@ -135,4 +149,6 @@ def test_passing_cases(case, fix_syspath):
     ref_file.write_text(two_files)
     built_class = build(case["options"])
     built_instance = built_class(methodName="test_file_lines_are_random_0")
-    built_instance.test_file_lines_are_random_0()
+    test_method = built_instance.test_file_lines_are_random_0
+    test_method()
+    assert test_method.__score__ == case["options"].weight
