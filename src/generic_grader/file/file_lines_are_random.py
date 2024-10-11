@@ -116,5 +116,6 @@ def build(options):
 
             self.maxDiff = None
             self.assertNotEqual(first_files, second_files, msg=message)
+            self.set_score(self, options.weight)
 
     return TestFileLinesAreRandom

@@ -78,5 +78,6 @@ def build(options):
 
             self.maxDiff = None
             self.assertEqual(actual, expected, msg=message)
+            self.set_score(self, options.weight)
 
     return TestFileHasNLines

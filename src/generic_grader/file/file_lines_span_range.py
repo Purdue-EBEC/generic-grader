@@ -78,5 +78,6 @@ def build(options):
 
             self.maxDiff = None
             self.assertEqual(sub_sets, ref_sets, msg=message)
+            self.set_score(self, options.weight)
 
     return TestFileLinesSpanRange
