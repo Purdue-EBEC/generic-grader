@@ -3,6 +3,7 @@ import unittest
 import pytest
 
 from generic_grader.output.output_lines_are_random import build
+from generic_grader.utils.exceptions import LogLimitExceededError
 from generic_grader.utils.options import Options
 
 
@@ -94,6 +95,23 @@ cases = [
             + " are random."
         ),
         "message": "Your output does not appear to be random.",
+    },
+    {  # Infinite random output
+        "submission": "import random as r\ndef main():\n    while True:\n        print(r.randint(1, 10))",
+        "reference": "import random as r\ndef main():\n    for i in range(5):\n        print(r.randint(2, 10))",
+        "result": LogLimitExceededError,
+        "options": Options(
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "doc_func_test_string": (
+            "Check that the lines of output"
+            + " from your `submission.main` function"
+            + " when called as `main()`"
+            + " are random."
+        ),
+        "message": "Your program produced much more output than was expected.",
     },
 ]
 
