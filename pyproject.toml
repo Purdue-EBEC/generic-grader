@@ -17,7 +17,7 @@ dependencies = [
     "gradescope-utils>=0.5.0,<1",
     "matplotlib>=3.7.0,<4",
     "parameterized>=0.8.1,<1",
-    "Pillow>=9.4.0,<11",
+    "Pillow>=9.4.0,<12",
     "pytesseract>=0.3.13,<1",
     "python-dateutil>=2.8.2,<3",
     "pytz==2024.2",
