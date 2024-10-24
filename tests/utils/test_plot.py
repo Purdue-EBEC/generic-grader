@@ -48,6 +48,7 @@ def setup_line_plot():
     ax.set_xlim(0, 99)
     ax.set_ylim(0, 99)
     ax.set_xticks([x for x in range(10)], [str(x) for x in range(10)])
+    ax.set_yticks([y for y in range(10)], [str(y) for y in range(10)])
     ax.set_xlabel("X Label")
     ax.set_ylabel("Y Label")
     ax.set_title("Title")
@@ -367,7 +368,7 @@ def test_get_grid_lines(setup_line_plot):
     expected_lines = expected_x_lines + expected_y_lines
 
     # Assert that the retrieved lines match the expected lines
-    assert len(lines) == len(expected_lines) - 1
+    assert len(lines) == len(expected_lines)
     for line in lines:
         assert line in expected_lines
 
