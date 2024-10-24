@@ -58,8 +58,8 @@ cases = [
         ),
     },
     {  # Passing case with init defined
-        "submission": "class Dummy():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass",
-        "reference": "class Dummy():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass",
+        "submission": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
+        "reference": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
         "result": "pass",
         "options": Options(
             sub_module="submission",
@@ -73,8 +73,8 @@ cases = [
         ),
     },
     {  # Passing case with multiple classes defined
-        "submission": "class Dummy1():\n    def __init__(self):\n        self.wrong_attribute = 1\nclass Dummy2():\n    def __init__(self):\n        self.attribute2 = 2",
-        "reference": "class Dummy1():\n    def __init__(self):\n        self.attribute1 = 1\nclass Dummy2():\n    def __init__(self):\n        self.attribute2 = 2",
+        "submission": "class Dummy1():\n    def __init__(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
+        "reference": "class Dummy1():\n    def __init__(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
         "result": "pass",
         "options": Options(
             sub_module="submission",
@@ -103,6 +103,23 @@ cases = [
             "Check that `Dummy` class attribute names and types" " match the reference."
         ),
         "message": "The `Dummy` class has incorrect attributes.",
+    },
+    {  # Failing case with multiple classes defined
+        "submission": "class Dummy1():\n    def __init__(self):\n        self.wrong_attribute = 1\n    def wrong_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
+        "reference": "class Dummy1():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
+        "result": AssertionError,
+        "options": Options(
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            obj_name="Dummy1",
+            init=lambda: None,
+        ),
+        "doc_func_test_string": (
+            "Check that `Dummy1` class attribute names and types"
+            " match the reference."
+        ),
+        "message": "The `Dummy1` class has incorrect attributes.",
     },
 ]
 
