@@ -314,9 +314,9 @@ def test_get_y_limits(setup_line_plot):
 
 
 def test_get_x_tick_labels(setup_line_plot):
-    """Test that the get_x_tick_labels function returns the correct"""
+    """Test that the get_x_tick_labels function returns the correct x tick labels."""
     labels = get_x_tick_labels(MockTest())
-    expected_labels = [str((label)) for label in setup_line_plot.get_xticks()]
+    expected_labels = [str((label)) for label in range(10)]
 
     assert labels == expected_labels
 
@@ -324,7 +324,7 @@ def test_get_x_tick_labels(setup_line_plot):
 def test_get_y_tick_labels(setup_line_plot):
     """Test that the get_y_tick_labels function returns the correct y tick labels."""
     labels = get_y_tick_labels(MockTest())
-    expected_labels = [str(int(label)) for label in setup_line_plot.get_yticks()]
+    expected_labels = [str(int(label)) for label in range(10)]
 
     assert labels == expected_labels
 

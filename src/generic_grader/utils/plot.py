@@ -192,20 +192,20 @@ def get_y_limits(test):
 
 
 def get_x_tick_labels(test):
-    """Find and return the x limits of the plot."""
+    """Find and return the x tick labels of the plot."""
     ax = get_current_axes(test)[0]
 
-    # Force pyplot to calculate the labels
+    # Force pyplot to produce the labels
     plt.gcf().canvas.draw()
 
     return [label.get_text() for label in ax.get_xticklabels()]
 
 
 def get_y_tick_labels(test):
-    """Find and return the x limits of the plot."""
+    """Find and return the y tick labels of the plot."""
     ax = get_current_axes(test)[0]
 
-    # Force pyplot to calculate the labels
+    # Force pyplot to produce the labels
     plt.gcf().canvas.draw()
 
     return [label.get_text() for label in ax.get_yticklabels()]
