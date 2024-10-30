@@ -40,6 +40,10 @@ def test_class_attributes_match_reference_has_test_method(built_instance):
 
 # Cases Tested:
 # 1. Passing case with same attributes
+# 2. Passing case with init defined
+# 3. Passing case with multiple classes defined
+# 4. Wrong attribute in submission
+# 5. Failing case with multiple classes defined
 
 
 cases = [
