@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from generic_grader.function.func_random_return_length import build
+from generic_grader.function.function_random_return_length import build
 from generic_grader.utils.options import Options
 
 
@@ -46,19 +46,45 @@ def test_random_func_return_length_doc_func_test_string(built_instance):
     )
 
 
-func_one = "import random\n" "def func():\n" "   return 'a' * random.randint(1, 5)\n"
+func_one = """
+import random\n
+def func():\n
+   return 'a' * random.randint(1, 5)\n
+"""
 
-func_two = "import random\n" "def func():\n" "   return 'a' * random.randint(2, 5)\n"
+func_two = """
+import random\n
+def func():\n
+   return 'a' * random.randint(2, 5)\n
+"""
 
-func_three = "import random\n" "def func():\n" "   return 'a' * random.randint(1, 4)\n"
+func_three = """
+import random\n
+def func():\n
+   return 'a' * random.randint(1, 4)\n
+"""
 
-func_four = "import random\n" "def func():\n" "   return 'b' * random.randint(1, 5)\n"
+func_four = """
+import random\n
+def func():\n
+   return 'b' * random.randint(1, 5)\n
+"""
 
-func_five = "import random\n" "def func():\n" "   return 'a' * random.randint(1, 6)\n"
+func_five = """
+import random\n
+def func():\n
+   return 'a' * random.randint(1, 6)\n
+"""
 
-func_six = "def func():\n" "   return 'a'\n"
+func_six = """
+def func():\n
+   return 'a'\n
+"""
 
-func_seven = "def func():\n" "   pass\n"
+func_seven = """
+def func():\n
+   pass\n
+"""
 
 passing_cases = [
     {
