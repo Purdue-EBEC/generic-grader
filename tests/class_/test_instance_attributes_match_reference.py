@@ -40,39 +40,52 @@ def test_instance_attributes_match_reference_has_test_method(built_instance):
 
 # Cases Tested:
 # 1. Passing case with same attributes
-# 2. Passing case with init defined
-# 3. Passing case with multiple classes defined
-# 4. Wrong attribute in submission
-# 5. Failing case with multiple classes defined
-# 6. Failing case with correct method and wrong attribute
+# 2. Passing case with multiple classes defined
+# 3. Failing case with correct method and wrong attribute in submission
+# 4. Failing case with multiple classes defined and wrong attribute in submission
+# 5. Failing case with wrong method and correct attribute in submission
+
+
+def dummy_correct(class_name="Dummy"):
+    return (
+        f"class {class_name}():\n"
+        "    def __init__(self):\n"
+        "        self.correct_attribute = 1\n"
+        "    def correct_method(self):\n"
+        "        pass\n"
+    )
+
+
+def dummy_wrong_attr(class_name="Dummy"):
+    return (
+        f"class {class_name}():\n"
+        "    def __init__(self):\n"
+        "        self.wrong_attribute = 1\n"
+        "    def correct_method(self):\n"
+        "        pass\n"
+    )
+
+
+def dummy_wrong_method(class_name="Dummy"):
+    return (
+        f"class {class_name}():\n"
+        "    def __init__(self):\n"
+        "        self.correct_attribute = 1\n"
+        "    def wrong_method(self):\n"
+        "        pass\n"
+    )
 
 
 cases = [
     {  # Defining class with correct attributes
-        "submission": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
-        "reference": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
+        "submission": dummy_correct(),
+        "reference": dummy_correct(),
         "result": "pass",
         "options": Options(
             sub_module="submission",
             ref_module="reference",
             weight=1,
             obj_name="Dummy",
-        ),
-        "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
-        ),
-    },
-    {  # Passing case with init defined
-        "submission": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
-        "reference": "class Dummy():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
-        "result": "pass",
-        "options": Options(
-            sub_module="submission",
-            ref_module="reference",
-            weight=1,
-            obj_name="Dummy",
-            init=lambda: None,
         ),
         "doc_func_test_string": (
             "Check that `Dummy` instance attribute names and types"
@@ -80,31 +93,29 @@ cases = [
         ),
     },
     {  # Passing case with multiple classes defined
-        "submission": "class Dummy1():\n    def __init__(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
-        "reference": "class Dummy1():\n    def __init__(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass\n    def correct_method(self):\n        pass",
+        "submission": dummy_correct() + dummy_wrong_attr("OtherClass"),
+        "reference": dummy_correct() + dummy_correct("OtherClass"),
         "result": "pass",
         "options": Options(
             sub_module="submission",
             ref_module="reference",
             weight=1,
-            obj_name="Dummy2",
-            init=lambda: None,
+            obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy2` instance attribute names and types"
+            "Check that `Dummy` instance attribute names and types"
             " match the reference."
         ),
     },
-    {  # Wrong attribute in submission
-        "submission": "class Dummy():\n    def __init__(self):\n        self.wrong_attribute = 1\n    def wrong_method(self):\n        pass",
-        "reference": "class Dummy():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass",
+    {  # Correct method and wrong attribute in submission
+        "submission": dummy_wrong_attr(),
+        "reference": dummy_correct(),
         "result": AssertionError,
         "options": Options(
             sub_module="submission",
             ref_module="reference",
             weight=1,
             obj_name="Dummy",
-            init=lambda: None,
         ),
         "doc_func_test_string": (
             "Check that `Dummy` instance attribute names and types"
@@ -112,39 +123,37 @@ cases = [
         ),
         "message": "Instances of the `Dummy` class have incorrect attributes.",
     },
-    {  # Failing case with multiple classes defined
-        "submission": "class Dummy1():\n    def __init__(self):\n        self.wrong_attribute = 1\n    def wrong_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
-        "reference": "class Dummy1():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
+    {  # Failing case with multiple classes defined and wrong attribute in submission
+        "submission": dummy_wrong_attr() + dummy_correct("OtherClass"),
+        "reference": dummy_correct() + dummy_correct("OtherClass"),
         "result": AssertionError,
         "options": Options(
             sub_module="submission",
             ref_module="reference",
             weight=1,
-            obj_name="Dummy1",
-            init=lambda: None,
+            obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy1` instance attribute names and types"
+            "Check that `Dummy` instance attribute names and types"
             " match the reference."
         ),
-        "message": "Instances of the `Dummy1` class have incorrect attributes.",
+        "message": "Instances of the `Dummy` class have incorrect attributes.",
     },
-    {  # Failing case with correct method and wrong attribute
-        "submission": "class Dummy1():\n    def __init__(self):\n        self.wrong_attribute = 1\n    def correct_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
-        "reference": "class Dummy1():\n    def __init__(self):\n        self.correct_attribute = 1\n    def correct_method(self):\n        pass\nclass Dummy2():\n    def __init__(self):\n        pass",
+    {  # Failing case with wrong method and correct attribute in submission
+        "submission": dummy_wrong_method(),
+        "reference": dummy_correct(),
         "result": AssertionError,
         "options": Options(
             sub_module="submission",
             ref_module="reference",
             weight=1,
-            obj_name="Dummy1",
-            init=lambda: None,
+            obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy1` instance attribute names and types"
+            "Check that `Dummy` instance attribute names and types"
             " match the reference."
         ),
-        "message": "Instances of the `Dummy1` class have incorrect attributes.",
+        "message": "Instances of the `Dummy` class have incorrect attributes.",
     },
 ]
 
