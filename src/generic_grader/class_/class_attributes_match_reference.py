@@ -41,6 +41,9 @@ def build(the_options):
 
             o = options
 
+            if o.init:
+                o.init(self, o)
+
             # Construct the set of default object attributes.
             nul_attrs = set(
                 (type(value).__name__, name)
