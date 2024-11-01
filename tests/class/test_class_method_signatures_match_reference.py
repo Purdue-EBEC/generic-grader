@@ -107,7 +107,7 @@ passing_cases = [
         "sub_text": class_four_text,
         "ref_text": class_four_text,
     },
-    {  # Test that it ignores different __init__ methods.
+    {  # Test that it ignores different instance attributes.
         "sub_text": class_one_text,
         "ref_text": class_two_text,
     },
@@ -180,7 +180,7 @@ failing_cases = [
             "?                  ^       ^\n"
         ),
     },
-    {  # Test that it catches missing attributes
+    {  # Test that it catches missing methods
         "sub_text": class_six_text,
         "ref_text": class_four_text,
         "error_msg": (
