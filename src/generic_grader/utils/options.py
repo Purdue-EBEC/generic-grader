@@ -22,7 +22,10 @@ class Options:
     required_files: tuple = ()
     ignored_files: tuple = ()
     hint: str = ""
-    patches: list[dict[str, list[str, Callable]]] = Factory(list)
+
+    patches: list[dict[str, list[str | Callable]]] = Factory(list)
+    ref_user: str = "Reference"
+    sub_user: str = "Student"
     """
     There are some functions that cannot be patched due to other functions being dependent on their behavior.
     As of right now, those functions are `str` and `int`.
