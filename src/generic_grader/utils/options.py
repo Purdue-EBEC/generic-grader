@@ -1,7 +1,8 @@
 import datetime
 from collections.abc import Callable
+from typing import Any
 
-from attrs import Factory, define
+from attrs import Factory, define, field
 from parameterized import param
 
 
@@ -16,7 +17,7 @@ def options_to_params(options):
 class Options:
     # Base
     weight: int | float = 0
-    init: Callable[[], None] | None = None
+    init: Callable[[Any, Any], None] | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
     required_files: tuple = ()
@@ -32,7 +33,7 @@ class Options:
     """
 
     # Input
-    entries: tuple = ()
+    entries: tuple = field(default=(), converter=tuple)
 
     # Output
     interaction: int = 0
