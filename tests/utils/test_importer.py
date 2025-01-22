@@ -69,6 +69,14 @@ error_cases = [
         "object": "fake_func",
     },
     {
+        # Tests the except block on line 51
+        "module": "fake_module",
+        "error": Importer.InputError,
+        "text": "input('foo', bar='spam')\nfake_func = lambda: None",
+        "message": "Stuck at call to `input()` while importing `fake_func`",
+        "object": "fake_func",
+    },
+    {
         # Tests the except block on line 65
         "module": "fake_module",
         "error": ModuleNotFoundError,
