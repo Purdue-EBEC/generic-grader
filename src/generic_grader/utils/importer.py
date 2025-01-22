@@ -19,7 +19,7 @@ class Importer:
         """Custom Exception type."""
 
     @classmethod
-    def raise_input_error(cls):
+    def raise_input_error(cls, *args, **kwargs):
         """Raise our custom exception."""
         raise cls.InputError()
 
