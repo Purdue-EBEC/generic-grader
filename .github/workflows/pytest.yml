@@ -9,10 +9,10 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       matrix:
-        python: ["3.12.4", "3.11.9"]
+        python: ["3.12.8", "3.13.1", "3.11.11"]
 
     steps:
       - uses: actions/checkout@v4
