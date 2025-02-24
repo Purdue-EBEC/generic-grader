@@ -24,12 +24,12 @@ def doc_func(func, num, param):
 def build(the_options):
     the_params = options_to_params(the_options)
 
-    class TestFunctionNotDefined(unittest.TestCase):
-        """A class for function absence tests."""
+    class TestCallableNotDefined(unittest.TestCase):
+        """A class for Callable absence tests."""
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
-        def test_function_not_defined(self, options):
+        def test_callable_not_defined(self, options):
             """Check that sub_module does not have its own obj_name."""
 
             o = options
@@ -51,4 +51,4 @@ def build(the_options):
 
             self.set_score(self, o.weight)
 
-    return TestFunctionNotDefined
+    return TestCallableNotDefined
