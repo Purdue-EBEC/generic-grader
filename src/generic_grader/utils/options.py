@@ -1,5 +1,6 @@
 import datetime
 from collections.abc import Callable
+from enum import Enum
 
 from attrs import Factory, define
 from parameterized import param
@@ -10,6 +11,11 @@ def options_to_params(options):
         return [param(o) for o in options]
     except TypeError:  # non-iterable
         return [param(options)]
+
+
+class ObjectType(Enum):
+    FUNCTION = "function"
+    CLASS = "class"
 
 
 @define(kw_only=True, frozen=True)
@@ -83,6 +89,9 @@ class Options:
     random_func_calls: list[str] = Factory(list)
     random_chance_tolerance: int = 9
     # This is the probabilty that we miss a possible outcome, by default it is set to 1 in a billion
+
+    # Callable definitions
+    object_type: ObjectType = ObjectType.FUNCTION
 
     def __attrs_post_init__(self):
         """Check that the attributes are of the correct type."""
