@@ -16,6 +16,9 @@ def options_to_params(options):
 class ObjectType(Enum):
     FUNCTION = "function"
     CLASS = "class"
+    CLASS_METHOD = "class method"
+    STATIC_METHOD = "static method"
+    INSTANCE_METHOD = "instance method"
 
 
 @define(kw_only=True, frozen=True)
@@ -92,6 +95,8 @@ class Options:
 
     # Callable definitions
     object_type: ObjectType = ObjectType.FUNCTION
+    init_args: tuple = ()
+    init_kwargs: dict = Factory(dict)
 
     def __attrs_post_init__(self):
         """Check that the attributes are of the correct type."""
