@@ -20,11 +20,11 @@ dependencies = [
     "Pillow>=9.4.0,<12",
     "pytesseract>=0.3.13,<1",
     "python-dateutil>=2.8.2,<3",
-    "pytz==2024.2",
+    "pytz==2025.1",
     "rapidfuzz>=3.1.1,<4",
     "scipy>=1.10.1,<2",
     "freezegun==1.5.1",
-    "attrs==24.3.0",
+    "attrs==25.1.0",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
