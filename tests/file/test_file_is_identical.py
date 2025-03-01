@@ -42,8 +42,8 @@ def test_doc_func(built_instance):
     """Test that the doc_func function returns the correct docstring."""
     docstring = built_instance.test_file_is_identical_0.__doc__
     assert (
-        "Checks the file data written to the file `file.txt` from your `sub.main` function when called as `main()`."
-        == docstring
+        "Checks the data written to the file `file.txt` from your `sub.main` function"
+        " when called as `main()`." == docstring
     )
 
 
@@ -52,15 +52,31 @@ passing_cases = [
         "options": Options(
             ref_module="ref", sub_module="sub", weight=1, filenames=("file.txt",)
         ),
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
+        "ref_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f:\n"
+            "        f.write('Line 1')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f:\n"
+            "        f.write('Line 1')\n"
+        ),
     },
     {
         "options": Options(
             ref_module="ref", sub_module="sub", weight=1, filenames=("file.txt",)
         ),
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.writelines(['Line 1', 'Line 2'])\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.writelines(['Line 1', 'Line 2'])\n",
+        "ref_file": (
+            "def main():"
+            "\n    with open('file.txt', 'w') as f:\n"
+            "        f.writelines(['Line 1', 'Line 2'])\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f:\n"
+            "        f.writelines(['Line 1', 'Line 2'])\n"
+        ),
     },
     {
         "options": Options(
@@ -69,8 +85,18 @@ passing_cases = [
             weight=1,
             filenames=("file1.txt", "file2.txt"),
         ),
-        "ref_file": "def main():\n    with open('file1.txt', 'w') as f, open('file2.txt', 'w') as g:\n        f.write('Line 1')\n        g.write('Line 2')\n",
-        "sub_file": "def main():\n    with open('file1.txt', 'w') as f, open('file2.txt', 'w') as g:\n        f.write('Line 1')\n        g.write('Line 2')\n",
+        "ref_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'w') as f, open('file2.txt', 'w') as g:\n"
+            "        f.write('Line 1')\n"
+            "        g.write('Line 2')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'w') as f, open('file2.txt', 'w') as g:\n"
+            "        f.write('Line 1')\n"
+            "        g.write('Line 2')\n"
+        ),
     },
     {
         "options": Options(
@@ -80,8 +106,16 @@ passing_cases = [
             filenames=("file1.txt",),
             obj_name="main",
         ),
-        "ref_file": "def main():\n    with open('file1.txt', 'wb') as f:\n        f.write(b'\\x00\\x01\\x02\\x03')\n",
-        "sub_file": "def main():\n    with open('file1.txt', 'wb') as f:\n        f.write(b'\\x00\\x01\\x02\\x03')\n",
+        "ref_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'wb') as f:\n"
+            "        f.write(b'\\x00\\x01\\x02\\x03')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'wb') as f:\n"
+            "        f.write(b'\\x00\\x01\\x02\\x03')\n"
+        ),
     },
 ]
 
@@ -91,8 +125,16 @@ failing_cases = [
         "options": Options(
             ref_module="ref", sub_module="sub", weight=1, filenames=("file.txt",)
         ),
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Line 1')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f:\n        f.write('Not Line 1')\n",
+        "ref_file": (
+            "def main():\n "
+            "   with open('file.txt', 'w') as f:\n "
+            "       f.write('Line 1')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f:\n"
+            "        f.write('Not Line 1')\n"
+        ),
         "error": AssertionError,
         "error_message": "The data in `file.txt` does not match the expected data.",
     },
@@ -103,8 +145,18 @@ failing_cases = [
             weight=1,
             filenames=("file.txt", "file2.txt"),
         ),
-        "ref_file": "def main():\n    with open('file.txt', 'w') as f, open('file2.txt', 'w') as g:\n        f.write('Line 1')\n        g.write('Line 2')\n",
-        "sub_file": "def main():\n    with open('file.txt', 'w') as f, open('file2.txt', 'w') as g:\n        f.write('Line 1')\n        g.write('Not Line 2')\n",
+        "ref_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f, open('file2.txt', 'w') as g:\n"
+            "        f.write('Line 1')\n"
+            "        g.write('Line 2')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file.txt', 'w') as f, open('file2.txt', 'w') as g:\n"
+            "        f.write('Line 1')\n"
+            "        g.write('Not Line 2')\n"
+        ),
         "error": AssertionError,
         "error_message": "The data in `file2.txt` does not match the expected data.",
     },
@@ -116,8 +168,16 @@ failing_cases = [
             filenames=("file1.txt",),
             obj_name="main",
         ),
-        "ref_file": "def main():\n    with open('file1.txt', 'wb') as f:\n        f.write(b'\\x00\\x01\\x02\\x04')\n",
-        "sub_file": "def main():\n    with open('file1.txt', 'wb') as f:\n        f.write(b'\\x00\\x01\\x02\\x03')\n",
+        "ref_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'wb') as f:\n"
+            "        f.write(b'\\x00\\x01\\x02\\x04')\n"
+        ),
+        "sub_file": (
+            "def main():\n"
+            "    with open('file1.txt', 'wb') as f:\n"
+            "        f.write(b'\\x00\\x01\\x02\\x03')\n"
+        ),
         "error": AssertionError,
         "error_message": "The data in `file1.txt` does not match the expected data",
     },
