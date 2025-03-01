@@ -20,7 +20,7 @@ def doc_func(func, num, param):
     file_list_str = f"{file_s} {oxford_list(filenames)}"
     call_str = make_call_str(o.obj_name, o.args, o.kwargs)
     docstring = (
-        f"Checks the file data written to the {file_list_str}"
+        f"Checks the data written to the {file_list_str}"
         f" from your `{o.sub_module}.{o.obj_name}` function"
         f" when called as `{call_str}`"
         + (o.entries and f" with entries={o.entries}." or ".")
@@ -61,10 +61,14 @@ def build(options):
                 with open(f"sub_{filename}", "rb") as fo:
                     sub_files.append(fo.read())
 
+            call_str = make_call_str(o.obj_name, o.args, o.kwargs)
             for ref_file, sub_file, filename in zip(ref_files, sub_files, o.filenames):
                 # Test the result.
                 message = str(
                     f"\nThe data in `{filename}` does not match the expected data."
+                    f"  Double check the data written to the file {filename}"
+                    f" by your `{o.obj_name}` function when called as `{call_str}`"
+                    + (o.entries and f" with entries={o.entries}." or ".")
                     + (o.hint and f" {o.hint}" or "")
                 )
                 actual = sub_file
