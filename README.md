@@ -131,6 +131,11 @@ pip install generic-grader
    ``` bash
    pip install -e .[dev]
    ```
+   or
+
+   ``` bash
+   uv sync --extra dev
+   ```
 
 7. Install the pre-commit hooks.
 
