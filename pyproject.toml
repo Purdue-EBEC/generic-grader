@@ -25,6 +25,7 @@ dependencies = [
     "scipy>=1.10.1,<2",
     "freezegun==1.5.2",
     "attrs==25.3.0",
+    "numpy>=2.3.3",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",

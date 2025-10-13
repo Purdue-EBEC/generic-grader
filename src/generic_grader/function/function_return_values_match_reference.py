@@ -2,8 +2,10 @@
 
 import unittest
 
+import numpy as np
 from parameterized import parameterized
 
+from generic_grader.utils.array_diff import array_compare
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.options import options_to_params
@@ -81,10 +83,16 @@ def build(the_options):
 
             self.maxDiff = None
             self.assertIsInstance(actual, expected_type, msg=type_msg)
-            if isinstance(expected, float):
-                self.assertAlmostEqual(actual, expected, msg=value_msg)
+
+            if isinstance(expected, np.ndarray):
+                equal, details = array_compare(actual, expected)
+                if not equal:
+                    raise AssertionError(details + value_msg)
             else:
-                self.assertEqual(actual, expected, msg=value_msg)
+                if isinstance(expected, float):
+                    self.assertAlmostEqual(actual, expected, msg=value_msg)
+                else:
+                    self.assertEqual(actual, expected, msg=value_msg)
 
             self.set_score(self, o.weight)  # Full credit
 

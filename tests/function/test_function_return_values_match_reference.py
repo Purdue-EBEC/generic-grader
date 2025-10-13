@@ -133,6 +133,110 @@ cases = [
 ]
 
 
+# Case: numpy arrays returned - equal arrays should pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1,2,3])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1,2,3])",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: numpy arrays returned - differing arrays should fail
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1,2,4])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1,2,3])",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: floating numpy arrays that are nearly equal should pass (use allclose)
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.00000001])",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: floating numpy arrays that are not nearly equal should fail
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.1])",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: type mismatch where reference returns a numpy array but submission returns a list
+cases.append(
+    {
+        "submission": "def test_function():\n    return [1,2,3]",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1,2,3])",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the type of the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+
 @pytest.fixture(params=cases)
 def case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
@@ -168,3 +272,83 @@ def test_function_return_values_match_reference(case_test_method):
         assert case["message"] in message
         assert test_method.__doc__ == case["doc_func_test_string"]
         assert test_method.__score__ == 0
+
+
+def test_handles_missing_numpy_import(monkeypatch, fix_syspath):
+    """If numpy cannot be imported, code should fall back to non-numpy logic."""
+    # Arrange: submission and reference return plain lists (no numpy needed)
+    submission = "def test_function():\n    return [1,2,3]"
+    reference = "def test_function():\n    return [1,2,3]"
+    file_path = fix_syspath / "submission.py"
+    file_path.write_text(submission)
+    file_path = fix_syspath / "reference.py"
+    file_path.write_text(reference)
+
+    options = Options(
+        obj_name="test_function",
+        sub_module="submission",
+        ref_module="reference",
+        weight=1,
+    )
+
+    built_class = build(options)
+    built_instance = built_class(
+        methodName="test_function_return_values_match_reference_0"
+    )
+    test_method = built_instance.test_function_return_values_match_reference_0
+
+    # Force import of numpy to fail inside the test method
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "numpy" or name.startswith("numpy."):
+            raise ImportError("no numpy")
+        return real_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    # Act / Assert: should run and pass (no numpy required for these returns)
+    test_method()
+    assert test_method.__score__ == options.weight
+
+
+def test_numpy_comparison_exception_is_propagated(monkeypatch, fix_syspath):
+    """If numpy comparison raises, the exception should propagate (current behavior)."""
+    # Arrange: submission and reference return numpy arrays
+    submission = (
+        "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])"
+    )
+    reference = (
+        "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])"
+    )
+    file_path = fix_syspath / "submission.py"
+    file_path.write_text(submission)
+    file_path = fix_syspath / "reference.py"
+    file_path.write_text(reference)
+
+    options = Options(
+        obj_name="test_function",
+        sub_module="submission",
+        ref_module="reference",
+        weight=1,
+    )
+
+    built_class = build(options)
+    built_instance = built_class(
+        methodName="test_function_return_values_match_reference_0"
+    )
+    test_method = built_instance.test_function_return_values_match_reference_0
+
+    # Monkeypatch numpy.allclose to raise an error to hit the comparison except branch
+    import numpy as np
+
+    def raise_error(*args, **kwargs):
+        raise RuntimeError("comparison failed")
+
+    monkeypatch.setattr(np, "allclose", raise_error)
+
+    # Act / Assert: the RuntimeError should be raised when running the test method
+    with pytest.raises(RuntimeError):
+        test_method()
