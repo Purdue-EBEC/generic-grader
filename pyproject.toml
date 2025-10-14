@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "generic-grader"
-version = "0.1.23"
+version = "0.1.24"
 authors = [
     { name = "John Cole", email = "jhcole@purdue.edu" },
     { name = "Jack Scarfo", email = "jscarfo@purdue.edu" },
@@ -25,7 +25,7 @@ dependencies = [
     "scipy>=1.10.1,<2",
     "freezegun==1.5.5",
     "attrs==25.4.0",
-    "numpy>=2.3.3",
+    "numpy>=2.0.0,<3",
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
