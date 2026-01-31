@@ -2,7 +2,7 @@ import unittest
 
 import pytest
 
-from generic_grader.random.random_func_return_range import build
+from generic_grader.function.random_func_return_range import build
 from generic_grader.utils.options import Options
 
 
