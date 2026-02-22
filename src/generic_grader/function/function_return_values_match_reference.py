@@ -85,7 +85,12 @@ def build(the_options):
             self.assertIsInstance(actual, expected_type, msg=type_msg)
 
             if isinstance(expected, np.ndarray):
-                equal, details = array_compare(actual, expected)
+                equal, details = array_compare(
+                    actual,
+                    expected,
+                    rtol=o.relative_tolerance,
+                    atol=o.absolute_tolerance,
+                )
                 if not equal:
                     raise AssertionError(details + value_msg)
             else:

@@ -65,7 +65,7 @@ class Options:
     # Stats
     expected_distribution: dict = {0: 0}
     relative_tolerance: float = 1e-7
-    absolute_tolerance: int = 0
+    absolute_tolerance: float = 0.0
 
     # Image
     mode: str = "exactly"

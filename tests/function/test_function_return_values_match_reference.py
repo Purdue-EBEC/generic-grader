@@ -236,6 +236,71 @@ cases.append(
     }
 )
 
+# Case: loose relative_tolerance allows arrays differing beyond default rtol to pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.05])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=0.1,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: tight relative_tolerance rejects arrays within the default rtol
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.00000001])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=1e-10,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: loose absolute_tolerance allows arrays with a small absolute difference to pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.5])",
+        "reference": "import numpy as np\ndef test_function():\n    return np.array([1.0,2.0,3.0])",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=0.0,
+            absolute_tolerance=1.0,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
 
 @pytest.fixture(params=cases)
 def case_test_method(request, fix_syspath):
