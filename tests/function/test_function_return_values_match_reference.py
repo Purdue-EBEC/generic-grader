@@ -301,6 +301,133 @@ cases.append(
     }
 )
 
+# Case: equal np.float64 scalars should pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: unequal np.float64 scalars should fail
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.float64(3.1)",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: type mismatch where reference returns np.float64 but submission returns float
+cases.append(
+    {
+        "submission": "def test_function():\n    return 3.0",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "message": "Double check the type of the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: loose relative_tolerance allows np.float64 scalars differing beyond default rtol to pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.float64(3.05)",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=0.1,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: tight relative_tolerance rejects np.float64 scalars within the default rtol
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.float64(3.00000001)",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=1e-10,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: loose absolute_tolerance allows np.float64 scalars with a small absolute difference to pass
+cases.append(
+    {
+        "submission": "import numpy as np\ndef test_function():\n    return np.float64(3.5)",
+        "reference": "import numpy as np\ndef test_function():\n    return np.float64(3.0)",
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=0.0,
+            absolute_tolerance=1.0,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
 
 @pytest.fixture(params=cases)
 def case_test_method(request, fix_syspath):

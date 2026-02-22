@@ -93,6 +93,14 @@ def build(the_options):
                 )
                 if not equal:
                     raise AssertionError(details + value_msg)
+            elif isinstance(expected, np.floating):
+                if not np.isclose(
+                    actual,
+                    expected,
+                    rtol=o.relative_tolerance,
+                    atol=o.absolute_tolerance,
+                ):
+                    raise AssertionError(value_msg)
             else:
                 if isinstance(expected, float):
                     self.assertAlmostEqual(actual, expected, msg=value_msg)
