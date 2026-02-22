@@ -333,7 +333,7 @@ cases.append(
             ref_module="reference",
             weight=1,
         ),
-        "message": "Double check the value(s) returned",
+        "message": "difference)",
         "doc_func_test_string": (
             """Check that the value(s) returned from your"""
             """ `submission.test_function` function when called as"""
@@ -397,7 +397,7 @@ cases.append(
             weight=1,
             relative_tolerance=1e-10,
         ),
-        "message": "Double check the value(s) returned",
+        "message": "difference)",
         "doc_func_test_string": (
             """Check that the value(s) returned from your"""
             """ `submission.test_function` function when called as"""

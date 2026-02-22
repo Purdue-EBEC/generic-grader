@@ -100,7 +100,11 @@ def build(the_options):
                     rtol=o.relative_tolerance,
                     atol=o.absolute_tolerance,
                 ):
-                    raise AssertionError(value_msg)
+                    delta = expected * o.relative_tolerance + o.absolute_tolerance
+                    diff = abs(actual - expected)
+                    detail = f"{actual!r} != {expected!r} within {delta!r} ({diff!r} difference)"
+                    raise AssertionError(detail + value_msg)
+
             else:
                 if isinstance(expected, float):
                     self.assertAlmostEqual(actual, expected, msg=value_msg)
