@@ -16,7 +16,7 @@ def options_to_params(options):
 class Options:
     # Base
     weight: int | float = 0
-    init: Callable[[], None] | None = None
+    init: Callable | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
     required_files: tuple = ()

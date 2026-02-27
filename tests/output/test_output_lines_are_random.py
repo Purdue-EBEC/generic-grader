@@ -70,7 +70,7 @@ cases = [
             sub_module="submission",
             ref_module="reference",
             weight=1,
-            init=lambda: None,
+            init=lambda test, options: None,
         ),
         "doc_func_test_string": (
             "Check that the lines of output"

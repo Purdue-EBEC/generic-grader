@@ -263,7 +263,7 @@ def test_random_function_calls_init(fix_syspath, capsys):
         weight=2,
         random_func_calls=["sub.func1"],
         expected_perms={("sub.func1",)},
-        init=lambda: print("init"),
+        init=lambda test, options: print("init"),
     )
     built_class = build(options)
     built_instance = built_class(methodName="test_random_function_calls_0")

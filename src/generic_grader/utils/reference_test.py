@@ -25,7 +25,7 @@ def reference_test(func):
 
         # Run an optional initialization function.
         if o.init:
-            o.init()
+            o.init(self, o)
 
         # Make sure the expected output files don't already exist.
         for filename in o.filenames:

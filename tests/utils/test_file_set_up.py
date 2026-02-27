@@ -147,7 +147,7 @@ def test_file_setup(set_up_case_test_method):
 def test_init(capsys):
     """Test that an init gets run"""
 
-    def init():
+    def init(test, options):
         print("init")
 
     o = Options(init=init)

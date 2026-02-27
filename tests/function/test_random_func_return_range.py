@@ -70,7 +70,7 @@ cases = [
             sub_module="submission",
             weight=1,
             expected_set={1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
-            init=lambda: None,
+            init=lambda test, options: None,
         ),
         "doc_func_test_string": (
             """Check the range of value(s) returned from your"""

@@ -48,7 +48,7 @@ def build(options):
             # Run an optional initialization function.  This might be used to
             # create the image files if they don't already exist.
             if o.init:
-                o.init(self, options)
+                o.init(self, o)
 
             # Get the actual pixel overlap count.
             with Image.open(o.ref_image) as A, Image.open(o.sub_image) as B:

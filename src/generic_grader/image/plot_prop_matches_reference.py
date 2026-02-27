@@ -50,7 +50,7 @@ def build(the_options):
 
             # Run an optional initialization function.
             if o.init:
-                o.init()
+                o.init(self, o)
 
             # Create the reference user.
             self.ref_user = RefUser(self, o)
