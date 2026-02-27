@@ -58,7 +58,7 @@ class Options:
     # Code
     expected_minimum_depth: int = 1
 
-    # Plots
+    # Plots / Image (see #156 for planned Enum replacement)
     prop: str = ""
     prop_kwargs: dict = Factory(dict)
 
@@ -76,8 +76,6 @@ class Options:
     threshold: int = 0
     delta: int = 0
     expected_words: str = ""
-    prop: str = ""  # Should be replaced with a custom ENUM
-    prop_kwargs: dict = Factory(dict)
 
     # Random_func_calls
     random_func_calls: list[str] = Factory(list)
