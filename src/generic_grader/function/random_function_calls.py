@@ -45,7 +45,7 @@ def build(the_options):
             call_list = []
 
             if o.init:
-                o.init()
+                o.init(self, o)
 
             def wrapper(func):
                 """Return a lambda that appends the function name to the call_list.

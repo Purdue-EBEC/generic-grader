@@ -78,7 +78,7 @@ def build(the_options):
 
             # Run an optional initialization function.
             if o.init:
-                o.init()
+                o.init(self, o)
 
             # Create the student user.
             self.student_user = SubUser(self, o)

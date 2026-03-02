@@ -164,7 +164,7 @@ def test_plot_prop_matches_reference_init(fix_syspath, capsys):
     sub_file = fix_syspath / "sub.py"
     sub_file.write_text(plot_one_text)
 
-    def fake_init():
+    def fake_init(test, options):
         print("fake init")
 
     options = Options(

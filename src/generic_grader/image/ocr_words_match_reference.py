@@ -44,7 +44,7 @@ def build(options):
             # Run an optional initialization function.  This might be used to
             # create the image files if they don't already exist.
             if o.init:
-                o.init(self, options)
+                o.init(self, o)
 
             # Open the solution image and convert it to a string.
             with Image.open("sol.png") as sol_image:

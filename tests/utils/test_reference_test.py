@@ -139,7 +139,7 @@ def test_init(fix_syspath, capsys):
     sub_file = fix_syspath / "sub_test.py"
     sub_file.write_text("def main():\n    print('Hello World!')")
 
-    def init():
+    def init(test, options):
         print("init")
 
     o = Options(sub_module="sub_test", ref_module="ref_test", init=init)
