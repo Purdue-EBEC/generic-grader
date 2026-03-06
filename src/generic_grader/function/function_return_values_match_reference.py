@@ -1,5 +1,6 @@
 """Test calculation results."""
 
+import reprlib
 import unittest
 
 import numpy as np
@@ -10,6 +11,14 @@ from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
+
+_safe_repr = reprlib.Repr()
+_safe_repr.maxstring = 200
+_safe_repr.maxother = 200
+_safe_repr.maxdict = 20
+_safe_repr.maxlist = 20
+_safe_repr.maxtuple = 20
+_safe_repr.maxset = 20
 
 
 def doc_func(func, num, param):
@@ -81,7 +90,6 @@ def build(the_options):
                 + f"{formatted_log}"
             )
 
-            self.maxDiff = None
             self.assertIsInstance(actual, expected_type, msg=type_msg)
 
             if isinstance(expected, np.ndarray):
@@ -109,7 +117,12 @@ def build(the_options):
                 if isinstance(expected, float):
                     self.assertAlmostEqual(actual, expected, msg=value_msg)
                 else:
-                    self.assertEqual(actual, expected, msg=value_msg)
+                    if actual != expected:
+                        detail = (
+                            f"{_safe_repr.repr(actual)}"
+                            f" != {_safe_repr.repr(expected)}"
+                        )
+                        raise AssertionError(detail + value_msg)
 
             self.set_score(self, o.weight)  # Full credit
 

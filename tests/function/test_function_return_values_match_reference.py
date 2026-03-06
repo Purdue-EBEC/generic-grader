@@ -544,3 +544,52 @@ def test_numpy_comparison_exception_is_propagated(monkeypatch, fix_syspath):
     # Act / Assert: the RuntimeError should be raised when running the test method
     with pytest.raises(RuntimeError):
         test_method()
+
+
+def test_large_diff_does_not_timeout(fix_syspath):
+    """Test that comparing large differing return values completes quickly.
+
+    When self.maxDiff is None, unittest's assertEqual calls difflib.ndiff
+    on pprint.pformat() output, which has O(n^2) complexity and can hang
+    for minutes on large data.  Setting a finite maxDiff avoids this.
+    """
+    # Arrange: functions that return large dicts with every value different.
+    submission = (
+        "def test_function():\n"
+        "    return {f'key_{i}': f'value_a_{i}' for i in range(500)}\n"
+    )
+    reference = (
+        "def test_function():\n"
+        "    return {f'key_{i}': f'value_b_{i}' for i in range(500)}\n"
+    )
+    file_path = fix_syspath / "submission.py"
+    file_path.write_text(submission)
+    file_path = fix_syspath / "reference.py"
+    file_path.write_text(reference)
+
+    options = Options(
+        obj_name="test_function",
+        sub_module="submission",
+        ref_module="reference",
+        weight=1,
+    )
+
+    built_class = build(options)
+    built_instance = built_class(
+        methodName="test_function_return_values_match_reference_0"
+    )
+    test_method = built_instance.test_function_return_values_match_reference_0
+
+    import time
+
+    start = time.time()
+    with pytest.raises(AssertionError):
+        test_method()
+    elapsed = time.time() - start
+
+    # The comparison must complete in under 10 seconds.
+    # Without the fix, a 500-key dict diff takes minutes.
+    assert elapsed < 10, (
+        f"assertEqual on large differing dicts took {elapsed:.1f}s; "
+        f"expected < 10s.  Is maxDiff still None?"
+    )
