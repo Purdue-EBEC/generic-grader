@@ -551,7 +551,8 @@ def test_large_diff_does_not_timeout(fix_syspath):
 
     When self.maxDiff is None, unittest's assertEqual calls difflib.ndiff
     on pprint.pformat() output, which has O(n^2) complexity and can hang
-    for minutes on large data.  Setting a finite maxDiff avoids this.
+    for minutes on large data.  safe_assert_equal avoids this by falling
+    back to a truncated representation for large values.
     """
     # Arrange: functions that return large dicts with every value different.
     submission = (
@@ -583,7 +584,7 @@ def test_large_diff_does_not_timeout(fix_syspath):
     import time
 
     start = time.time()
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError) as exc_info:
         test_method()
     elapsed = time.time() - start
 
@@ -592,4 +593,11 @@ def test_large_diff_does_not_timeout(fix_syspath):
     assert elapsed < 10, (
         f"assertEqual on large differing dicts took {elapsed:.1f}s; "
         f"expected < 10s.  Is maxDiff still None?"
+    )
+
+    # The error message should contain a truncated repr, not all 500 keys.
+    message = str(exc_info.value)
+    assert "..." in message, "Expected truncated repr with '...' for large values"
+    assert "key_499" not in message, (
+        "Expected repr to be truncated, but found the last key"
     )

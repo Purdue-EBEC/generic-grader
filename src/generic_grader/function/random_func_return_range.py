@@ -9,6 +9,7 @@ from parameterized import parameterized
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
 from generic_grader.utils.options import options_to_params
+from generic_grader.utils.safe_equal import safe_assert_equal
 from generic_grader.utils.user import SubUser
 
 
@@ -104,8 +105,7 @@ def build(the_options):
                 )
                 + f"\n\n{self.student_user.format_log()}"
             )
-            self.maxDiff = None
-            self.assertEqual(actual_set, o.expected_set, msg=message)
+            safe_assert_equal(self, actual_set, o.expected_set, msg=message)
 
             self.set_score(self, o.weight)  # Full credit
 
