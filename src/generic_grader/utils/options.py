@@ -1,4 +1,5 @@
 import datetime
+import inspect
 from collections.abc import Callable
 
 from attrs import Factory, define
@@ -110,6 +111,25 @@ class Options:
             s = set(attr)
             if len(s) != len(attr):
                 raise ValueError(f"Duplicate entries in {name}.")
+        if self.init is not None:
+            sig = inspect.signature(self.init)
+            positional_kinds = (
+                inspect.Parameter.POSITIONAL_ONLY,
+                inspect.Parameter.POSITIONAL_OR_KEYWORD,
+                inspect.Parameter.VAR_POSITIONAL,
+            )
+            max_positional = 0
+            for p in sig.parameters.values():
+                if p.kind == inspect.Parameter.VAR_POSITIONAL:
+                    max_positional = float("inf")
+                    break
+                if p.kind in positional_kinds:
+                    max_positional += 1
+            if max_positional < 2:
+                raise ValueError(
+                    f"`init` must accept 2 positional arguments"
+                    f" (test, options), but accepts {max_positional}."
+                )
         if self.mode not in ["exactly", "less than", "more than", "approximately"]:
             raise ValueError(
                 "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'."
