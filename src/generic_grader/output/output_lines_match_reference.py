@@ -8,6 +8,7 @@ from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, make_line_range
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
+from generic_grader.utils.safe_equal import safe_assert_equal
 
 
 def doc_func(func, num, param):
@@ -76,9 +77,8 @@ def build(the_options):
                 + f"{self.student_user.format_log()}"
             )
 
-            self.maxDiff = None
-            self.assertEqual(actual, expected, msg=message)
-            # ratio = difflib.SequenceMatcher(None, actual, expected).ratio() #TODO: Figure out why difflb is taking so long - come up with a test case that takes a long time
+            safe_assert_equal(self, actual, expected, msg=message)
+            # ratio = difflib.SequenceMatcher(None, actual, expected).ratio()
             # self.assertGreaterEqual(ratio, 0.99, msg=message)
 
             self.set_score(self, o.weight)  # Full credit

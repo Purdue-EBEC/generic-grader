@@ -10,6 +10,7 @@ from parameterized import parameterized
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.options import options_to_params
+from generic_grader.utils.safe_equal import safe_assert_equal
 
 
 def parse_docstring(docstring):
@@ -254,8 +255,7 @@ def build(the_options):
                 "  Please include this statement exactly as provided in the template."
             )
 
-            self.maxDiff = None
-            self.assertEqual(actual_integrity, expected_integrity, msg=message)
+            safe_assert_equal(self, actual_integrity, expected_integrity, msg=message)
             self.set_score(self, options.weight)  # Full credit
 
     return TestDocstring

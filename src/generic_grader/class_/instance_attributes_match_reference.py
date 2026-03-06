@@ -104,7 +104,6 @@ def build(the_options):
                 )
             )
 
-            self.maxDiff = None
             if missing_attrs or extra_attrs:
                 self.fail(message)
 

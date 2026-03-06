@@ -10,6 +10,7 @@ from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
+from generic_grader.utils.safe_equal import safe_assert_equal
 
 
 def doc_func(func, num, param):
@@ -81,7 +82,6 @@ def build(the_options):
                 + f"{formatted_log}"
             )
 
-            self.maxDiff = None
             self.assertIsInstance(actual, expected_type, msg=type_msg)
 
             if isinstance(expected, np.ndarray):
@@ -109,7 +109,7 @@ def build(the_options):
                 if isinstance(expected, float):
                     self.assertAlmostEqual(actual, expected, msg=value_msg)
                 else:
-                    self.assertEqual(actual, expected, msg=value_msg)
+                    safe_assert_equal(self, actual, expected, msg=value_msg)
 
             self.set_score(self, o.weight)  # Full credit
 

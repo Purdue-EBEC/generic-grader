@@ -114,7 +114,6 @@ def build(options):
                 + self.student_user.format_log()
             )
 
-            self.maxDiff = None
             self.assertNotEqual(first_files, second_files, msg=message)
             self.set_score(self, options.weight)
 

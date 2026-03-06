@@ -13,6 +13,7 @@ from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.math_utils import calc_log_limit
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.plot import get_property
+from generic_grader.utils.safe_equal import safe_assert_equal
 from generic_grader.utils.user import RefUser, SubUser
 
 
@@ -88,7 +89,6 @@ def build(the_options):
                 + f"{self.student_user.format_log()}"
             )
 
-            self.maxDiff = None
             if o.prop == "xy data":
                 error = np.sqrt(
                     np.mean(
@@ -102,7 +102,7 @@ def build(the_options):
                 ratio = normalized_similarity(actual, expected)
                 self.assertGreaterEqual(ratio, o.ratio, msg=message)
             else:
-                self.assertEqual(actual, expected, msg=message)
+                safe_assert_equal(self, actual, expected, msg=message)
 
             self.set_score(self, o.weight)
 

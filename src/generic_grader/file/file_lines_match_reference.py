@@ -8,6 +8,7 @@ from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, oxford_list
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
+from generic_grader.utils.safe_equal import safe_assert_equal
 
 
 def doc_func(func, num, param):
@@ -80,8 +81,7 @@ def build(the_options):
                 + self.student_user.format_log()
             )
 
-            self.maxDiff = None
-            self.assertEqual(sub_lines, ref_lines, msg=message)
+            safe_assert_equal(self, sub_lines, ref_lines, msg=message)
 
             self.set_score(self, options.weight)
 

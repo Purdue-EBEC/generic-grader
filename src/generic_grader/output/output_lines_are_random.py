@@ -85,7 +85,6 @@ def build(the_options):
                 + f"{self.student_user_1.format_log()}"
             )
 
-            self.maxDiff = None
             self.assertNotEqual(first, second, msg=message)
 
             self.set_score(self, o.weight)  # Full credit
