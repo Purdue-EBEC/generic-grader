@@ -31,9 +31,9 @@ def test_safe_assert_equal_small_diff_uses_assertEqual(tc):
     message = str(exc_info.value)
     # assertEqual's assertDictEqual produces ndiff output with +/- lines
     # and '^' character-level markers.
-    assert "^" in message, (
-        "Expected assertEqual-style diff with '^' markers for small values"
-    )
+    assert (
+        "^" in message
+    ), "Expected assertEqual-style diff with '^' markers for small values"
 
 
 def test_safe_assert_equal_large_diff_is_truncated(tc):
@@ -44,13 +44,11 @@ def test_safe_assert_equal_large_diff_is_truncated(tc):
         safe_assert_equal(tc, large_a, large_b, msg="")
     message = str(exc_info.value)
     # The truncated repr should contain '...' from reprlib truncation.
-    assert "..." in message, (
-        "Expected truncated repr with '...' for large values"
-    )
+    assert "..." in message, "Expected truncated repr with '...' for large values"
     # The message should NOT contain the full 500 keys.
-    assert "key_499" not in message, (
-        "Expected repr to be truncated, but found the last key"
-    )
+    assert (
+        "key_499" not in message
+    ), "Expected repr to be truncated, but found the last key"
 
 
 def test_safe_assert_equal_large_values_complete_quickly(tc):
@@ -65,24 +63,24 @@ def test_safe_assert_equal_large_values_complete_quickly(tc):
         safe_assert_equal(tc, large_a, large_b, msg="")
     elapsed = time.time() - start
 
-    assert elapsed < 10, (
-        f"safe_assert_equal on large diffs took {elapsed:.1f}s; expected < 10s"
-    )
+    assert (
+        elapsed < 10
+    ), f"safe_assert_equal on large diffs took {elapsed:.1f}s; expected < 10s"
 
 
 def test_safe_assert_equal_threshold_boundary(tc):
     """Values just above the threshold should take the truncated path."""
     import pprint
 
-    # Build a value whose pformat is just above the threshold.
-    n = 1
-    while True:
-        d = {f"k{i}": f"v{i}" for i in range(n)}
-        if len(pprint.pformat(d)) * 2 > _MAX_PFORMAT_CHARS:
-            break
+    # Build up a dict one key at a time until its pformat crosses the
+    # threshold.  This avoids rebuilding from scratch each iteration.
+    d = {}
+    n = 0
+    while len(pprint.pformat(d)) * 2 <= _MAX_PFORMAT_CHARS:
+        d[f"k{n}"] = f"v{n}"
         n += 1
 
-    other = {f"k{i}": f"x{i}" for i in range(n)}
+    other = {k: f"x{k[1:]}" for k in d}
     with pytest.raises(AssertionError) as exc_info:
         safe_assert_equal(tc, d, other, msg="")
     message = str(exc_info.value)
