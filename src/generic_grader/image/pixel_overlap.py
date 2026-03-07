@@ -52,7 +52,13 @@ def build(options):
 
             # Get the actual pixel overlap count.
             with Image.open(o.ref_image) as A, Image.open(o.sub_image) as B:
-                pixels = sum(logical_and(A, B).getdata()) // 255
+                result = logical_and(A, B)
+                data = (
+                    result.get_flattened_data()
+                    if hasattr(result, "get_flattened_data")
+                    else result.getdata()
+                )
+                pixels = sum(data) // 255
 
             # Test the result.
             if o.mode == "less than":
