@@ -159,6 +159,12 @@ call_obj_fail = [
         "result": "Hello, User!\n",
         "error": QuitError,
     },
+    {  # KeyError
+        "options": Options(sub_module="key_error_user", entries=("EAPS14900",)),
+        "file_text": "def main():\n    data = {}\n    name = input('Enter a course: ')\n    print(data[name])",
+        "result": "Enter a course: EAPS14900\n",
+        "error": KeyError,
+    },
 ]
 
 
@@ -194,6 +200,36 @@ def test_failing_call_obj_error(fix_syspath):
         f"Your `{options.obj_name}` malfunctioned when called as `main()` with entries\n  {options.entries}."
         in exc_info.value.args[0]
     )
+
+
+def test_key_error_message_formatting(fix_syspath):
+    """Test that KeyError messages don't contain literal backslash-n characters.
+
+    Regression test for issue #123. KeyError.__str__() uses repr() on its
+    argument, which escapes newlines to literal '\\n'. The error message
+    shown to students should contain actual newlines, not escaped ones.
+    """
+    options = Options(
+        sub_module="key_error_user",
+        entries=("EAPS14900",),
+    )
+    fake_file = fix_syspath / f"{options.sub_module}.py"
+    fake_file.write_text(
+        "def main():\n"
+        "    data = {}\n"
+        "    name = input('Enter a course: ')\n"
+        "    print(data[name])"
+    )
+    test = FakeTest()
+    user = SubUser(test, options)
+    with pytest.raises(KeyError) as exc_info:
+        user.call_obj()
+    # str() of the exception is what Gradescope shows to students.
+    error_str = str(exc_info.value)
+    # The error string should not contain repr()-escaped newlines.
+    assert "\\n" not in error_str
+    # It should contain actual newlines from the formatted message.
+    assert "\n" in error_str
 
 
 def test_debug_call_obj(capsys, fix_syspath):

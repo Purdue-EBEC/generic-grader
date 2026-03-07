@@ -13,6 +13,28 @@ def indent(string, pad="  "):
     return "\n".join([pad + line for line in string.splitlines()])
 
 
+def safe_exception_type(exc_type):
+    """Wrap exception types whose __str__ uses repr() on the message.
+
+    KeyError.__str__() returns repr(args[0]) instead of str(args[0]),
+    which escapes newlines to literal '\\n' characters. This makes
+    multi-line error messages unreadable when displayed to students.
+
+    Returns a subclass with standard __str__ behavior that preserves
+    the original exception type name for display purposes.
+    """
+    if exc_type is KeyError:
+
+        class SafeKeyError(KeyError):
+            def __str__(self):
+                return self.args[0] if self.args else ""
+
+        SafeKeyError.__name__ = "KeyError"
+        SafeKeyError.__qualname__ = "KeyError"
+        return SafeKeyError
+    return exc_type
+
+
 def format_error_msg(error_msg, hint=None):
     hint = f"\n\nHint:\n{wrapper.fill(hint)}" if hint else ""
     return f"{wrapper.fill(error_msg)}{hint}"
