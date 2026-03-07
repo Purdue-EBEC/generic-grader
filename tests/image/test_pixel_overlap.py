@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import pytest
 from PIL import Image, ImageChops
@@ -316,6 +317,31 @@ def test_pixel_overlap(case, fix_syspath):
     else:
         test_method()
         assert test_method.__score__ == test_method.__weight__
+
+
+def test_no_deprecation_warnings(fix_syspath):
+    """Test that pixel_overlap does not raise any deprecation warnings."""
+    o = Options(
+        weight=1,
+        ref_image="ref_image.png",
+        sub_image="sub_image.png",
+        mode="exactly",
+        threshold=0,
+    )
+    # Create blank images with no overlapping pixels.
+    width, height = 100, 100
+    ref_image = Image.new("RGB", (width, height), color="white")
+    sub_image = Image.new("RGB", (width, height), color="white")
+    ref_image = ImageChops.invert(ref_image.convert("1"))
+    sub_image = ImageChops.invert(sub_image.convert("1"))
+    ref_image.save(o.ref_image)
+    sub_image.save(o.sub_image)
+    # Build and run the test, asserting no deprecation warnings are raised.
+    built_class = build(o)
+    instance = built_class(methodName="test_pixel_overlap_0")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        instance.test_pixel_overlap_0()
 
 
 def test_init(fix_syspath, capsys):
