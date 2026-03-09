@@ -190,6 +190,61 @@ cases = [
             " matches the reference formatting."
         ),
     },
+    {  # Slightly wrong output passes with a forgiving ratio
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "result": "pass",
+        "score": 1,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            entries=("AJ",),
+            weight=1,
+            ratio=0.9,
+        ),
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
+    },
+    {  # Completely wrong output still fails even with a forgiving ratio
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Wrong output')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "result": AssertionError,
+        "score": 0,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            entries=("AJ",),
+            weight=1,
+            ratio=0.9,
+        ),
+        "message": "not sufficiently similar",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
+    },
 ]
 
 
