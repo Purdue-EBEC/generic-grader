@@ -6,6 +6,7 @@ import unittest
 import pytesseract
 from parameterized import parameterized
 from PIL import Image
+from rapidfuzz.distance.Levenshtein import normalized_similarity
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
@@ -61,11 +62,10 @@ def build(options):
                     " to the expected words." + (o.hint and f"  {o.hint}" or "")
                 )
             )
-            ratio = difflib.SequenceMatcher(
-                None,
+            ratio = normalized_similarity(
                 "".join(actual_words),
                 "".join(expected_words),
-            ).ratio()
+            )
             self.assertGreaterEqual(ratio, o.ratio, msg=message)
             self.set_score(self, options.weight)
 

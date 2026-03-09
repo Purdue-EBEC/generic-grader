@@ -1,9 +1,10 @@
 """Test the output lines of a function."""
 
+import difflib
 import unittest
 
 from parameterized import parameterized
-from rapidfuzz import fuzz
+from rapidfuzz.distance.Levenshtein import normalized_similarity
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, make_line_range
@@ -55,10 +56,25 @@ def build(the_options):
             call_str = make_call_str(o.obj_name, o.args, o.kwargs)
 
             if o.ratio < 1:
-                # Use rapidfuzz for partial matching (avoids O(n²) difflib).
-                similarity = fuzz.ratio(actual, expected) / 100
+                # Use rapidfuzz for partial matching (avoids O(n²) difflib
+                # in the ratio calculation).
+                similarity = normalized_similarity(actual, expected)
+
+                # Include a visual diff when the output is short enough
+                # that difflib.ndiff won't hang.
+                if len(actual) + len(expected) <= 2000:
+                    diff = "\n" + "\n".join(
+                        difflib.ndiff(
+                            actual.splitlines(keepends=True),
+                            expected.splitlines(keepends=True),
+                        )
+                    )
+                else:
+                    diff = ""
+
                 message = (
-                    "\n\nHint:\n"
+                    diff
+                    + "\n\nHint:\n"
                     + self.wrapper.fill(
                         "Your output is not sufficiently similar to the"
                         " expected output."
