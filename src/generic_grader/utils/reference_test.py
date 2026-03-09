@@ -1,6 +1,5 @@
 """Test all values in the output from a function."""
 
-import difflib
 import functools
 import os
 
@@ -82,18 +81,3 @@ def reference_test(func):
         func(self, o)
 
     return wrapper
-
-
-def make_diff(actual, expected):
-    """Create a diff similar to unittest.TestCase.assertEqual."""
-
-    # Ensure strings end with a newline to make diff readable.
-    expected = expected if expected.endswith("\n") else expected + "\n"
-    actual = actual if actual.endswith("\n") else actual + "\n"
-
-    return "".join(
-        difflib.ndiff(
-            actual.splitlines(keepends=True),
-            expected.splitlines(keepends=True),
-        )
-    )

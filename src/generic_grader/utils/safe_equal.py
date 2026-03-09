@@ -1,4 +1,4 @@
-"""Safe equality assertion that avoids O(n²) difflib.ndiff on large data.
+"""Safe comparison utilities that avoid O(n²) difflib.ndiff on large data.
 
 unittest's assertEqual delegates to type-specific methods (assertDictEqual,
 assertListEqual, assertMultiLineEqual, etc.) that always compute
@@ -11,8 +11,12 @@ the formatted output is small enough, it falls through to assertEqual so
 students still see the familiar diff with '^' character-level markers.
 When the output is large, it performs a direct != comparison and builds a
 truncated error message with reprlib.repr, avoiding the expensive diff.
+
+make_diff produces a unified diff string similar to assertEqual's output,
+suitable for inclusion in error messages.
 """
 
+import difflib
 import pprint
 import reprlib
 
@@ -50,3 +54,24 @@ def safe_assert_equal(test_case, actual, expected, msg=""):
         if actual != expected:
             detail = f"{_safe_repr.repr(actual)} != {_safe_repr.repr(expected)}"
             raise AssertionError(detail + msg)
+
+
+def make_diff(actual, expected):
+    """Create a diff similar to unittest.TestCase.assertEqual.
+
+    Returns an empty string when the combined length exceeds
+    ``_MAX_PFORMAT_CHARS`` to avoid an O(n²) hang from difflib.ndiff.
+    """
+    if len(actual) + len(expected) > _MAX_PFORMAT_CHARS:
+        return ""
+
+    # Ensure strings end with a newline to make diff readable.
+    expected = expected if expected.endswith("\n") else expected + "\n"
+    actual = actual if actual.endswith("\n") else actual + "\n"
+
+    return "".join(
+        difflib.ndiff(
+            actual.splitlines(keepends=True),
+            expected.splitlines(keepends=True),
+        )
+    )

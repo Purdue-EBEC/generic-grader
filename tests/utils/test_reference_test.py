@@ -5,7 +5,7 @@ import pytest
 
 from generic_grader.utils.exceptions import RefFileNotFoundError
 from generic_grader.utils.options import Options
-from generic_grader.utils.reference_test import make_diff, reference_test
+from generic_grader.utils.reference_test import reference_test
 
 reference_cases = [
     {
@@ -104,32 +104,6 @@ def test_missing_student_file(fix_syspath):
     ft = FakeTest()
     with pytest.raises(FileNotFoundError):
         ft.test(o)
-
-
-make_diff_cases = [
-    {
-        "actual": "Hello World!",
-        "expected": "Hello World!",
-        "expected_diff": "  Hello World!\n",
-    },
-    {
-        "actual": "Hello World!",
-        "expected": "Hello World",
-        "expected_diff": "- Hello World!\n?            -\n+ Hello World\n",
-    },
-    {
-        "actual": "Hello World",
-        "expected": "Hello World!",
-        "expected_diff": "- Hello World\n+ Hello World!\n?            +\n",
-    },
-]
-
-
-@pytest.mark.parametrize("case", make_diff_cases)
-def test_make_diff(case):
-    """Test that the make_diff function works as expected."""
-    diff = make_diff(case["actual"], case["expected"])
-    assert diff == case["expected_diff"]
 
 
 def test_init(fix_syspath, capsys):

@@ -4,7 +4,11 @@ import unittest
 
 import pytest
 
-from generic_grader.utils.safe_equal import _MAX_PFORMAT_CHARS, safe_assert_equal
+from generic_grader.utils.safe_equal import (
+    _MAX_PFORMAT_CHARS,
+    make_diff,
+    safe_assert_equal,
+)
 
 
 class _DummyTestCase(unittest.TestCase):
@@ -101,3 +105,36 @@ def test_safe_assert_equal_includes_msg(tc):
     with pytest.raises(AssertionError) as exc_info:
         safe_assert_equal(tc, large_a, large_b, msg="custom hint")
     assert "custom hint" in str(exc_info.value)
+
+
+make_diff_cases = [
+    {
+        "actual": "Hello World!",
+        "expected": "Hello World!",
+        "expected_diff": "  Hello World!\n",
+    },
+    {
+        "actual": "Hello World!",
+        "expected": "Hello World",
+        "expected_diff": "- Hello World!\n?            -\n+ Hello World\n",
+    },
+    {
+        "actual": "Hello World",
+        "expected": "Hello World!",
+        "expected_diff": "- Hello World\n+ Hello World!\n?            +\n",
+    },
+]
+
+
+@pytest.mark.parametrize("case", make_diff_cases)
+def test_make_diff(case):
+    """Test that the make_diff function works as expected."""
+    diff = make_diff(case["actual"], case["expected"])
+    assert diff == case["expected_diff"]
+
+
+def test_make_diff_returns_empty_for_large_input():
+    """make_diff returns an empty string when inputs exceed the size threshold."""
+    large_a = "a\n" * 1500
+    large_b = "b\n" * 1500
+    assert make_diff(large_a, large_b) == ""
