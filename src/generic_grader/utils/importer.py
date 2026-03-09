@@ -5,7 +5,7 @@ import unittest
 from attrs import evolve
 
 from generic_grader.utils.docs import get_wrapper
-from generic_grader.utils.exceptions import handle_error
+from generic_grader.utils.exceptions import handle_error, safe_exception_type
 from generic_grader.utils.options import Options
 from generic_grader.utils.patches import custom_stack
 
@@ -79,7 +79,7 @@ class Importer:
             )
         except Exception as e:
             fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
-            test.failureException = type(e)
+            test.failureException = safe_exception_type(type(e))
 
         # Fail outside of the except block
         # so that AssertionError(s) will be handled properly.

@@ -13,6 +13,7 @@ from generic_grader.utils.exceptions import (
     LogLimitExceededError,
     UserInitializationError,
     handle_error,
+    safe_exception_type,
 )
 from generic_grader.utils.importer import Importer
 from generic_grader.utils.options import Options
@@ -252,7 +253,7 @@ class __User__:
                 self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
         except Exception as e:
             # TODO This function is going to be refactored
-            self.test.failureException = type(e)
+            self.test.failureException = safe_exception_type(type(e))
             msg = handle_error(e, error_msg)
         else:
             try:  # Check for left over entries.

@@ -14,6 +14,7 @@ from generic_grader.utils.exceptions import (
     UserTimeoutError,
     format_error_msg,
     indent,
+    safe_exception_type,
     wrapper,
 )
 
@@ -140,3 +141,37 @@ custom_errors = [
 def test_errors_classes(case):
     """Test the custom error classes."""
     assert str(case["error"]) == case["expected"]
+
+
+safe_exception_type_cases = [
+    {  # KeyError uses repr() in __str__, which escapes newlines.
+        "exc_type": KeyError,
+        "msg": "\nYour program failed.\nDetails here.",
+        "should_have_literal_backslash_n": False,
+    },
+    {  # ValueError uses normal __str__, so no escaping.
+        "exc_type": ValueError,
+        "msg": "\nYour program failed.\nDetails here.",
+        "should_have_literal_backslash_n": False,
+    },
+    {  # TypeError uses normal __str__, so no escaping.
+        "exc_type": TypeError,
+        "msg": "\nYour program failed.\nDetails here.",
+        "should_have_literal_backslash_n": False,
+    },
+]
+
+
+@pytest.mark.parametrize("case", safe_exception_type_cases)
+def test_safe_exception_type(case):
+    """Test that safe_exception_type wraps exceptions with problematic __str__."""
+    safe_type = safe_exception_type(case["exc_type"])
+    exc = safe_type(case["msg"])
+    error_str = str(exc)
+    # The name should match the original exception type.
+    assert safe_type.__name__ == case["exc_type"].__name__
+    # The str() should not contain repr()-escaped newlines.
+    has_literal = "\\n" in error_str
+    assert has_literal == case["should_have_literal_backslash_n"]
+    # It should still be an instance of the original exception type.
+    assert isinstance(exc, case["exc_type"])
