@@ -239,6 +239,7 @@ cases = [
             ratio=0.9,
         ),
         "message": "not sufficiently similar",
+        "diff_content": ["- Wrong output", "+ Hello, AJ!"],
         "doc_func_test_string": (
             "Check that the formatting of output lines 1 through the end from"
             " your `main` function when called as `main()` with entries=('AJ',)"
@@ -301,5 +302,7 @@ def test_output_lines_match_reference(case_test_method):
 
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+        for diff_line in case.get("diff_content", []):
+            assert diff_line in message
         assert test_method.__doc__ == case["doc_func_test_string"]
         assert test_method.__score__ == case["score"]
