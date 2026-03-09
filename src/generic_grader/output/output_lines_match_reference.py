@@ -1,6 +1,5 @@
 """Test the output lines of a function."""
 
-import difflib
 import unittest
 
 from parameterized import parameterized
@@ -10,7 +9,7 @@ from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, make_line_range
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
-from generic_grader.utils.safe_equal import safe_assert_equal
+from generic_grader.utils.safe_equal import make_diff, safe_assert_equal
 
 
 def doc_func(func, num, param):
@@ -60,20 +59,10 @@ def build(the_options):
                 # in the ratio calculation).
                 similarity = normalized_similarity(actual, expected)
 
-                # Include a visual diff when the output is short enough
-                # that difflib.ndiff won't hang.
-                if len(actual) + len(expected) <= 2000:
-                    diff = "\n" + "\n".join(
-                        difflib.ndiff(
-                            actual.splitlines(keepends=True),
-                            expected.splitlines(keepends=True),
-                        )
-                    )
-                else:
-                    diff = ""
+                diff = make_diff(actual, expected)
 
                 message = (
-                    diff
+                    ("\n" + diff if diff else "")
                     + "\n\nHint:\n"
                     + self.wrapper.fill(
                         "Your output is not sufficiently similar to the"
