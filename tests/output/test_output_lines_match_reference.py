@@ -245,6 +245,27 @@ cases = [
             " matches the reference formatting."
         ),
     },
+    {  # Long output exceeding diff threshold still fails with ratio check
+        "submission": "def main():\n"
+        + "".join(f"    print('Different line number {i:03d}')\n" for i in range(50)),
+        "reference": "def main():\n"
+        + "".join(f"    print('Reference line number {i:03d}')\n" for i in range(50)),
+        "result": AssertionError,
+        "score": 0,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            ratio=0.9,
+        ),
+        "message": "not sufficiently similar",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()`"
+            " matches the reference formatting."
+        ),
+    },
 ]
 
 
