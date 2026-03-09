@@ -1,8 +1,10 @@
 """Test the output lines of a function."""
 
+import difflib
 import unittest
 
 from parameterized import parameterized
+from rapidfuzz.distance.Levenshtein import normalized_similarity
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, make_line_range
@@ -50,36 +52,56 @@ def build(the_options):
             actual = self.student_user.read_log()
             expected = self.ref_user.read_log()
 
-            # Build an error message.
-            #
-            # Considering adding some fuzziness by only requiring a certain
-            # percentage of output to match, but this doesn't work well for very
-            # long output.
             line_range = make_line_range(o.start, o.n_lines)
             call_str = make_call_str(o.obj_name, o.args, o.kwargs)
 
-            message = (
-                # "\n" + "\n".join(
-                #    difflib.ndiff(
-                #        actual.split("\n"),
-                #        expected.split("\n")
-                #    )
-                # )
-                # + "\n\nHint:\n"
-                "\n\nHint:\n"
-                + self.wrapper.fill(
-                    "Your output did not match the expected output."
-                    f"  Double check the formatting of output {line_range}"
-                    f" of your `{o.obj_name}` function when called as `{call_str}`"
-                    + (o.entries and f" with entries={o.entries}." or ".")
-                    + (o.hint and f"  {o.hint}" or "")
-                )
-                + f"{self.student_user.format_log()}"
-            )
+            if o.ratio < 1:
+                # Use rapidfuzz for partial matching (avoids O(n²) difflib
+                # in the ratio calculation).
+                similarity = normalized_similarity(actual, expected)
 
-            safe_assert_equal(self, actual, expected, msg=message)
-            # ratio = difflib.SequenceMatcher(None, actual, expected).ratio()
-            # self.assertGreaterEqual(ratio, 0.99, msg=message)
+                # Include a visual diff when the output is short enough
+                # that difflib.ndiff won't hang.
+                if len(actual) + len(expected) <= 2000:
+                    diff = "\n" + "\n".join(
+                        difflib.ndiff(
+                            actual.splitlines(keepends=True),
+                            expected.splitlines(keepends=True),
+                        )
+                    )
+                else:
+                    diff = ""
+
+                message = (
+                    diff
+                    + "\n\nHint:\n"
+                    + self.wrapper.fill(
+                        "Your output is not sufficiently similar to the"
+                        " expected output."
+                        f"  Double check the formatting of output {line_range}"
+                        f" of your `{o.obj_name}` function when called as"
+                        f" `{call_str}`"
+                        + (o.entries and f" with entries={o.entries}." or ".")
+                        + (o.hint and f"  {o.hint}" or "")
+                    )
+                    + f"{self.student_user.format_log()}"
+                )
+                self.assertGreaterEqual(similarity, o.ratio, msg=message)
+            else:
+                # Exact match (default).
+                message = (
+                    "\n\nHint:\n"
+                    + self.wrapper.fill(
+                        "Your output did not match the expected output."
+                        f"  Double check the formatting of output {line_range}"
+                        f" of your `{o.obj_name}` function when called as"
+                        f" `{call_str}`"
+                        + (o.entries and f" with entries={o.entries}." or ".")
+                        + (o.hint and f"  {o.hint}" or "")
+                    )
+                    + f"{self.student_user.format_log()}"
+                )
+                safe_assert_equal(self, actual, expected, msg=message)
 
             self.set_score(self, o.weight)  # Full credit
 

@@ -190,6 +190,83 @@ cases = [
             " matches the reference formatting."
         ),
     },
+    {  # Slightly wrong output passes with a forgiving ratio
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "result": "pass",
+        "score": 1,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            entries=("AJ",),
+            weight=1,
+            ratio=0.9,
+        ),
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
+    },
+    {  # Completely wrong output still fails even with a forgiving ratio
+        "submission": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Wrong output')"
+        ),
+        "reference": (
+            "def main():\n"
+            "    name = input('What is your name? ')\n"
+            "    print(f'Hello, {name}!')"
+        ),
+        "result": AssertionError,
+        "score": 0,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            entries=("AJ",),
+            weight=1,
+            ratio=0.9,
+        ),
+        "message": "not sufficiently similar",
+        "diff_content": ["- Wrong output", "+ Hello, AJ!"],
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()` with entries=('AJ',)"
+            " matches the reference formatting."
+        ),
+    },
+    {  # Long output exceeding diff threshold still fails with ratio check
+        "submission": "def main():\n"
+        + "".join(f"    print('Different line number {i:03d}')\n" for i in range(50)),
+        "reference": "def main():\n"
+        + "".join(f"    print('Reference line number {i:03d}')\n" for i in range(50)),
+        "result": AssertionError,
+        "score": 0,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            ratio=0.9,
+        ),
+        "message": "not sufficiently similar",
+        "doc_func_test_string": (
+            "Check that the formatting of output lines 1 through the end from"
+            " your `main` function when called as `main()`"
+            " matches the reference formatting."
+        ),
+    },
 ]
 
 
@@ -225,5 +302,7 @@ def test_output_lines_match_reference(case_test_method):
 
         message = " ".join(str(exc_info.value).split())
         assert case["message"] in message
+        for diff_line in case.get("diff_content", []):
+            assert diff_line in message
         assert test_method.__doc__ == case["doc_func_test_string"]
         assert test_method.__score__ == case["score"]
