@@ -24,7 +24,7 @@ dependencies = [
     "rapidfuzz>=3.1.1,<4",
     "scipy>=1.10.1,<2",
     "freezegun==1.5.5",
-    "attrs==25.4.0",
+    "attrs==26.1.0",
     "numpy>=2.0.0,<3",
 ]
 classifiers = [
