@@ -515,3 +515,37 @@ def test_full_user_log(fix_syspath):
    2 |Goodbye World
    3 |\n"""
     assert user.format_log() == expected_log
+
+
+def test_end_of_input_error_message_formatting(fix_syspath):
+    """Test that EndOfInputError message is not double-formatted.
+
+    Regression test for issue #68. When submitted code calls input() more
+    times than entries were provided, the error message shown to students
+    should contain the calling context ("malfunctioned"), and the phrase
+    "Your program requested user input more times than expected." should
+    appear exactly once — not wrapped again as the outer error message with
+    the real context demoted to a hint.
+    """
+    options = Options(sub_module="too_many_inputs")
+    fake_file = fix_syspath / f"{options.sub_module}.py"
+    fake_file.write_text(
+        "def main():\n"
+        "    name = input('What is your name? ')\n"
+        "    print(f'Hello, {name}!')\n"
+    )
+    test = FakeTest()
+    user = SubUser(test, options)
+    with pytest.raises(EndOfInputError) as exc_info:
+        user.call_obj()
+    error_str = str(exc_info.value)
+    # The error should reference the context of the failing call.
+    assert "malfunctioned" in error_str
+    # The cause should appear exactly once, not double-formatted.
+    assert (
+        error_str.count("Your program requested user input more times than expected.")
+        == 1
+    )
+    # The traceback header must be on its own line, not run together with the
+    # preceding text (the original bug: newlines were stripped by re-formatting).
+    assert "Traceback (most recent call last):\n" in error_str
