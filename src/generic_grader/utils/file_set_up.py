@@ -1,6 +1,7 @@
 import glob
 import os
 import sys
+import warnings
 from contextlib import contextmanager
 from pathlib import Path
 
@@ -23,9 +24,26 @@ def file_set_up(options):
             continue
 
         files = glob.glob(file_pattern)
-        files = [file for file in files if file not in o.ignored_files]
 
-        if len(files) != 1:  # src missing or ambiguous
+        # Exclude ignored files and existing symlinks so that stale
+        # symlinks from a previous run are not counted as matches.
+        files = [
+            file
+            for file in files
+            if file not in o.ignored_files and not Path(file).is_symlink()
+        ]
+
+        if len(files) == 0:
+            warnings.warn(
+                f'Cannot find any files matching the pattern "{file_pattern}".'
+            )
+            continue
+
+        if len(files) > 1:
+            warnings.warn(
+                f'Found {len(files)} files matching the pattern "{file_pattern}":'
+                f" {files}.  Skipping symlink creation due to ambiguous match."
+            )
             continue
 
         src = files[0]
