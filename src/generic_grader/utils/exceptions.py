@@ -93,6 +93,7 @@ class _GraderError(Exception):
             self.msg = args[0]
         else:
             self.msg = self._build_msg(*args)
+        super().__init__(self.msg)
 
     def __str__(self):
         return self.msg
