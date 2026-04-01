@@ -152,7 +152,6 @@ def test_stack_timelimit():
                 time.sleep(1)
 
 
-@pytest.mark.skip(reason="Memory limit is not working on some systems (see #65).")
 def test_stack_memorylimit():
     """Test that the custom stack properly patches memory limit."""
     o = Options()

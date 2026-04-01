@@ -1,3 +1,4 @@
+import os
 import resource
 import signal
 import sys
@@ -29,19 +30,34 @@ def time_limit(seconds):
         signal.alarm(0)
 
 
+def _get_current_vm_bytes():
+    """Return the current virtual memory size of this process in bytes.
+
+    Reads VmSize from /proc/self/status, which represents the total
+    virtual address space used by the process.
+    """
+    with open(f"/proc/{os.getpid()}/status") as f:
+        for line in f:
+            if line.startswith("VmSize:"):
+                return int(line.split()[1]) * 1024  # kB to bytes
+    return 0  # pragma: no cover
+
+
 @contextmanager
 def memory_limit(max_gibibytes):
     """A context manager to limit memory usage while running submitted code.
-    For soft limits above 20 MiB, the error was found experimentally to be
-    raised when the total memory usage was about 10 MiB below the soft limit.
-    For all soft limits less than 20 MiB, the error was raised when the total
-    memory usage was about 9.2 MiB.
+
+    Sets RLIMIT_AS relative to the current virtual memory usage so that
+    the enclosed code gets exactly max_gibibytes of additional address
+    space, regardless of how much memory the Python runtime and its
+    libraries already consume.
     """
     GiB = 2**30
     max_bytes = int(max_gibibytes * GiB)
+    current_vm = _get_current_vm_bytes()
 
     soft, hard = resource.getrlimit(resource.RLIMIT_AS)
-    resource.setrlimit(resource.RLIMIT_AS, (max_bytes, hard))
+    resource.setrlimit(resource.RLIMIT_AS, (current_vm + max_bytes, hard))
     try:
         yield
     except MemoryError:
