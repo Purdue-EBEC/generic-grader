@@ -1,3 +1,4 @@
+import warnings
 from pathlib import Path
 
 import pytest
@@ -155,3 +156,71 @@ def test_init(capsys):
         pass
     captured = capsys.readouterr()
     assert captured.out == "init\n"
+
+
+def test_warns_on_missing_files(fix_syspath):
+    """Test that a warning is emitted when no files match a glob pattern."""
+    o = Options(required_files=("nonexistent*.py",))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with file_set_up(o):
+            pass
+    assert len(w) == 1
+    assert "nonexistent*.py" in str(w[0].message)
+
+
+def test_warns_on_ambiguous_files(fix_syspath):
+    """Test that a warning is emitted when multiple files match a glob pattern."""
+    (fix_syspath / "foo_login.py").write_text("")
+    (fix_syspath / "foot.py").write_text("")
+    o = Options(required_files=("foo*.py",))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with file_set_up(o):
+            pass
+    assert len(w) == 1
+    assert "foo*.py" in str(w[0].message)
+    assert "foo_login.py" in str(w[0].message)
+    assert "foot.py" in str(w[0].message)
+
+
+def test_no_warning_on_single_match(fix_syspath):
+    """Test that no warning is emitted when exactly one file matches."""
+    (fix_syspath / "foo_login.py").write_text("")
+    o = Options(required_files=("foo*.py",))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with file_set_up(o):
+            pass
+    assert len(w) == 0
+
+
+def test_no_warning_on_non_glob_pattern(fix_syspath):
+    """Test that no warning is emitted for non-glob required files."""
+    (fix_syspath / "foo.py").write_text("")
+    o = Options(required_files=("foo.py",))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with file_set_up(o):
+            pass
+    assert len(w) == 0
+
+
+def test_symlinks_excluded_from_glob(fix_syspath):
+    """Test that existing symlinks are excluded from glob results.
+
+    If a stale symlink exists from a previous run, it should not
+    be counted as a matching file.
+    """
+    # Create a real file and a stale symlink (the deglobbed name)
+    (fix_syspath / "foo_login.py").write_text("")
+    (fix_syspath / "foo.py").symlink_to("foo_login.py")
+
+    o = Options(required_files=("foo*.py",))
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        with file_set_up(o):
+            # The symlink should have been recreated (foo.py -> foo_login.py)
+            assert (fix_syspath / "foo.py").is_symlink()
+    # No warnings — the stale symlink was excluded, leaving exactly 1 real match
+    assert len(w) == 0
