@@ -40,18 +40,24 @@ def format_error_msg(error_msg, hint=None):
     return f"{wrapper.fill(error_msg)}{hint}"
 
 
-# TODO: Fix problem where some filepaths still show up in the error message
 def handle_error(e, error_msg):
     stack_summary = traceback.extract_tb(e.__traceback__)
     short_stack_summary = []
     for frame_summary in stack_summary:
         dirname, filename = path.split(frame_summary.filename)
 
-        # Skip frames from the autograding system. This is usually the
-        # first frame, which contains the call to the submitted code in
-        # this try block, and the last 1 or 2 frames which typically
-        # contain the patched function.
-        if "/tests" in dirname or "/usr" in dirname or filename == "<string>":
+        # Skip frames from the autograding system. This includes:
+        # - /tests: test runner frames
+        # - /usr: system Python library frames
+        # - <string>: dynamically compiled code
+        # - generic_grader: the grader package itself (e.g., when
+        #   installed via uv into a virtualenv)
+        if (
+            "/tests" in dirname
+            or "/usr" in dirname
+            or "generic_grader" in dirname
+            or filename == "<string>"
+        ):
             continue
 
         # Remove the path information from the filename in each frame
@@ -62,7 +68,6 @@ def handle_error(e, error_msg):
         short_stack_summary.append(frame_summary)
 
     # Format the traceback with special handling for syntax errors.
-    # TODO: Fix problem where some filepaths still show up in the error message
     if isinstance(e, SyntaxError):
         # Remove the path information from the filename.
         dirname, filename = path.split(e.filename)

@@ -18,8 +18,6 @@ from generic_grader.utils.exceptions import (
     wrapper,
 )
 
-# TODO Add a test for the handle_error function. This was left out because the function needs to be changed after partiy is achieved.
-
 
 def test_wrapper():
     """Test the wrapper that is used to format error messages."""
