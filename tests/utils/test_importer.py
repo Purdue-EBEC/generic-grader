@@ -80,7 +80,7 @@ error_cases = [
         # Tests the except block on line 65
         "module": "fake_module",
         "error": ModuleNotFoundError,
-        "message": "\n  Unable to import `fake_module`.\n\nHint:\n  Make sure you have submitted a file named `fake_module.py and it\n  contains the definition of `fake_obj`.",
+        "message": "\n  Unable to import `fake_module`.\n\nHint:\n  Make sure you have submitted a file named `fake_module.py` and it\n  contains the definition of `fake_obj`.",
         "object": "fake_obj",
     },
     {  # Test quit_error
@@ -133,3 +133,21 @@ def test_error_message(fix_syspath, case):
     with pytest.raises(Exception) as exc_info:
         Importer.import_obj(test, case["module"], Options(obj_name=case["object"]))
     assert case["message"] in str(exc_info.value)
+
+
+def test_nested_missing_dependency_message(fix_syspath):
+    """Importer should report the inner missing dependency for nested imports."""
+    fake_file = fix_syspath / "fake_module.py"
+    # Write import statement for non-existent inner module
+    fake_file.write_text(
+        "import fake_inner_module.fake_inner_obj\nfake_obj = lambda: None"
+    )
+
+    test = FakeTest()
+    with pytest.raises(ModuleNotFoundError) as exc_info:
+        Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
+
+    # Ensure traceback is correct
+    message = str(exc_info.value)
+    assert "Unable to import `fake_module`." in message
+    assert "imports `fake_inner_module`" in message

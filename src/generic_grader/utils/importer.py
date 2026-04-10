@@ -68,14 +68,37 @@ class Importer:
                 )
             )
             test.failureException = cls.InputError
-        except ModuleNotFoundError:
+        except ModuleNotFoundError as e:
+            # Handle exception due to absent target module, reporting deepest error in chain.
+            missing_name = e.name or module
+            current_e = e
+            while True:
+                next_e = current_e.__cause__ or current_e.__context__
+                if next_e is None:
+                    break
+                current_e = next_e
+                if isinstance(current_e, ModuleNotFoundError):
+                    missing_name = current_e.name or missing_name
+
+            if missing_name == module:
+                hint = (
+                    f"Make sure you have submitted a file named `{module}.py` and "
+                    f"it contains the definition of `{obj_name}`."
+                )
+            else:
+                hint = (
+                    f"Your `{module}` module imports `{missing_name}`, but "
+                    f"that module could not be found. `{missing_name}` may be "
+                    f"imported directly by `{module}`, or by another module that "
+                    f"`{module}` depends on. If it is your own module, include "
+                    "the required file in your submission."
+                )
+
             test.failureException = ModuleNotFoundError
             fail_msg = (
                 cls.wrapper.fill(f"Unable to import `{module}`.")
                 + "\n\nHint:\n"
-                + cls.wrapper.fill(
-                    f"Make sure you have submitted a file named `{module}.py and it contains the definition of `{obj_name}`."
-                )
+                + cls.wrapper.fill(hint)
             )
         except Exception as e:
             fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
