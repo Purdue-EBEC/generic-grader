@@ -76,13 +76,6 @@ error_cases = [
         "message": "Stuck at call to `input()` while importing `fake_func`",
         "object": "fake_func",
     },
-    {
-        # Tests the except block on line 65
-        "module": "fake_module",
-        "error": ModuleNotFoundError,
-        "message": "\n  Unable to import `fake_module`.\n\nHint:\n  Make sure you have submitted a file named `fake_module.py` and it\n  contains the definition of `fake_obj`.",
-        "object": "fake_obj",
-    },
     {  # Test quit_error
         "module": "fake_module",
         "error": QuitError,
@@ -113,9 +106,8 @@ error_cases = [
 def test_error_exception(fix_syspath, case):
     """Test the Importer's ability to raise the correct exception."""
 
-    if case["error"] is not ModuleNotFoundError:
-        fake_file = fix_syspath / (case["module"] + ".py")
-        fake_file.write_text(case["text"])
+    fake_file = fix_syspath / (case["module"] + ".py")
+    fake_file.write_text(case["text"])
 
     test = FakeTest()
     with pytest.raises(case["error"]):
@@ -125,9 +117,8 @@ def test_error_exception(fix_syspath, case):
 @pytest.mark.parametrize("case", error_cases)
 def test_error_message(fix_syspath, case):
     """Test the Importer's ability to provide helpful error messages."""
-    if case["error"] is not ModuleNotFoundError:
-        fake_file = fix_syspath / (case["module"] + ".py")
-        fake_file.write_text(case["text"])
+    fake_file = fix_syspath / (case["module"] + ".py")
+    fake_file.write_text(case["text"])
     test = FakeTest()
     #  Since we already check Exception type, we can use a generic Exception here
     with pytest.raises(Exception) as exc_info:
@@ -135,19 +126,65 @@ def test_error_message(fix_syspath, case):
     assert case["message"] in str(exc_info.value)
 
 
-def test_nested_missing_dependency_message(fix_syspath):
-    """Importer should report the inner missing dependency for nested imports."""
-    fake_file = fix_syspath / "fake_module.py"
-    # Write import statement for non-existent inner module
-    fake_file.write_text(
-        "import fake_inner_module.fake_inner_obj\nfake_obj = lambda: None"
-    )
+missing_dependency_cases = [
+    {
+        # Tests missing top-level module import.
+        "module": "fake_module",
+        "object": "fake_obj",
+        "files": {},
+        "expected_messages": [
+            "Unable to import `fake_module`.",
+            "Make sure you have submitted a module named `fake_module`",
+            "contains the definition of `fake_obj`.",
+        ],
+    },
+    {
+        # Tests nested missing dependency through another imported file.
+        "module": "fake_module",
+        "object": "fake_obj",
+        "files": {
+            "fake_module.py": "import fake_dependency\nfake_obj = lambda: None",
+            "fake_dependency.py": "import fake_inner_module\nhelper = 1",
+        },
+        "expected_messages": [
+            "Unable to import `fake_module`.",
+            "imports `fake_inner_module`",
+            "could not be found.",
+            "in `fake_dependency.py` on line 1:",
+        ],
+    },
+    {
+        # Tests missing dependency wrapped in another ModuleNotFoundError.
+        "module": "fake_module",
+        "object": "fake_obj",
+        "files": {
+            "fake_module.py": "import fake_dependency\nfake_obj = lambda: None",
+            "fake_dependency.py": (
+                "try:\n"
+                "    import fake_inner_module\n"
+                "except ModuleNotFoundError as err:\n"
+                "    raise ModuleNotFoundError(name='fake_dependency_proxy') from err\n"
+            ),
+        },
+        "expected_messages": [
+            "Unable to import `fake_module`.",
+            "imports `fake_inner_module`",
+            "in `fake_dependency.py` on line 2:",
+        ],
+    },
+]
+
+
+@pytest.mark.parametrize("case", missing_dependency_cases)
+def test_nested_missing_dependency_message(fix_syspath, case):
+    """Importer should report clear messages for missing dependencies."""
+    for file_name, file_text in case["files"].items():
+        fake_file = fix_syspath / file_name
+        fake_file.write_text(file_text)
 
     test = FakeTest()
     with pytest.raises(ModuleNotFoundError) as exc_info:
-        Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
+        Importer.import_obj(test, case["module"], Options(obj_name=case["object"]))
 
-    # Ensure traceback is correct
-    message = str(exc_info.value)
-    assert "Unable to import `fake_module`." in message
-    assert "imports `fake_inner_module`" in message
+    for expected_message in case["expected_messages"]:
+        assert expected_message in str(exc_info.value)

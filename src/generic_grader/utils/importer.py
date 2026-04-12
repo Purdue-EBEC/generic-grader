@@ -1,6 +1,8 @@
 """Handle importing objects from student code."""
 
+import traceback
 import unittest
+from pathlib import Path
 
 from attrs import evolve
 
@@ -22,6 +24,28 @@ class Importer:
     def raise_input_error(cls, *args, **kwargs):
         """Raise our custom exception."""
         raise cls.InputError()
+
+    @classmethod
+    def _import_location_hint(cls, e: BaseException):
+        """Return a concise location hint for a failed import from traceback."""
+        tb = traceback.extract_tb(e.__traceback__)
+        if not tb:
+            return None
+
+        frame = tb[-1]
+        for candidate in reversed(tb):
+            if candidate.line and "import" in candidate.line:
+                frame = candidate
+                break
+
+        line = (frame.line or "").strip()
+        filename = Path(frame.filename).name
+        if line:
+            return (
+                f"The error occurred in `{filename}` on line {frame.lineno}: "
+                f"`{line}`."
+            )
+        return f"The error occurred in `{filename}` on line {frame.lineno}."
 
     @classmethod
     def import_obj(cls, test: unittest.TestCase, module: str, o: Options):
@@ -71,7 +95,7 @@ class Importer:
         except ModuleNotFoundError as e:
             # Handle exception due to absent target module, reporting deepest error in chain.
             missing_name = e.name or module
-            current_e = e
+            current_e: BaseException = e
             while True:
                 next_e = current_e.__cause__ or current_e.__context__
                 if next_e is None:
@@ -82,7 +106,7 @@ class Importer:
 
             if missing_name == module:
                 hint = (
-                    f"Make sure you have submitted a file named `{module}.py` and "
+                    f"Make sure you have submitted a module named `{module}` and "
                     f"it contains the definition of `{obj_name}`."
                 )
             else:
@@ -90,9 +114,14 @@ class Importer:
                     f"Your `{module}` module imports `{missing_name}`, but "
                     f"that module could not be found. `{missing_name}` may be "
                     f"imported directly by `{module}`, or by another module that "
-                    f"`{module}` depends on. If it is your own module, include "
-                    "the required file in your submission."
+                    f"`{module}` depends on. If it is your own module, make sure "
+                    "that it is included in your submission. If it is not your own "
+                    "module, that dependency may not be available in the autograder "
+                    "environment."
                 )
+                location_hint = cls._import_location_hint(current_e)
+                if location_hint:
+                    hint += f" {location_hint}"
 
             test.failureException = ModuleNotFoundError
             fail_msg = (
