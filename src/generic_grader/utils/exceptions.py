@@ -222,3 +222,37 @@ class RefFileNotFoundError(_GraderError):
             f"The reference solution failed to create the required file `{filename}`.",
             None,
         )
+
+
+class DisallowedImportError(_GraderError):
+    """Raised when submitted code tries to import a blocked module."""
+
+    def _build_msg(self, module_name="", hint=None):
+        error_msg = (
+            f"Importing the `{module_name}` module is not allowed in this course."
+        )
+        default_hint = (
+            "Use the modules and functions that have been covered in the course."
+        )
+        hint = f"{hint}  {default_hint}" if hint else default_hint
+        return format_error_msg(error_msg, hint)
+
+
+class DisallowedFunctionCallError(_GraderError):
+    """Raised when submitted code calls a blocked function."""
+
+    def _build_msg(self, func_name="", hint=None):
+        error_msg = f"Calling `{func_name}` is not allowed in this course."
+        default_hint = "Use the functions that have been covered in the course."
+        hint = f"{hint}  {default_hint}" if hint else default_hint
+        return format_error_msg(error_msg, hint)
+
+
+class DisallowedFileAccessError(_GraderError):
+    """Raised when submitted code tries to open a protected file."""
+
+    def _build_msg(self, path="", hint=None):
+        error_msg = f"Opening `{path}` is not allowed in this course."
+        default_hint = "Limit file access to files you have created in your submission."
+        hint = f"{hint}  {default_hint}" if hint else default_hint
+        return format_error_msg(error_msg, hint)
