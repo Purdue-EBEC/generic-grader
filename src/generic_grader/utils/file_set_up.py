@@ -35,14 +35,16 @@ def file_set_up(options):
 
         if len(files) == 0:
             warnings.warn(
-                f'Cannot find any files matching the pattern "{file_pattern}".'
+                f'Cannot find any files matching the pattern "{file_pattern}".',
+                stacklevel=2,
             )
             continue
 
         if len(files) > 1:
             warnings.warn(
                 f'Found {len(files)} files matching the pattern "{file_pattern}":'
-                f" {files}.  Skipping symlink creation due to ambiguous match."
+                f" {files}.  Skipping symlink creation due to ambiguous match.",
+                stacklevel=2,
             )
             continue
 
