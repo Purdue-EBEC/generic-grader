@@ -1,6 +1,8 @@
 import builtins
 import importlib
 import os
+import sys
+import sysconfig
 from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
@@ -134,9 +136,85 @@ def _module_is_blocked(name, blocked):
     return False
 
 
+# Trusted directories: imports originating from any of these are considered
+# transitive imports performed by trusted libraries (the stdlib, installed
+# third-party packages, and the grader itself) rather than direct imports
+# by student code, so they bypass the blocklist.  This is required because
+# many "safe" libraries the student is expected to use (numpy, matplotlib,
+# pandas, ...) transitively import otherwise-blocked modules such as
+# `ctypes`, `socket`, or `multiprocessing`.
+def _compute_trusted_import_dirs():
+    paths = {
+        sysconfig.get_paths()["stdlib"],
+        sysconfig.get_paths()["platstdlib"],
+        sysconfig.get_paths()["purelib"],
+        sysconfig.get_paths()["platlib"],
+        os.path.dirname(os.__file__),  # stdlib catch-all
+    }
+    # Also trust the grader's own install location — when running from an
+    # editable install the grader lives outside site-packages, so we need
+    # an explicit entry to cover both that case and Gradescope's
+    # site-packages install.
+    try:
+        import generic_grader as _gg
+
+        paths.add(os.path.dirname(os.path.dirname(_gg.__file__)))
+    except ImportError:  # pragma: no cover - grader package always importable here
+        pass
+    return tuple(os.path.realpath(p) for p in paths if p)
+
+
+_TRUSTED_IMPORT_DIRS = _compute_trusted_import_dirs()
+
+# Substrings used by `_caller_is_trusted` to skip over the import machinery,
+# the mock-patch shim, and our own wrapper module when walking the stack.
+# Precomputed at module load so each import-check call is cheap and isn't
+# affected by tests monkeypatching `os.path.realpath`.
+_CALLER_SKIP_SUBSTRINGS = (
+    os.sep + "importlib" + os.sep,
+    os.sep + "unittest" + os.sep + "mock.py",
+    os.path.realpath(__file__),
+)
+
+
+def _caller_is_trusted():
+    """Return True if the import is being driven by trusted (library) code.
+
+    We walk the caller frames upward and look for the first frame that is
+    *not* this module, not the import machinery itself, and not the
+    `unittest.mock` patching shim.  If that frame's file lives inside a
+    trusted location (stdlib / site-packages / grader package) we treat
+    the import as a transitive library import and allow it.  Otherwise the
+    import originated from student code and is subject to the blocklist.
+    """
+    # Walk the Python frames; sys._getframe(0) is _caller_is_trusted itself.
+    depth = 1
+    while True:
+        try:
+            frame = sys._getframe(depth)
+        except ValueError:
+            return False  # Reached the top without finding a real caller.
+        depth += 1
+        filename = frame.f_code.co_filename
+        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
+            continue
+        # First non-skipped frame: classify it.
+        try:
+            real = os.path.realpath(filename)
+        except (OSError, ValueError):
+            return False
+        return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
+
+
 def make_import_blocklist_patches(extra_blocked=()):
     """Block dangerous imports at both `builtins.__import__` and
-    `importlib.import_module`.
+    `importlib.import_module` when initiated by student code.
+
+    Transitive imports performed by trusted libraries (the stdlib and
+    anything installed in site-packages) are allowed even when the target
+    module is on the blocklist; otherwise legitimate scientific libraries
+    such as `numpy` (which imports `ctypes`) or `matplotlib` (which pulls
+    in `urllib` via its font cache) would be unusable.
 
     `extra_blocked` lets a caller (or test) add additional module names.
     """
@@ -145,7 +223,7 @@ def make_import_blocklist_patches(extra_blocked=()):
     real_import_module = importlib.import_module
 
     def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
-        if _module_is_blocked(name, blocked):
+        if _module_is_blocked(name, blocked) and not _caller_is_trusted():
             raise DisallowedImportError(name)
         return real_import(name, globals, locals, fromlist, level)
 
@@ -154,7 +232,7 @@ def make_import_blocklist_patches(extra_blocked=()):
         if package and name.startswith("."):
             # Resolve relative imports to absolute names before checking.
             resolved = importlib.util.resolve_name(name, package)
-        if _module_is_blocked(resolved, blocked):
+        if _module_is_blocked(resolved, blocked) and not _caller_is_trusted():
             raise DisallowedImportError(resolved)
         return real_import_module(name, package)
 

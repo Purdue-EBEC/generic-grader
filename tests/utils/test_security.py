@@ -161,6 +161,44 @@ def test_import_blocklist_allows_extra_blocked_param():
             __import__("json")
 
 
+def test_import_blocklist_allows_trusted_transitive_imports(tmp_path):
+    """A trusted library that transitively imports a blocked module is allowed.
+
+    Regression: numpy / matplotlib import `ctypes` internally; if we treat
+    every import the same the moment student-driven test code triggers a
+    fresh `numpy` load, the chain explodes. Imports whose immediate caller
+    lives in a trusted directory (stdlib / site-packages / grader install)
+    must bypass the blocklist.
+    """
+    from generic_grader.utils import patches as patches_mod
+
+    # Forge a frame whose filename lives under one of the trusted dirs by
+    # exec-ing source compiled with that filename. The `__import__` call
+    # inside this exec runs with that synthetic filename as its caller.
+    trusted_dir = patches_mod._TRUSTED_IMPORT_DIRS[0]
+    fake_caller = os.path.join(trusted_dir, "fake_trusted_lib.py")
+    src = "result = __import__('subprocess')\n"
+    code = compile(src, fake_caller, "exec")
+
+    o = Options()
+    with custom_stack(o):
+        ns = {}
+        exec(code, ns)
+        assert ns["result"] is not None
+
+
+def test_import_blocklist_blocks_when_caller_is_student_code(tmp_path):
+    """Same target, but the caller is an untrusted (student) location."""
+    fake_caller = str(tmp_path / "student.py")
+    src = "__import__('subprocess')\n"
+    code = compile(src, fake_caller, "exec")
+
+    o = Options()
+    with custom_stack(o):
+        with pytest.raises(DisallowedImportError):
+            exec(code, {})
+
+
 def test_import_blocklist_outside_stack_does_not_raise():
     """Outside custom_stack, imports should be unaffected."""
     # subprocess is heavy but importable. We do not actually need to use it.
@@ -451,6 +489,48 @@ def test_is_inside_handles_value_error(tmp_path):
                 assert f.read() == "ok"
     finally:
         os.path.commonpath = real_commonpath
+
+
+def test_caller_is_trusted_handles_top_of_stack(monkeypatch):
+    """_caller_is_trusted should return False if it walks off the top of the
+    stack without finding a non-skipped caller."""
+    from generic_grader.utils import patches as patches_mod
+
+    class FakeFrame:
+        def __init__(self):
+            self.f_code = type(
+                "C",
+                (),
+                {"co_filename": "/usr/lib/python/importlib/_bootstrap.py"},
+            )()
+
+    def boom(depth):
+        # Always return a skipped (importlib) frame, then run off the top
+        # of the stack with ValueError.
+        if depth > 5:
+            raise ValueError("call stack is not deep enough")
+        return FakeFrame()
+
+    monkeypatch.setattr(patches_mod.sys, "_getframe", boom)
+    assert patches_mod._caller_is_trusted() is False
+
+
+def test_caller_is_trusted_handles_realpath_error(monkeypatch):
+    """_caller_is_trusted should return False if realpath raises on the
+    chosen frame's filename.
+    """
+    from generic_grader.utils import patches as patches_mod
+
+    class FakeFrame:
+        f_code = type("C", (), {"co_filename": "/some/student/file.py"})()
+
+    monkeypatch.setattr(patches_mod.sys, "_getframe", lambda _: FakeFrame())
+    monkeypatch.setattr(
+        patches_mod.os.path,
+        "realpath",
+        lambda _: (_ for _ in ()).throw(OSError("forced")),
+    )
+    assert patches_mod._caller_is_trusted() is False
 
 
 def test_security_wrapper_does_not_pollute_import_location_hint(tmp_path, monkeypatch):
