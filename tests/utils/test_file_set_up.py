@@ -138,9 +138,11 @@ def set_up_case_test_method(request, fix_syspath):
 def test_file_setup(set_up_case_test_method):
     case, o = set_up_case_test_method
 
-    with file_set_up(o):
-        actual_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
-        assert actual_symlinks == case["expected_symlinks"]
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        with file_set_up(o):
+            actual_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
+            assert actual_symlinks == case["expected_symlinks"]
     removed_symlinks = {p.name for p in Path().iterdir() if p.is_symlink()}
     assert not removed_symlinks
 
