@@ -14,6 +14,7 @@ import pytest
 from generic_grader.sandbox.protocol import (
     PROTOCOL_VERSION,
     Event,
+    PatchSpec,
     Request,
     Response,
     SandboxException,
@@ -369,3 +370,105 @@ def test_response_from_json_rejects_malformed_json():
     with pytest.raises(SandboxException) as exc_info:
         Response.from_json("{not valid json")
     assert "json" in str(exc_info.value).lower()
+
+
+# ---------------------------------------------------------------------------
+# PatchSpec
+# ---------------------------------------------------------------------------
+
+
+def test_patch_spec_noop_round_trip():
+    spec = PatchSpec(target="matplotlib.pyplot.show", kind="noop")
+    assert PatchSpec.from_dict(spec.to_dict()) == spec
+
+
+def test_patch_spec_iter_returns_round_trip():
+    spec = PatchSpec(
+        target="random.random",
+        kind="iter_returns",
+        values=[0.1, 0.2, 0.3],
+    )
+    round_tripped = PatchSpec.from_dict(spec.to_dict())
+    assert round_tripped == spec
+    assert round_tripped.values == [0.1, 0.2, 0.3]
+
+
+def test_patch_spec_raise_error_round_trip():
+    spec = PatchSpec(
+        target="turtle.done",
+        kind="raise_error",
+        error_qualname="generic_grader.utils.exceptions.TurtleDoneError",
+        patch_kwargs={"create": True},
+    )
+    round_tripped = PatchSpec.from_dict(spec.to_dict())
+    assert round_tripped == spec
+    assert round_tripped.patch_kwargs == {"create": True}
+
+
+def test_patch_spec_source_round_trip():
+    spec = PatchSpec(
+        target="falling.falling_dist",
+        kind="source",
+        source="def fake(time):\n    return time * 2\n",
+        name="fake",
+    )
+    assert PatchSpec.from_dict(spec.to_dict()) == spec
+
+
+def test_patch_spec_rejects_unknown_kind():
+    with pytest.raises(SandboxException, match="Unknown PatchSpec kind"):
+        PatchSpec(target="x", kind="bogus")
+
+
+def test_patch_spec_raise_error_requires_qualname():
+    with pytest.raises(SandboxException, match="error_qualname"):
+        PatchSpec(target="x", kind="raise_error")
+
+
+def test_patch_spec_source_requires_source_and_name():
+    with pytest.raises(SandboxException, match="source and name"):
+        PatchSpec(target="x", kind="source", source="def f(): pass")
+    with pytest.raises(SandboxException, match="source and name"):
+        PatchSpec(target="x", kind="source", name="f")
+
+
+def test_patch_spec_from_dict_tolerates_missing_optional_fields():
+    minimal = {"target": "m.show", "kind": "noop"}
+    spec = PatchSpec.from_dict(minimal)
+    assert spec.values == []
+    assert spec.error_qualname is None
+    assert spec.source is None
+    assert spec.name is None
+    assert spec.patch_kwargs == {}
+
+
+def test_request_round_trips_patch_specs():
+    specs = (
+        PatchSpec(target="matplotlib.pyplot.show", kind="noop"),
+        PatchSpec(
+            target="turtle.done",
+            kind="raise_error",
+            error_qualname="generic_grader.utils.exceptions.TurtleDoneError",
+            patch_kwargs={"create": True},
+        ),
+    )
+    req = Request(
+        runtime="python",
+        submission_dir="/box/submission",
+        module="submission",
+        obj_name="main",
+        patch_specs=specs,
+    )
+    round_tripped = Request.from_json(req.to_json())
+    assert round_tripped.patch_specs == specs
+
+
+def test_request_patch_specs_defaults_to_empty_tuple():
+    req = Request(
+        runtime="python",
+        submission_dir="/box/submission",
+        module="submission",
+        obj_name="main",
+    )
+    assert req.patch_specs == ()
+    assert Request.from_json(req.to_json()).patch_specs == ()

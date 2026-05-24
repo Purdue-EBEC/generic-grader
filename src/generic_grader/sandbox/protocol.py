@@ -175,6 +175,86 @@ class Event:
 
 
 # ---------------------------------------------------------------------------
+# Patch specs
+# ---------------------------------------------------------------------------
+
+
+_VALID_PATCH_KINDS = ("noop", "iter_returns", "raise_error", "source")
+
+
+@dataclass
+class PatchSpec:
+    """A JSON-serializable description of a patch to apply at runtime.
+
+    The worker reconstructs an actual callable from the spec inside the
+    sandbox; the host applies the same spec via `custom_stack` for the
+    Layer 1 (in-process) path.  Keeping the spec format the only thing
+    that crosses the sandbox boundary means we never ship live closures
+    or pickled objects into the worker.
+
+    Kinds
+    -----
+    - ``noop``: replace `target` with a function that ignores all calls.
+    - ``iter_returns``: replace `target` with a function that returns the
+      next value from `values` on each call and raises
+      `ExcessFunctionCallError` once exhausted.
+    - ``raise_error``: replace `target` with a function that raises
+      `error_qualname` on every call.  `error_qualname` is a dotted
+      path resolved at worker startup (e.g.
+      ``generic_grader.utils.exceptions.TurtleDoneError``).
+    - ``source``: define a fresh callable by exec'ing `source` in an
+      empty namespace and pulling out `name`.  This is the escape hatch
+      for assignment-specific patches (e.g. `fake_falling_dist`).
+    """
+
+    target: str
+    kind: str
+    values: list[Any] = field(default_factory=list)
+    error_qualname: str | None = None
+    source: str | None = None
+    name: str | None = None
+    patch_kwargs: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.kind not in _VALID_PATCH_KINDS:
+            raise SandboxException(
+                f"Unknown PatchSpec kind {self.kind!r}; "
+                f"expected one of {_VALID_PATCH_KINDS}"
+            )
+        if self.kind == "raise_error" and not self.error_qualname:
+            raise SandboxException(
+                "PatchSpec(kind='raise_error') requires error_qualname"
+            )
+        if self.kind == "source" and (not self.source or not self.name):
+            raise SandboxException(
+                "PatchSpec(kind='source') requires both source and name"
+            )
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "target": self.target,
+            "kind": self.kind,
+            "values": list(self.values),
+            "error_qualname": self.error_qualname,
+            "source": self.source,
+            "name": self.name,
+            "patch_kwargs": dict(self.patch_kwargs),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict[str, Any]) -> "PatchSpec":
+        return cls(
+            target=d["target"],
+            kind=d["kind"],
+            values=list(d.get("values", []) or []),
+            error_qualname=d.get("error_qualname"),
+            source=d.get("source"),
+            name=d.get("name"),
+            patch_kwargs=dict(d.get("patch_kwargs", {}) or {}),
+        )
+
+
+# ---------------------------------------------------------------------------
 # Request envelope
 # ---------------------------------------------------------------------------
 
@@ -193,6 +273,7 @@ class Request:
     memory_limit_mb: int = 1400
     log_limit: int = 0
     captures: tuple = _DEFAULT_CAPTURES
+    patch_specs: tuple = ()
     protocol_version: int = PROTOCOL_VERSION
 
     def to_json(self) -> str:
@@ -211,6 +292,7 @@ class Request:
                 "memory_limit_mb": self.memory_limit_mb,
                 "log_limit": self.log_limit,
                 "captures": list(self.captures),
+                "patch_specs": [p.to_dict() for p in self.patch_specs],
             }
         )
 
@@ -242,6 +324,9 @@ class Request:
             memory_limit_mb=d.get("memory_limit_mb", 1400),
             log_limit=d.get("log_limit", 0),
             captures=tuple(d.get("captures", _DEFAULT_CAPTURES)),
+            patch_specs=tuple(
+                PatchSpec.from_dict(p) for p in d.get("patch_specs", []) or []
+            ),
         )
 
 
@@ -310,6 +395,7 @@ def read_response(stream: BinaryIO) -> Response | None:
 __all__: Iterable[str] = (
     "PROTOCOL_VERSION",
     "Event",
+    "PatchSpec",
     "Request",
     "Response",
     "SandboxException",
