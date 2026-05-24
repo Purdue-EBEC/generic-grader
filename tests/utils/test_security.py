@@ -453,6 +453,40 @@ def test_is_inside_handles_value_error(tmp_path):
         os.path.commonpath = real_commonpath
 
 
+def test_security_wrapper_does_not_pollute_import_location_hint(tmp_path, monkeypatch):
+    """`safe_import` should not appear in the student-facing import hint.
+
+    Regression: the `safe_import` wrapper in `patches.py` sits on top of the
+    real `__import__` on the traceback. Without filtering, the importer's
+    location-hint search picks up the wrapper's `return real_import(...)`
+    line (which contains the substring "import") instead of the student
+    file that triggered the missing import.
+    """
+    from generic_grader.utils.importer import Importer
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.syspath_prepend(str(tmp_path))
+    (tmp_path / "fake_module.py").write_text(
+        "import fake_dependency\nfake_obj = lambda: None\n"
+    )
+    (tmp_path / "fake_dependency.py").write_text(
+        "import fake_inner_module\nhelper = 1\n"
+    )
+
+    class FakeTest:
+        failureException = AssertionError
+
+        def fail(self, msg):
+            raise self.failureException(msg)
+
+    with pytest.raises(ModuleNotFoundError) as exc_info:
+        Importer.import_obj(FakeTest(), "fake_module", Options(obj_name="fake_obj"))
+
+    message = str(exc_info.value)
+    assert "in `fake_dependency.py` on line 1:" in message
+    assert "patches.py" not in message
+
+
 def test_custom_stack_security_allows_user_patches_to_override():
     """A user-supplied patch on the same target should take precedence.
 
