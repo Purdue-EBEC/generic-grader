@@ -544,6 +544,71 @@ def test_run_request_restores_sys_path_and_modules(submission_dir):
 
 
 # ---------------------------------------------------------------------------
+# matplotlib fallbacks when matplotlib is unavailable
+# ---------------------------------------------------------------------------
+
+
+def test_run_request_survives_missing_figure_serializer(submission_dir, monkeypatch):
+    """If the figure serializer can't be imported, the worker still returns.
+
+    This is the path the eventual Octave runtime will hit -- it shares
+    the worker scaffolding but ships without matplotlib.
+    """
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "generic_grader.sandbox.figure_serializer":
+            raise ImportError("simulated missing matplotlib")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def main():
+            return 1
+        """,
+    )
+    resp = run_request(_request(submission_dir))
+    assert resp.exception is None
+    # No figure events because the serializer couldn't load.
+    assert not any(e.type == "figure" for e in resp.events)
+
+
+def test_run_request_survives_missing_pyplot_when_figures_disabled(
+    submission_dir, monkeypatch
+):
+    """The 'close figures' fallback also tolerates missing matplotlib."""
+    import builtins
+
+    real_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "matplotlib.pyplot":
+            raise ImportError("simulated missing matplotlib")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def main():
+            return 1
+        """,
+    )
+    # 'figures' not in captures -> worker tries to close pyplot figures
+    # as cleanup; that import must be tolerated.
+    resp = run_request(_request(submission_dir, captures=("return", "exception")))
+    assert resp.exception is None
+
+
+# ---------------------------------------------------------------------------
 # _is_grader_frame helper
 # ---------------------------------------------------------------------------
 

@@ -322,6 +322,32 @@ def run_request(request: Request) -> Response:
         if leftover:
             events.append(Event(type="unused_entries", count=len(leftover)))
 
+    # Serialize any open matplotlib figures so plot tests can inspect
+    # them on the host side. We always close figures afterwards so the
+    # next in-process run starts clean -- the isolate runner spawns a
+    # fresh worker per test, but unit tests reuse this process.
+    if "figures" in captures:
+        try:
+            # Imported lazily so non-plot tests don't pay the matplotlib
+            # startup cost and runtimes without matplotlib still work.
+            from generic_grader.sandbox.figure_serializer import (
+                serialize_current_figures,
+            )
+
+            for fig_dict in serialize_current_figures():
+                events.append(Event(type="figure", properties=fig_dict))
+        except ImportError:
+            pass
+    else:
+        # Even when figures aren't captured, close any open figures
+        # so they don't leak into the next call.
+        try:
+            import matplotlib.pyplot as _plt
+
+            _plt.close("all")
+        except ImportError:
+            pass
+
     _push_phase(phase)
 
     elapsed = time.perf_counter() - start
