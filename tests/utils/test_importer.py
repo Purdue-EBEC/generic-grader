@@ -172,6 +172,19 @@ missing_dependency_cases = [
             "in `fake_dependency.py` on line 2:",
         ],
     },
+    {
+        # Tests dotted module import where the parent package is missing.
+        # Python raises ModuleNotFoundError(name='fake_pkg'), not name='fake_pkg.submod',
+        # so the prefix check is required to avoid a misleading dependency hint.
+        "module": "fake_pkg.submod",
+        "object": "fake_obj",
+        "files": {},
+        "expected_messages": [
+            "Unable to import `fake_pkg.submod`.",
+            "Make sure you have submitted a module named `fake_pkg.submod`",
+            "contains the definition of `fake_obj`.",
+        ],
+    },
 ]
 
 

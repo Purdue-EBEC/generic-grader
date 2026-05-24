@@ -104,7 +104,7 @@ class Importer:
                 if isinstance(current_e, ModuleNotFoundError):
                     missing_name = current_e.name or missing_name
 
-            if missing_name == module:
+            if missing_name == module or module.startswith(missing_name + "."):
                 hint = (
                     f"Make sure you have submitted a module named `{module}` and "
                     f"it contains the definition of `{obj_name}`."
