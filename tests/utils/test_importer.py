@@ -201,3 +201,41 @@ def test_nested_missing_dependency_message(fix_syspath, case):
 
     for expected_message in case["expected_messages"]:
         assert expected_message in str(exc_info.value)
+
+
+def test_import_location_hint_returns_none_when_all_frames_filtered(monkeypatch):
+    """If every traceback frame is inside `generic_grader`, the hint should
+    be None instead of pointing at grader internals.
+    """
+    import traceback
+
+    from generic_grader.utils import importer as importer_mod
+
+    FrameSummary = traceback.FrameSummary
+    fake_tb = [
+        FrameSummary(
+            "/site-packages/generic_grader/utils/patches.py",
+            150,
+            "safe_import",
+            line="return real_import(name, globals, locals, fromlist, level)",
+        )
+    ]
+    monkeypatch.setattr(importer_mod.traceback, "extract_tb", lambda _: fake_tb)
+
+    assert Importer._import_location_hint(ModuleNotFoundError("x")) is None
+
+
+def test_import_location_hint_falls_back_when_source_line_unavailable(monkeypatch):
+    """When the chosen frame has no source line, the hint should omit the
+    backtick-quoted snippet but still include the filename and line number.
+    """
+    import traceback
+
+    from generic_grader.utils import importer as importer_mod
+
+    FrameSummary = traceback.FrameSummary
+    fake_tb = [FrameSummary("student.py", 7, "<module>", line=None)]
+    monkeypatch.setattr(importer_mod.traceback, "extract_tb", lambda _: fake_tb)
+
+    hint = Importer._import_location_hint(ModuleNotFoundError("x"))
+    assert hint == "The error occurred in `student.py` on line 7."
