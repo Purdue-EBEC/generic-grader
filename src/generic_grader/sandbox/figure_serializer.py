@@ -49,7 +49,8 @@ Schema (version 1):
                     },
                     ...
                 ],
-                "grid_lines": [[[float, float], ...], ...],
+                "x_grid_lines": [[[float, float], ...], ...],
+                "y_grid_lines": [[[float, float], ...], ...],
                 "spine_visibility":  {name: bool, ...},
                 "spine_positions":   {name: [kind, value] | "zero" | "center", ...},
             },
@@ -195,8 +196,18 @@ def _serialize_tick_labels(getter) -> list[str]:
     return [label.get_text() for label in getter()]
 
 
-def _serialize_grid_lines(ax) -> list[list[list[float]]]:
-    """Return the visible grid lines filtered to the axes window."""
+def _serialize_grid_lines(
+    ax,
+) -> tuple[list[list[list[float]]], list[list[list[float]]]]:
+    """Return the visible grid lines filtered to the axes window.
+
+    Returns a ``(x_lines, y_lines)`` pair so the facade can keep the
+    two sets separate.  ``ax.get_xaxis().get_gridlines()`` returns the
+    *vertical* lines drawn at each x-tick (and vice versa for the
+    y-axis), so each set is filtered against the axis whose ticks
+    spawned the line -- exactly matching the logic in
+    ``utils.plot.get_grid_lines``.
+    """
     x_gridlines = ax.get_xaxis().get_gridlines()
     y_gridlines = ax.get_yaxis().get_gridlines()
     visible_x = [g for g in x_gridlines if g.get_visible()]
@@ -207,16 +218,17 @@ def _serialize_grid_lines(ax) -> list[list[list[float]]]:
     def to_vertices(line):
         return [[float(p[0]), float(p[1])] for p in line.get_path().vertices]
 
-    lines: list[list[list[float]]] = []
+    x_lines: list[list[list[float]]] = []
     for g in visible_x:
         vs = to_vertices(g)
         if vs and xmin <= vs[0][0] <= xmax:
-            lines.append(vs)
+            x_lines.append(vs)
+    y_lines: list[list[list[float]]] = []
     for g in visible_y:
         vs = to_vertices(g)
         if vs and ymin <= vs[0][1] <= ymax:
-            lines.append(vs)
-    return lines
+            y_lines.append(vs)
+    return x_lines, y_lines
 
 
 def _serialize_spine_visibility(ax) -> dict[str, bool]:
@@ -259,6 +271,7 @@ def _serialize_legend(ax) -> list[str] | None:
 
 def _serialize_axes(ax) -> dict[str, Any]:
     bars, bar_values = _serialize_bars(ax)
+    x_grid_lines, y_grid_lines = _serialize_grid_lines(ax)
     return {
         "title": ax.title.get_text(),
         "xlabel": ax.get_xlabel(),
@@ -272,7 +285,8 @@ def _serialize_axes(ax) -> dict[str, Any]:
         "bar_values": bar_values,
         "wedges": _serialize_wedges(ax),
         "legend": _serialize_legend(ax),
-        "grid_lines": _serialize_grid_lines(ax),
+        "x_grid_lines": x_grid_lines,
+        "y_grid_lines": y_grid_lines,
         "spine_visibility": _serialize_spine_visibility(ax),
         "spine_positions": _serialize_spine_positions(ax),
     }

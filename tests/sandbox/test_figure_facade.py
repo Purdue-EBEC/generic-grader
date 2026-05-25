@@ -267,6 +267,61 @@ def test_facade_grid_lines_present(grid_test):
     assert all(isinstance(line, tuple) for line in grid)
 
 
+def test_facade_grid_lines_no_double_count_with_overlapping_limits():
+    """Regression for the original single-list ``grid_lines`` schema.
+
+    When ``xlim`` and ``ylim`` overlap, each gridline's first vertex
+    satisfies both window filters in ``utils.plot.get_grid_lines``.
+    The split-by-axis schema must produce exactly the same count as
+    the live matplotlib path.
+    """
+    fig, ax = plt.subplots()
+    ax.plot([0, 1, 2], [0, 1, 2])
+    ax.set_xticks([0, 1, 2])
+    ax.set_yticks([0, 1, 2])
+    ax.set_xlim(-1, 3)
+    ax.set_ylim(-1, 3)
+    ax.grid(True)
+    sandbox = MockTest()
+    sandbox._sandbox_figures = [serialize_figure(fig)]
+    # Live count taken directly from the figure we just serialized.
+    live_count = len(get_grid_lines_from_live_ax(ax))
+    assert len(get_grid_lines(sandbox)) == live_count
+    plt.close(fig)
+
+
+def get_grid_lines_from_live_ax(ax):
+    """Replicate ``utils.plot.get_grid_lines`` against a live ``Axes``."""
+    x_gl = ax.get_xaxis().get_gridlines()
+    y_gl = ax.get_yaxis().get_gridlines()
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    x_lines = [
+        tuple(map(tuple, g.get_path().vertices)) for g in x_gl if g.get_visible()
+    ]
+    y_lines = [
+        tuple(map(tuple, g.get_path().vertices)) for g in y_gl if g.get_visible()
+    ]
+    out = []
+    out.extend(line for line in x_lines if xmin <= line[0][0] <= xmax)
+    out.extend(line for line in y_lines if ymin <= line[0][1] <= ymax)
+    return out
+
+
+def test_facade_grid_lines_legacy_schema():
+    """Old ``grid_lines`` field must still be readable (backward compat)."""
+    legacy = SerializedAxes(
+        {
+            "xlim": [0.0, 10.0],
+            "ylim": [0.0, 10.0],
+            "grid_lines": [[[1.0, 0.0], [1.0, 10.0]], [[0.0, 1.0], [10.0, 1.0]]],
+        }
+    )
+    # Both axes return the full legacy list (the old behavior).
+    assert len(legacy.get_xaxis().get_gridlines()) == 2
+    assert len(legacy.get_yaxis().get_gridlines()) == 2
+
+
 def test_facade_x_time_data():
     fig, ax = plt.subplots()
     dates = [datetime.date(2024, 1, d) for d in range(1, 4)]
@@ -304,7 +359,8 @@ def test_serialized_axes_default_values():
     assert ax.patches == []
     assert ax.get_legend() is None
     assert ax.spines == {}
-    # Both axes share the full gridline list so each helper can re-window.
+    # Each axis returns its own list -- the serialized schema keeps
+    # x-axis (vertical) and y-axis (horizontal) gridlines separate.
     assert ax.get_xaxis().get_gridlines() == []
     assert ax.get_yaxis().get_gridlines() == []
 

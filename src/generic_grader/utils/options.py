@@ -21,13 +21,20 @@ class Options:
     ref_module: str = "tests.reference"
     ref_dir: str = "./tests"
     """
-    Directory (relative to the test harness CWD) that contains the reference
+    Directory (relative to the test harness CWD) that holds the reference
     implementation and any supporting fixtures the reference code needs at
-    runtime.  This is currently only consulted by the Layer-3 sandbox
-    integration when ``use_sandbox=True``; the legacy in-process path imports
-    the reference module via the standard Python import machinery and ignores
-    this field.  Test authors are recommended to keep reference code and data
-    files under ``./tests/`` so they can be bind-mounted into the sandbox.
+    runtime.
+
+    **Not yet wired into the runtime.**  This field is declared so test
+    suites can adopt the option ahead of the bind-mount work, but the
+    Layer-3 sandbox integration in this PR does not yet bind-mount the
+    directory inside the sandbox; the value is currently read only by
+    user code and by the ``Options`` constructor.  Bind-mounting will
+    land in a follow-up PR (see ``ROADMAP.md``).  The legacy in-process
+    path imports the reference module via the standard Python import
+    machinery and likewise ignores this field.  Test authors are
+    recommended to keep reference code and data files under ``./tests/``
+    so they can be bind-mounted into the sandbox once that lands.
     """
     sub_module: str = ""
     required_files: tuple = ()

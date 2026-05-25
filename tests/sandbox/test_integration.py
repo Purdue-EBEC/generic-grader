@@ -25,6 +25,7 @@ from generic_grader.sandbox.integration import (
     default_runner_factory,
     get_default_box_pool,
     iter_events,
+    pool_for_xdist_worker,
     sandbox_call_obj,
     sandbox_import_obj,
 )
@@ -86,6 +87,44 @@ def test_get_default_box_pool_returns_singleton():
     b = get_default_box_pool()
     assert a is b
     assert isinstance(a, BoxPool)
+
+
+def test_pool_for_xdist_worker_master_uses_base_zero():
+    pool = pool_for_xdist_worker("master", size=4)
+    ids = sorted(pool.acquire() for _ in range(4))
+    assert ids == [0, 1, 2, 3]
+
+
+def test_pool_for_xdist_worker_gw_offsets_by_index():
+    """Each gw<N> worker gets a disjoint, contiguous range of box ids."""
+    pool_gw0 = pool_for_xdist_worker("gw0", size=4)
+    pool_gw1 = pool_for_xdist_worker("gw1", size=4)
+    pool_gw2 = pool_for_xdist_worker("gw2", size=4)
+    assert sorted(pool_gw0.acquire() for _ in range(4)) == [0, 1, 2, 3]
+    assert sorted(pool_gw1.acquire() for _ in range(4)) == [4, 5, 6, 7]
+    assert sorted(pool_gw2.acquire() for _ in range(4)) == [8, 9, 10, 11]
+
+
+def test_pool_for_xdist_worker_uses_default_size():
+    pool = pool_for_xdist_worker("gw0")
+    # Just verify it succeeds and produces a pool sized to the default.
+    ids = [pool.acquire() for _ in range(DEFAULT_BOX_POOL_SIZE)]
+    assert len(set(ids)) == DEFAULT_BOX_POOL_SIZE
+
+
+def test_pool_for_xdist_worker_rejects_malformed_id():
+    with pytest.raises(ValueError, match="unrecognized xdist worker_id"):
+        pool_for_xdist_worker("gwX")
+
+
+def test_pool_for_xdist_worker_unknown_prefix_falls_back_to_base_zero():
+    """Anything that isn't 'master' or 'gw<N>' is treated like master.
+
+    This guards against future xdist naming changes from silently
+    bricking the pool -- the worker just shares the master range.
+    """
+    pool = pool_for_xdist_worker("weird-id", size=2)
+    assert sorted(pool.acquire() for _ in range(2)) == [0, 1]
 
 
 def test_default_box_pool_size_constant():

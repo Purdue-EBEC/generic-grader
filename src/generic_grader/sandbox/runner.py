@@ -36,7 +36,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Callable, Sequence
 
 from generic_grader.sandbox.protocol import (
@@ -51,6 +51,13 @@ DEFAULT_BOX_ID = 0
 DEFAULT_WALL_TIME_MULTIPLIER = 2.0
 DEFAULT_PROCESSES = 64
 DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
+
+# The host-side submission directory is bind-mounted at this path
+# inside the sandbox (see ``RunPlan.run_argv``).  The worker's CWD is
+# also set to this path.  We rewrite ``Request.submission_dir`` to
+# this value before serializing the frame, since the worker has no
+# way to see the host path.
+SANDBOX_SUBMISSION_DIR = "/box/submission"
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +336,14 @@ class IsolateRunner:
                 )
 
             try:
-                stdin_bytes = _encode_request(request)
+                # The worker only sees ``/box/submission`` (the bind
+                # mount); rewrite ``submission_dir`` before encoding
+                # so ``_patched_cwd_and_path`` chdirs to a path that
+                # actually exists inside the sandbox.  The build_run_plan
+                # call above used the host path to construct the mount
+                # spec, which is exactly what's needed there.
+                worker_request = replace(request, submission_dir=SANDBOX_SUBMISSION_DIR)
+                stdin_bytes = _encode_request(worker_request)
                 completed = self.subprocess_runner(
                     plan.run_argv(),
                     input=stdin_bytes,

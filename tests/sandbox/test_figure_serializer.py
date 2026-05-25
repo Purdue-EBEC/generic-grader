@@ -323,11 +323,14 @@ def test_serialize_legend_absent_is_none(bar_figure):
 
 def test_serialize_captures_grid_lines(line_figure):
     data = serialize_figure(line_figure)
-    grid = data["axes"][0]["grid_lines"]
-    # The fixture enabled grid; we expect at least one visible grid line.
-    assert len(grid) >= 1
+    x_grid = data["axes"][0]["x_grid_lines"]
+    y_grid = data["axes"][0]["y_grid_lines"]
+    # The fixture enabled grid; we expect at least one visible grid line
+    # on each axis.
+    assert len(x_grid) >= 1
+    assert len(y_grid) >= 1
     # Each grid line is a list of [x, y] vertex pairs.
-    for line in grid:
+    for line in x_grid + y_grid:
         assert isinstance(line, list)
         for vertex in line:
             assert len(vertex) == 2
@@ -336,9 +339,10 @@ def test_serialize_captures_grid_lines(line_figure):
 
 def test_serialize_grid_lines_empty_when_grid_off(bar_figure):
     data = serialize_figure(bar_figure)
-    # bar_figure didn't enable grid -- grid_lines must be empty
-    # (matching plot.get_grid_lines which filters on visibility).
-    assert data["axes"][0]["grid_lines"] == []
+    # bar_figure didn't enable grid -- both grid line lists must be
+    # empty (matching plot.get_grid_lines which filters on visibility).
+    assert data["axes"][0]["x_grid_lines"] == []
+    assert data["axes"][0]["y_grid_lines"] == []
 
 
 def test_serialize_grid_lines_filtered_to_axes_window():
@@ -349,14 +353,66 @@ def test_serialize_grid_lines_filtered_to_axes_window():
     ax.set_ylim(4.5, 5.5)
     ax.grid(True)
     data = serialize_figure(fig)
-    grid = data["axes"][0]["grid_lines"]
-    # Every reported gridline must have at least one vertex inside the
-    # axes window on the relevant axis.
-    for line in grid:
-        xs = [v[0] for v in line]
-        ys = [v[1] for v in line]
-        in_window = any(1.5 <= x <= 2.5 for x in xs) or any(4.5 <= y <= 5.5 for y in ys)
-        assert in_window
+    # x-axis gridlines must have first vertex inside ``xlim``.
+    for line in data["axes"][0]["x_grid_lines"]:
+        assert 1.5 <= line[0][0] <= 2.5
+    # y-axis gridlines must have first vertex inside ``ylim``.
+    for line in data["axes"][0]["y_grid_lines"]:
+        assert 4.5 <= line[0][1] <= 5.5
+
+
+def test_serialize_grid_lines_match_live_count_with_overlapping_limits():
+    """Regression: the previous single-list schema double-counted
+    gridlines when ``xlim`` and ``ylim`` overlapped (each line's first
+    vertex satisfied both filters).  The split-by-axis schema must
+    produce exactly as many lines as ``utils.plot.get_grid_lines`` would.
+    """
+    from generic_grader.sandbox.figure_facade import SerializedFigure
+    from generic_grader.utils.plot import get_grid_lines
+
+    fig, ax = plt.subplots()
+    ax.plot([0, 1, 2], [0, 1, 2])
+    ax.set_xticks([0, 1, 2])
+    ax.set_yticks([0, 1, 2])
+    ax.set_xlim(-1, 3)
+    ax.set_ylim(-1, 3)
+    ax.grid(True)
+
+    class _T:
+        pass
+
+    live = _T()
+    live._sandbox_figures = None
+    sandbox = _T()
+    sandbox._sandbox_figures = [serialize_figure(fig)]
+    # We're inside ``plt.show``-less land, so plug the live figure
+    # into the helper via the explicit axes.
+    facade_axes = SerializedFigure(sandbox._sandbox_figures[0]).get_axes()
+    facade_x = facade_axes[0].get_xaxis().get_gridlines()
+    facade_y = facade_axes[0].get_yaxis().get_gridlines()
+    live_x = ax.get_xaxis().get_gridlines()
+    live_y = ax.get_yaxis().get_gridlines()
+    # The serializer drops invisible gridlines and ones outside the
+    # axes window -- the live arrays we compare against have already
+    # had visibility/window filtering applied identically by the
+    # serializer, so the counts should match.
+    xmin, xmax = ax.get_xlim()
+    ymin, ymax = ax.get_ylim()
+    expected_x = [
+        g
+        for g in live_x
+        if g.get_visible() and xmin <= g.get_path().vertices[0][0] <= xmax
+    ]
+    expected_y = [
+        g
+        for g in live_y
+        if g.get_visible() and ymin <= g.get_path().vertices[0][1] <= ymax
+    ]
+    assert len(facade_x) == len(expected_x)
+    assert len(facade_y) == len(expected_y)
+    # And via the public plot helper that callers actually use:
+    expected_total = len(expected_x) + len(expected_y)
+    assert len(get_grid_lines(sandbox)) == expected_total
 
 
 # ---------------------------------------------------------------------------
@@ -435,7 +491,8 @@ def test_serialize_figure_with_empty_axes():
         "bar_values",
         "wedges",
         "legend",
-        "grid_lines",
+        "x_grid_lines",
+        "y_grid_lines",
         "spine_visibility",
         "spine_positions",
     ):

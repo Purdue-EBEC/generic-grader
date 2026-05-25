@@ -89,6 +89,31 @@ def get_default_box_pool() -> BoxPool:
     return _DEFAULT_POOL
 
 
+def pool_for_xdist_worker(
+    worker_id: str, *, size: int = DEFAULT_BOX_POOL_SIZE
+) -> BoxPool:
+    """Build a :class:`BoxPool` for a pytest-xdist worker.
+
+    Each worker gets a disjoint range of ``box_id`` slots so concurrent
+    workers never try to ``isolate --init`` the same box.  The default
+    (master) ``worker_id == "master"`` -- i.e. no xdist -- maps to
+    base 0 to match the historical single-process behavior.
+
+    The ``worker_id`` follows the pytest-xdist convention: ``"master"``
+    for the main process, ``"gw0"``/``"gw1"``/... for parallel workers.
+    """
+    if worker_id == "master" or not worker_id.startswith("gw"):
+        return BoxPool(size=size, base=0)
+    try:
+        index = int(worker_id[2:])
+    except ValueError as e:
+        raise ValueError(
+            f"unrecognized xdist worker_id {worker_id!r}; "
+            "expected 'master' or 'gw<N>'"
+        ) from e
+    return BoxPool(size=size, base=index * size)
+
+
 # ---------------------------------------------------------------------------
 # Result shape
 # ---------------------------------------------------------------------------

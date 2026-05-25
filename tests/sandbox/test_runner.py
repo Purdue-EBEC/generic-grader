@@ -383,6 +383,40 @@ def test_runner_writes_request_frame_to_worker_stdin(tmp_path):
     assert len(payload) == length
 
 
+def test_runner_rewrites_submission_dir_in_frame_to_sandbox_path(tmp_path):
+    """The host's ``submission_dir`` is rewritten to ``/box/submission``
+    before being serialized to the worker.  The host path is unreachable
+    inside the sandbox -- only the bind-mounted path exists -- so the
+    worker must receive the in-sandbox path or its ``os.chdir`` will
+    raise ``FileNotFoundError``.
+    """
+    import json
+
+    fake = FakeIsolate(
+        run_stdout=_make_response_bytes(events=(Event(type="return", value=1),)),
+    )
+    runner = _make_runner(fake)
+    host_path = str(tmp_path)
+    request = _request(host_path)
+    runner.run(request)
+
+    run_calls = [c for c in fake.calls if "--run" in c[0]]
+    stdin_bytes = run_calls[0][1]
+    newline_index = stdin_bytes.index(b"\n")
+    payload = stdin_bytes[newline_index + 1 :].decode("utf-8")
+    frame = json.loads(payload)
+    assert frame["submission_dir"] == "/box/submission"
+    # The original request must not have been mutated -- the host-side
+    # caller may still inspect it (e.g. for logging).
+    assert request.submission_dir == host_path
+    # And the bind mount in the run argv must still point at the host path.
+    run_argv = run_calls[0][0]
+    bind_specs = [run_argv[i + 1] for i, a in enumerate(run_argv) if a == "--dir"]
+    assert any(
+        spec.startswith("/box/submission=") and host_path in spec for spec in bind_specs
+    )
+
+
 def test_runner_returns_decoded_response_when_worker_succeeds(tmp_path):
     fake = FakeIsolate(
         run_stdout=_make_response_bytes(

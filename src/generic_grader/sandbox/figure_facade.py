@@ -249,21 +249,29 @@ class SerializedAxes:
     def get_yaxis(self) -> _AxisStub:
         return _AxisStub(self._y_gridlines())
 
-    def _all_gridlines(self) -> list[_GridLineStub]:
-        return [_GridLineStub(v) for v in self._data.get("grid_lines", [])]
-
     def _x_gridlines(self) -> list[_GridLineStub]:
-        # The serialized format records gridlines that fall within
-        # ``xlim`` (first vertex's x in [xmin, xmax]).  We can't tell
-        # whether a given gridline is "x" or "y" from the wire format,
-        # so we hand both axes the full filtered list.  The plot helper
-        # (``get_grid_lines``) re-applies the same window filter, so
-        # double-counting is impossible -- each gridline reappears at
-        # most once in the output.
-        return self._all_gridlines()
+        # The serialized format keeps x-axis (vertical) and y-axis
+        # (horizontal) gridlines in separate fields so we can hand
+        # ``ax.get_xaxis().get_gridlines()`` exactly the set that the
+        # live matplotlib path would return.  Without this split,
+        # ``utils.plot.get_grid_lines`` double-counts gridlines
+        # whenever ``xlim`` and ``ylim`` overlap (e.g. both ranges
+        # include 0), because each gridline's first vertex then
+        # satisfies both the x and y window filters.
+        raw = self._data.get("x_grid_lines")
+        if raw is None:
+            # Backwards compatibility for figures serialized under the
+            # original ``grid_lines`` schema -- hand both axes the full
+            # list and accept the double-count.  Layer-3 always writes
+            # the new fields, so this path is exercised by legacy fixtures only.
+            raw = self._data.get("grid_lines", [])
+        return [_GridLineStub(v) for v in raw]
 
     def _y_gridlines(self) -> list[_GridLineStub]:
-        return self._all_gridlines()
+        raw = self._data.get("y_grid_lines")
+        if raw is None:
+            raw = self._data.get("grid_lines", [])
+        return [_GridLineStub(v) for v in raw]
 
     # --- Spines / legend -----------------------------------------------
     @property

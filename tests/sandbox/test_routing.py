@@ -467,3 +467,19 @@ def test_user_sandbox_does_not_set_figures_when_empty(monkeypatch):
     )
     user.call_obj()
     assert not hasattr(user.test, "_sandbox_figures")
+
+
+def test_user_sandbox_warns_when_obj_set_outside_sentinel(monkeypatch):
+    """If a caller stamps ``self.obj`` with anything other than the
+    sentinel, the sandbox path still completes successfully but emits
+    a UserWarning so the misuse is visible in test logs.  The sandbox
+    re-resolves the target inside the worker; ``self.obj`` is ignored.
+    """
+    user = _make_subuser(monkeypatch, _opts())
+    user.obj = object()  # bypass the sentinel stamp
+    _patch_call(
+        monkeypatch,
+        SandboxRunResult(exception=None, return_value=1),
+    )
+    with pytest.warns(UserWarning, match="sandbox import path was bypassed"):
+        user.call_obj()

@@ -316,8 +316,22 @@ class __User__:
         # `self.module` is set on subclasses (RefUser / SubUser).
         if self.obj is not SANDBOX_OBJ_SENTINEL and self.obj is not None:
             # Defensive: the only legitimate way to get into the
-            # sandbox call path is via the sandbox import path.
-            pass  # pragma: no cover - defensive sanity check
+            # sandbox call path is via the sandbox import path, which
+            # stamps ``self.obj`` with ``SANDBOX_OBJ_SENTINEL``.  If a
+            # caller has somehow bypassed that (e.g. tests stubbing
+            # ``self.obj`` directly), the call still goes through to
+            # the sandbox because that's what ``Options.use_sandbox``
+            # asked for, but the stamped ``self.obj`` is ignored.  Warn
+            # so misuse shows up in test logs.
+            import warnings
+
+            warnings.warn(
+                "_sandbox_call_obj invoked with self.obj set to a non-sentinel "
+                "value -- the sandbox path discards self.obj and re-resolves "
+                "the target inside the worker. This usually indicates the "
+                "sandbox import path was bypassed.",
+                stacklevel=2,
+            )
 
         msg = False
         call_str = make_call_str(o.obj_name, o.args, o.kwargs)
