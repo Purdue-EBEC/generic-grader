@@ -15,7 +15,7 @@ from generic_grader.utils.exceptions import (
     handle_error,
     safe_exception_type,
 )
-from generic_grader.utils.importer import Importer
+from generic_grader.utils.importer import SANDBOX_OBJ_SENTINEL, Importer
 from generic_grader.utils.options import Options
 from generic_grader.utils.patches import custom_stack
 
@@ -239,6 +239,9 @@ class __User__:
         if o.log_limit:
             self.log.log_limit = o.log_limit
 
+        if o.use_sandbox:
+            return self._sandbox_call_obj()
+
         msg = False
         call_str = make_call_str(o.obj_name, o.args, o.kwargs)
         error_msg = "\n" + self.wrapper.fill(
@@ -283,6 +286,110 @@ class __User__:
             print(self.log.getvalue())
 
         return self.returned_values
+
+    # ------------------------------------------------------------------
+    # Sandbox path (Layer 3, gated on Options.use_sandbox)
+    # ------------------------------------------------------------------
+
+    def _sandbox_call_obj(self):
+        """Sandbox-backed equivalent of `call_obj`.
+
+        Runs the student call in a fresh isolate worker, then replays
+        the worker's events into this user's existing `LogIO` and
+        `interactions` so downstream helpers (`read_log_line`,
+        `format_log`, `get_value`, …) see the same data they would in
+        the legacy in-process path.
+
+        Sentinel check
+        --------------
+        `self.obj` should be `SANDBOX_OBJ_SENTINEL` here (set by
+        `Importer._sandbox_import_obj`).  We don't strictly require it
+        -- tests may stub `self.obj` directly -- but the check guards
+        against accidentally mixing the two paths.
+        """
+        from generic_grader.sandbox.integration import (
+            classify_call_outcome,
+            sandbox_call_obj,
+        )
+
+        o = self.options
+        # `self.module` is set on subclasses (RefUser / SubUser).
+        if self.obj is not SANDBOX_OBJ_SENTINEL and self.obj is not None:
+            # Defensive: the only legitimate way to get into the
+            # sandbox call path is via the sandbox import path.
+            pass  # pragma: no cover - defensive sanity check
+
+        msg = False
+        call_str = make_call_str(o.obj_name, o.args, o.kwargs)
+        error_msg = "\n" + self.wrapper.fill(
+            f"Your `{o.obj_name}` malfunctioned"
+            + f" when called as `{call_str}`"
+            + ((o.entries) and f" with entries {o.entries}." or ".")
+        )
+
+        result = sandbox_call_obj(self.module, o)
+        # Replay the worker's log into this user's LogIO so the existing
+        # downstream helpers see the same characters they would in the
+        # in-process path.  `interactions[0]` is always 0 (start of log);
+        # the integration module reconstructs subsequent offsets.
+        if result.log:
+            self.log.write(result.log)
+        self.interactions = list(result.interactions)
+        if result.return_non_serializable:
+            # Mirror the legacy behavior of capturing whatever the
+            # callable returned; for non-JSON-safe returns we expose
+            # the repr string so downstream comparisons can still
+            # inspect it (e.g. via `assertEqual(user.returned_values,
+            # "<MyObj>")`).
+            self.returned_values = result.return_repr
+        else:
+            self.returned_values = result.return_value
+
+        outcome = classify_call_outcome(result)
+        if outcome is None:
+            return self.returned_values
+
+        self.test.failureException = safe_exception_type(outcome)
+        msg = self._format_sandbox_call_failure(outcome, result, error_msg)
+
+        if msg:
+            log = self.log.getvalue()
+            if log:
+                msg += self.format_log()
+            self.test.fail(msg)
+
+        if o.debug:
+            print(self.log.getvalue())
+
+        return self.returned_values  # pragma: no cover - unreachable after fail
+
+    def _format_sandbox_call_failure(self, outcome, result, error_msg):
+        """Format a call-phase sandbox failure as a student message.
+
+        ExtraEntriesError gets the same "program ended before user
+        finished entering input" message as the legacy path.  Anything
+        else gets a synthetic traceback derived from the worker's
+        structured exception chain, so the student sees the same
+        information they'd see from an in-process exception.
+        """
+        if outcome is ExtraEntriesError:
+            return (
+                error_msg
+                + "\n\nHint:\n"
+                + self.wrapper.fill(
+                    "Your program ended before the user finished entering input."
+                )
+            )
+        # Build a traceback-style message from the worker's chain.
+        chain = result.exception or []
+        head = chain[0] if chain else {"type": outcome.__name__, "message": ""}
+        tb_text = head.get("traceback") or ""
+        formatted_traceback = (
+            ("Traceback (most recent call last):\n" + tb_text) if tb_text else ""
+        ) + f"{head.get('type', outcome.__name__)}: {head.get('message', '')}\n"
+        from generic_grader.utils.exceptions import indent
+
+        return indent(error_msg + "\n\n" + formatted_traceback)
 
 
 class RefUser(__User__):
