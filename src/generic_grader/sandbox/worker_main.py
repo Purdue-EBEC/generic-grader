@@ -24,11 +24,46 @@ from __future__ import annotations
 import sys
 
 from generic_grader.sandbox.protocol import (
+    Request,
+    Response,
     SandboxException,
     read_request,
     write_response,
 )
-from generic_grader.sandbox.python_runtime import run_request
+
+
+def _dispatch_request(request: Request) -> Response:
+    """Pick a runtime worker by ``request.runtime`` and run the request.
+
+    Imports are lazy so a Python-only worker doesn't pay the import
+    cost for the Octave stub (which itself is tiny, but the principle
+    keeps the dispatcher honest for heavier future runtimes).
+    Unknown runtimes are surfaced as a structured error response
+    rather than an opaque ``KeyError`` / ``ModuleNotFoundError``.
+    """
+    runtime = (request.runtime or "").lower()
+    if runtime == "python":
+        from generic_grader.sandbox.python_runtime import run_request
+
+        return run_request(request)
+    if runtime == "octave":
+        from generic_grader.sandbox.octave_runtime import run_request
+
+        return run_request(request)
+    return Response(
+        events=[],
+        exception=[
+            {
+                "type": "UnknownRuntimeError",
+                "message": (
+                    f"Unknown sandbox runtime {request.runtime!r}.  "
+                    "Supported runtimes are 'python' and 'octave'."
+                ),
+                "traceback": "",
+            }
+        ],
+        elapsed_seconds=0.0,
+    )
 
 
 def main(stdin=None, stdout=None) -> int:
@@ -40,8 +75,6 @@ def main(stdin=None, stdout=None) -> int:
     """
     stdin = stdin if stdin is not None else sys.stdin.buffer
     stdout = stdout if stdout is not None else sys.stdout.buffer
-
-    from generic_grader.sandbox.protocol import Response
 
     def _protocol_error(message: str) -> Response:
         return Response(
@@ -75,7 +108,7 @@ def main(stdin=None, stdout=None) -> int:
         )
         return 2
 
-    response = run_request(request)
+    response = _dispatch_request(request)
     write_response(stdout, response)
     return 0
 
