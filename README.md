@@ -109,7 +109,26 @@ pip install generic-grader
 
    - on Windows, download the latest installers from https://github.com/UB-Mannheim/tesseract/wiki
 
-5. Install ghostscript
+5. Install [isolate](https://github.com/ioi/isolate) (used by the Layer-3
+   sandbox; the test suite skips one isolate-dependent smoke test when it
+   isn't present, but full coverage runs require it).  The GitHub Actions
+   workflow `.github/workflows/pytest.yml` will need a corresponding
+   maintainer-side update to add `isolate` to its `apt install` line.
+
+   - on Ubuntu 22.04+
+
+     ``` bash
+     sudo apt install isolate
+     ```
+
+   - other Linux distributions: build from source per the
+     [isolate README](https://github.com/ioi/isolate?tab=readme-ov-file#installation).
+
+   - macOS / Windows: isolate is Linux-only.  Run the sandbox tests in a
+     Linux VM or container.  The rest of the test suite still runs on the
+     host.
+
+6. Install ghostscript
 
    - on Linux
 
@@ -125,7 +144,7 @@ pip install generic-grader
 
    - on Windows, download the latest installers from https://ghostscript.com/releases/gsdnld.html
 
-6. Install the package.  Note that this installs the package as editable, so
+7. Install the package.  Note that this installs the package as editable, so
    edits will be automatically reflected in the installed package.
 
    ``` bash
@@ -137,22 +156,34 @@ pip install generic-grader
    uv sync --extra dev
    ```
 
-7. Install the pre-commit hooks.
+8. Install the pre-commit hooks.
 
    ``` bash
    pre-commit install
    ```
 
-8. Run the tests.
+9. Run the tests.
 
    ``` bash
    pytest
    ```
 
-9. Make changes ...
+10. Make changes ...
 
-10. Deactivate the virtual environment.
+11. Deactivate the virtual environment.
 
    ``` bash
    deactivate
    ```
+
+## Sandbox isolation (Layer 3)
+
+The grader can run a student's submission in a fresh, isolated
+subprocess per call rather than in-process.  Set
+`Options(use_sandbox=True)` to opt in.  Patches that need to cross
+the sandbox boundary must be expressed as `PatchSpec` instances
+(see `generic_grader.sandbox.patch_specs`).
+
+The sandbox uses [isolate](https://github.com/ioi/isolate); install
+it as part of the contributing setup above.  See [`ROADMAP.md`](ROADMAP.md)
+for the rollout plan.
