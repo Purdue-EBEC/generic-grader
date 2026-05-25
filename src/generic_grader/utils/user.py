@@ -344,6 +344,12 @@ class __User__:
             self.returned_values = result.return_repr
         else:
             self.returned_values = result.return_value
+        # Hand any serialized figures off to the test so plot helpers
+        # (utils/plot.py) can read them via the host-side facade.  The
+        # legacy path leaves `plt.gcf()` populated for the same
+        # purpose; this is the sandbox equivalent.
+        if result.figures:
+            self.test._sandbox_figures = list(result.figures)
 
         outcome = classify_call_outcome(result)
         if outcome is None:

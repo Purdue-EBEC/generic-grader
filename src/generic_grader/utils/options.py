@@ -19,6 +19,16 @@ class Options:
     weight: int | float = 0
     init: Callable | None = None
     ref_module: str = "tests.reference"
+    ref_dir: str = "./tests"
+    """
+    Directory (relative to the test harness CWD) that contains the reference
+    implementation and any supporting fixtures the reference code needs at
+    runtime.  This is currently only consulted by the Layer-3 sandbox
+    integration when ``use_sandbox=True``; the legacy in-process path imports
+    the reference module via the standard Python import machinery and ignores
+    this field.  Test authors are recommended to keep reference code and data
+    files under ``./tests/`` so they can be bind-mounted into the sandbox.
+    """
     sub_module: str = ""
     required_files: tuple = ()
     ignored_files: tuple = ()

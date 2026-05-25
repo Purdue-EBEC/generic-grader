@@ -439,3 +439,31 @@ def test_user_sandbox_call_obj_no_log_or_interactions_when_empty(monkeypatch):
     user.call_obj()
     assert user.log.getvalue() == ""
     assert user.interactions == [0]
+
+
+def test_user_sandbox_attaches_figures_to_test(monkeypatch):
+    """When the sandbox returns figures, they're handed to the test.
+
+    The plot helpers in ``utils/plot.py`` look for
+    ``test._sandbox_figures``; this test confirms the user wires that
+    attribute up after a successful sandbox call.
+    """
+    user = _make_subuser(monkeypatch, _opts())
+    figures = [{"format": "matplotlib-figure", "version": 1, "axes": [{"title": "Hi"}]}]
+    _patch_call(
+        monkeypatch,
+        SandboxRunResult(exception=None, return_value=None, figures=figures),
+    )
+    user.call_obj()
+    assert user.test._sandbox_figures == figures
+
+
+def test_user_sandbox_does_not_set_figures_when_empty(monkeypatch):
+    """No figures -> no attribute set on the test (live plt.gcf() path)."""
+    user = _make_subuser(monkeypatch, _opts())
+    _patch_call(
+        monkeypatch,
+        SandboxRunResult(exception=None, return_value=None, figures=[]),
+    )
+    user.call_obj()
+    assert not hasattr(user.test, "_sandbox_figures")

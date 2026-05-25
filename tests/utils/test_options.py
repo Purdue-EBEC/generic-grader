@@ -163,3 +163,25 @@ def test_use_sandbox_rejects_legacy_patches_without_specs():
 def test_legacy_patches_allowed_when_use_sandbox_false():
     """Layer 1 (in-process) is unaffected by the new check."""
     Options(patches=[{"args": ["m.f", lambda *a, **k: None]}])
+
+
+# ---------------------------------------------------------------------------
+# ref_dir (Layer 3)
+# ---------------------------------------------------------------------------
+
+
+def test_ref_dir_defaults_to_tests():
+    """`ref_dir` defaults to `./tests` so the recommended layout works
+    out of the box."""
+    assert Options().ref_dir == "./tests"
+
+
+def test_ref_dir_can_be_overridden():
+    """`ref_dir` is a writable string field."""
+    assert Options(ref_dir="./graders/foo").ref_dir == "./graders/foo"
+
+
+def test_ref_dir_must_be_a_string():
+    """Type validation rejects non-string values."""
+    with pytest.raises(ValueError, match="ref_dir"):
+        Options(ref_dir=123)
