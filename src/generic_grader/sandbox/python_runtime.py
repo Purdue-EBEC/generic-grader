@@ -29,6 +29,7 @@ import importlib
 import io
 import json
 import os
+import re
 import sys
 import time
 import traceback
@@ -129,8 +130,11 @@ class _Responder:
             self._stdout.write(str(prompt))
         try:
             entry = next(self._entries)
-        except StopIteration as e:
-            raise EOFError("EOF when reading a line") from e
+        except StopIteration:
+            # Match CPython's real ``input()`` semantics, which raise a
+            # bare EOFError when stdin is exhausted with no chained
+            # ``StopIteration`` polluting the visible cause chain.
+            raise EOFError("EOF when reading a line") from None
         entry = str(entry)
         self._events.append(Event(type="stdin", data=entry))
         self.consumed += 1
@@ -171,6 +175,9 @@ def _serialize_traceback(tb_summary: traceback.StackSummary) -> str:
     return "".join(traceback.StackSummary.from_list(student_frames).format())
 
 
+_MAX_EXCEPTION_CHAIN_LINKS = 20
+
+
 def _serialize_exception_chain(exc: BaseException) -> list[dict[str, Any]]:
     """Walk an exception's cause/context chain and return a serialized list.
 
@@ -180,11 +187,21 @@ def _serialize_exception_chain(exc: BaseException) -> list[dict[str, Any]]:
     * ``type``: the exception class's qualified name.
     * ``message``: ``str(exc)``.
     * ``traceback``: the formatted traceback, filtered to student frames.
+
+    Cycle protection uses both an ``id()`` set and a hard depth cap
+    (``_MAX_EXCEPTION_CHAIN_LINKS``).  In practice the chain is kept
+    alive by ``current`` so ``id()`` reuse is impossible inside the
+    loop, but the depth cap is a cheap belt-and-suspenders guard
+    against pathological user-constructed cycles.
     """
     chain: list[dict[str, Any]] = []
     seen: set[int] = set()
     current: BaseException | None = exc
-    while current is not None and id(current) not in seen:
+    while (
+        current is not None
+        and id(current) not in seen
+        and len(chain) < _MAX_EXCEPTION_CHAIN_LINKS
+    ):
         seen.add(id(current))
         tb_summary = traceback.extract_tb(current.__traceback__)
         chain.append(
@@ -194,7 +211,14 @@ def _serialize_exception_chain(exc: BaseException) -> list[dict[str, Any]]:
                 "traceback": _serialize_traceback(tb_summary),
             }
         )
-        current = current.__cause__ or current.__context__
+        # Walk the chain the same way CPython's traceback printer does:
+        # ``__cause__`` always wins, otherwise ``__context__`` --
+        # unless ``__suppress_context__`` is set (which is what
+        # ``raise X from None`` does to hide an implicit context).
+        next_exc = current.__cause__
+        if next_exc is None and not current.__suppress_context__:
+            next_exc = current.__context__
+        current = next_exc
     return chain
 
 
@@ -225,8 +249,28 @@ def _patched_cwd_and_path(submission_dir: str):
             pass
 
 
+# Dotted Python identifier, e.g. ``submission`` or ``pkg.submission``.
+_MODULE_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$")
+_OBJ_NAME_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+
+
 def _import_target(module: str, obj_name: str) -> Any:
-    """Import `module` and return its `obj_name` attribute."""
+    """Import `module` and return its `obj_name` attribute.
+
+    Raises ``ValueError`` if either name fails the Python-identifier
+    syntax check.  Defense in depth: the host always sets these from
+    `Options` (which themselves come from grader code), but the worker
+    is also reached directly in tests and we don't want a malformed
+    request to feed arbitrary input into ``importlib.import_module``.
+    """
+    if not _MODULE_NAME_RE.match(module):
+        raise ValueError(
+            f"Invalid module name {module!r}; expected a dotted Python identifier."
+        )
+    if not _OBJ_NAME_RE.match(obj_name):
+        raise ValueError(
+            f"Invalid object name {obj_name!r}; expected a Python identifier."
+        )
     mod = importlib.import_module(module)
     return getattr(mod, obj_name)
 

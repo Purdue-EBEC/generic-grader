@@ -20,6 +20,7 @@ import io
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -598,6 +599,26 @@ def test_worker_main_reports_malformed_request_frame():
     assert response.exception[0]["type"] == "SandboxProtocolError"
 
 
+def test_worker_main_reports_clean_eof_as_protocol_error():
+    """An EOF on stdin (no frame at all) must not crash the worker.
+
+    Regression: previously `run_request(None)` raised `AttributeError`.
+    Now the worker emits a structured `SandboxProtocolError` response.
+    """
+    from generic_grader.sandbox.protocol import read_response
+    from generic_grader.sandbox.worker_main import main
+
+    stdin = io.BytesIO(b"")
+    stdout = io.BytesIO()
+    code = main(stdin=stdin, stdout=stdout)
+    assert code == 2
+    stdout.seek(0)
+    response = read_response(stdout)
+    assert response.exception is not None
+    assert response.exception[0]["type"] == "SandboxProtocolError"
+    assert "no request" in response.exception[0]["message"].lower()
+
+
 # ---------------------------------------------------------------------------
 # Default subprocess runner & misc helpers
 # ---------------------------------------------------------------------------
@@ -627,6 +648,31 @@ def test_meta_time_returns_zero_when_values_unparseable(tmp_path):
     runner = _make_runner(fake)
     resp = runner.run(_request(str(tmp_path)))
     assert resp.elapsed_seconds == 0.0
+
+
+def test_run_rejects_worker_stdout_exceeding_cap(tmp_path):
+    """A runaway worker that spews bytes is rejected, not buffered.
+
+    Without a cap, `subprocess.run(capture_output=True)` would buffer
+    the child's entire stdout into host memory.  The runner enforces
+    a hard ceiling so an outsized payload becomes an actionable
+    SandboxException instead of an OOM.
+    """
+    fake = FakeIsolate(
+        run_stdout=b"x" * 1000,
+        run_returncode=0,
+        meta_text="",
+    )
+    runner = IsolateRunner(
+        grader_src=str(tmp_path / "src"),
+        isolate_binary="/fake/isolate",
+        box_id=1,
+        python_executable=sys.executable,
+        subprocess_runner=fake,
+        max_response_bytes=100,
+    )
+    with pytest.raises(SandboxException, match="exceeded"):
+        runner.run(_request(str(tmp_path)))
 
 
 # ---------------------------------------------------------------------------

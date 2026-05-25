@@ -149,7 +149,16 @@ def _serialize_lines(ax) -> list[dict[str, Any]]:
 
 
 def _serialize_bars(ax) -> tuple[list[dict[str, Any]], list[float]]:
-    """Return ``(bars, datavalues)`` matching plot.get_x_data / get_y_data."""
+    """Return ``(bars, datavalues)`` matching plot.get_x_data / get_y_data.
+
+    This intentionally inspects only ``containers[0]`` to match
+    ``utils/plot.py`` (see ``get_bars``, ``get_bar_values``, and
+    ``get_bar_dates`` there).  Grouped bar charts that produce multiple
+    ``BarContainer``s will only have the first group reported, which is
+    the same trade-off the existing in-process plot helpers already
+    make.  Changing this behaviour belongs in a follow-up that updates
+    both layers together.
+    """
     containers = ax.containers
     if not containers or not isinstance(containers[0], mpl.container.BarContainer):
         return [], []
@@ -278,16 +287,24 @@ def serialize_figure(fig) -> dict[str, Any]:
     exactly like the existing ``get_x_tick_labels`` and friends in
     ``utils/plot.py``.
     """
+    draw_succeeded = True
+    draw_error: str | None = None
     try:
         fig.canvas.draw()
-    except Exception:  # pragma: no cover - draw failure is best-effort
-        pass
+    except Exception as e:  # pragma: no cover - draw failure is best-effort
+        draw_succeeded = False
+        # Record the failure type and message so a host-side test
+        # author has something concrete to inspect when tick labels or
+        # other draw-dependent properties come back blank.
+        draw_error = f"{type(e).__name__}: {e}"
 
     axes_data = [_serialize_axes(ax) for ax in fig.get_axes()]
     return {
         "format": "matplotlib-figure",
         "version": FORMAT_VERSION,
         "axes": axes_data,
+        "draw_succeeded": draw_succeeded,
+        "draw_error": draw_error,
     }
 
 

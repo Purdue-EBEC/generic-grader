@@ -30,6 +30,7 @@ real install when one is available.
 
 from __future__ import annotations
 
+import io
 import os
 import shutil
 import subprocess
@@ -262,6 +263,16 @@ def _default_subprocess_runner(*args, **kwargs) -> subprocess.CompletedProcess:
     return subprocess.run(*args, **kwargs)
 
 
+# Hard cap on the worker's stdout the runner is willing to buffer.
+# ``subprocess.run(capture_output=True)`` reads the child's pipe into
+# memory; without a cap a runaway worker that emits unbounded data
+# (e.g. a flapping serializer in a tight loop) could OOM the host.
+# 64 MiB is far larger than any realistic protocol frame (events are
+# already capped indirectly by isolate's --fsize/wall-time limits)
+# while still being a hard ceiling.
+DEFAULT_MAX_RESPONSE_BYTES = 64 * 1024 * 1024
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
@@ -277,6 +288,7 @@ class IsolateRunner:
     python_executable: str | None = None
     subprocess_runner: SubprocessRunner = _default_subprocess_runner
     extra_dirs: Sequence[tuple[str, str, str]] = ()
+    max_response_bytes: int = DEFAULT_MAX_RESPONSE_BYTES
 
     # ------------------------------------------------------------------
     # Public API
@@ -324,8 +336,16 @@ class IsolateRunner:
                     capture_output=True,
                     check=False,
                 )
+                stdout_bytes = completed.stdout or b""
+                if len(stdout_bytes) > self.max_response_bytes:
+                    raise SandboxException(
+                        f"Worker stdout exceeded the {self.max_response_bytes}-byte "
+                        f"cap ({len(stdout_bytes)} bytes received). This typically "
+                        "indicates a malformed worker that wrote outside the "
+                        "framed protocol; check the worker's stderr for clues."
+                    )
                 response = _decode_response_or_raise(
-                    completed.stdout,
+                    stdout_bytes,
                     completed.stderr,
                     completed.returncode,
                     meta_path,
@@ -353,8 +373,6 @@ class IsolateRunner:
 
 def _encode_request(request: Request) -> bytes:
     """Serialize a request to the framed wire format as bytes."""
-    import io
-
     buf = io.BytesIO()
     write_request(buf, request)
     return buf.getvalue()
@@ -385,8 +403,6 @@ def _decode_response_or_raise(
        student can see Python's complaint about a missing module
        etc.
     """
-    import io
-
     meta_text = ""
     try:
         with open(meta_path, encoding="utf-8") as f:

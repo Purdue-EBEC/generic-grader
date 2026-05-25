@@ -41,27 +41,37 @@ def main(stdin=None, stdout=None) -> int:
     stdin = stdin if stdin is not None else sys.stdin.buffer
     stdout = stdout if stdout is not None else sys.stdout.buffer
 
+    from generic_grader.sandbox.protocol import Response
+
+    def _protocol_error(message: str) -> Response:
+        return Response(
+            events=[],
+            exception=[
+                {
+                    "type": "SandboxProtocolError",
+                    "message": message,
+                    "traceback": "",
+                }
+            ],
+            elapsed_seconds=0.0,
+        )
+
     try:
         request = read_request(stdin)
     except SandboxException as e:
-        # If we can't even parse the request, surface the failure to
+        # If we can't even parse the frame, surface the failure to
         # the host as a structured exception on an otherwise-empty
         # response. The host treats this as a runner-level failure.
-        from generic_grader.sandbox.protocol import Response
+        write_response(stdout, _protocol_error(str(e)))
+        return 2
 
+    if request is None:
+        # Clean EOF before any frame was sent.  Surface this as a
+        # protocol error rather than letting `run_request(None)` crash
+        # with an opaque ``AttributeError``.
         write_response(
             stdout,
-            Response(
-                events=[],
-                exception=[
-                    {
-                        "type": "SandboxProtocolError",
-                        "message": str(e),
-                        "traceback": "",
-                    }
-                ],
-                elapsed_seconds=0.0,
-            ),
+            _protocol_error("No request frame received from host."),
         )
         return 2
 
@@ -70,5 +80,5 @@ def main(stdin=None, stdout=None) -> int:
     return 0
 
 
-if __name__ == "__main__":  # pragma: no cover - smoke executed from runner tests
+if __name__ == "__main__":  # pragma: no cover - exercised only as a real subprocess
     raise SystemExit(main())

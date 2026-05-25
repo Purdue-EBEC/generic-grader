@@ -179,7 +179,14 @@ def test_run_request_input_pulls_from_entries(submission_dir):
 
 
 def test_run_request_input_emits_eof_when_entries_exhausted(submission_dir):
-    """Running out of entries should surface as an EOFError in the chain."""
+    """Running out of entries should surface as an EOFError in the chain.
+
+    The internal StopIteration that drives the responder must NOT leak
+    into the serialized exception chain -- real CPython ``input()``
+    raises a bare EOFError, and the grader's existing exception
+    classification (importer.py walks ``__cause__``/``__context__``)
+    would be confused by a chained StopIteration.
+    """
     _write(
         submission_dir,
         "submission.py",
@@ -191,6 +198,8 @@ def test_run_request_input_emits_eof_when_entries_exhausted(submission_dir):
     resp = run_request(_request(submission_dir, entries=()))
     assert resp.exception is not None
     assert resp.exception[0]["type"] == "EOFError"
+    # No StopIteration in the chain -- we raise ``from None``.
+    assert all(link["type"] != "StopIteration" for link in resp.exception)
 
 
 def test_run_request_reports_unused_entries(submission_dir):
@@ -663,3 +672,66 @@ def test_run_request_two_modules_with_same_name_do_not_share_state(
     v2 = next(e for e in r2.events if e.type == "return").value
     assert v1 == "first"
     assert v2 == "second"
+
+
+# ---------------------------------------------------------------------------
+# Defensive input validation
+# ---------------------------------------------------------------------------
+
+
+def test_run_request_rejects_invalid_module_name(submission_dir):
+    """Worker won't pass arbitrary strings to ``importlib.import_module``.
+
+    Defense in depth: the host always constructs valid identifiers,
+    but tests call ``run_request`` directly and the worker shouldn't
+    silently accept a malformed module name.
+    """
+    resp = run_request(_request(submission_dir, module="bad/path.py"))
+    assert resp.exception is not None
+    assert resp.exception[0]["type"] == "ValueError"
+    assert "module name" in resp.exception[0]["message"].lower()
+
+
+def test_run_request_rejects_invalid_obj_name(submission_dir):
+    """Same guard applies to the attribute name lookup."""
+    _write(submission_dir, "submission.py", "def main():\n    return None\n")
+    resp = run_request(_request(submission_dir, obj_name="main; rm -rf /"))
+    assert resp.exception is not None
+    assert resp.exception[0]["type"] == "ValueError"
+    assert "object name" in resp.exception[0]["message"].lower()
+
+
+def test_run_request_accepts_dotted_module_name(submission_dir):
+    """Dotted package paths remain valid."""
+    pkg = submission_dir / "mypkg"
+    pkg.mkdir()
+    (pkg / "__init__.py").write_text("")
+    _write(pkg, "submission.py", "def main():\n    return 42\n")
+    resp = run_request(_request(submission_dir, module="mypkg.submission"))
+    returns = [e for e in resp.events if e.type == "return"]
+    assert returns[0].value == 42
+
+
+# ---------------------------------------------------------------------------
+# Exception-chain depth cap
+# ---------------------------------------------------------------------------
+
+
+def test_exception_chain_capped_at_max_links():
+    """Chains longer than the cap are truncated, not infinite-looped."""
+    from generic_grader.sandbox.python_runtime import (
+        _MAX_EXCEPTION_CHAIN_LINKS,
+        _serialize_exception_chain,
+    )
+
+    # Build a chain longer than the cap.
+    root = ValueError("root")
+    head: BaseException = root
+    for i in range(_MAX_EXCEPTION_CHAIN_LINKS + 5):
+        try:
+            raise RuntimeError(f"link {i}") from head
+        except RuntimeError as e:
+            head = e
+
+    chain = _serialize_exception_chain(head)
+    assert len(chain) == _MAX_EXCEPTION_CHAIN_LINKS
