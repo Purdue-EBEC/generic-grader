@@ -735,3 +735,260 @@ def test_exception_chain_capped_at_max_links():
 
     chain = _serialize_exception_chain(head)
     assert len(chain) == _MAX_EXCEPTION_CHAIN_LINKS
+
+
+# ---------------------------------------------------------------------------
+# PatchSpec reconstruction (commit 5b)
+# ---------------------------------------------------------------------------
+
+
+from generic_grader.sandbox.protocol import PatchSpec  # noqa: E402
+from generic_grader.sandbox.python_runtime import (  # noqa: E402
+    _build_mock_from_spec,
+    _enter_patches_from_specs,
+    _resolve_error_class,
+    _target_basename,
+)
+
+
+def test_target_basename_strips_dotted_prefix():
+    assert _target_basename("submission.input") == "input"
+    assert _target_basename("a.b.c.func") == "func"
+
+
+def test_resolve_error_class_returns_exception_subclass():
+    from generic_grader.utils.exceptions import ExitError
+
+    resolved = _resolve_error_class("generic_grader.utils.exceptions.ExitError")
+    assert resolved is ExitError
+
+
+def test_resolve_error_class_rejects_malformed_qualname():
+    with pytest.raises(ValueError, match="Invalid error_qualname"):
+        _resolve_error_class("not-a-qualname")
+
+
+def test_resolve_error_class_rejects_non_exception():
+    """Anything other than a BaseException subclass is rejected."""
+    # `os.path` resolves but is a module, not an exception class.
+    with pytest.raises(TypeError, match="not an exception class"):
+        _resolve_error_class("os.path")
+
+
+def test_build_mock_from_spec_noop_returns_none_and_swallows_args():
+    spec = PatchSpec(target="submission.do_thing", kind="noop")
+    mock = _build_mock_from_spec(spec)
+    assert mock() is None
+    assert mock(1, 2, k=3) is None
+
+
+def test_build_mock_from_spec_iter_returns_values_then_raises():
+    from generic_grader.utils.exceptions import ExcessFunctionCallError
+
+    spec = PatchSpec(target="submission.input", kind="iter_returns", values=["a", "b"])
+    mock = _build_mock_from_spec(spec)
+    assert mock() == "a"
+    assert mock("ignored prompt") == "b"
+    with pytest.raises(ExcessFunctionCallError):
+        mock()
+
+
+def test_build_mock_from_spec_raise_error_raises_with_call_str():
+    from generic_grader.utils.exceptions import ExitError
+
+    spec = PatchSpec(
+        target="builtins.exit",
+        kind="raise_error",
+        error_qualname="generic_grader.utils.exceptions.ExitError",
+    )
+    mock = _build_mock_from_spec(spec)
+    with pytest.raises(ExitError) as exc_info:
+        mock(1, key="val")
+    assert "exit" in str(exc_info.value)
+
+
+def test_build_mock_from_spec_source_execs_in_empty_namespace():
+    src = textwrap.dedent(
+        """
+        def fake_falling_dist(time):
+            return (time * 1234567.89) % 125
+        """
+    )
+    spec = PatchSpec(
+        target="submission.falling_dist",
+        kind="source",
+        source=src,
+        name="fake_falling_dist",
+    )
+    mock = _build_mock_from_spec(spec)
+    # Pure-arithmetic body works without any host globals leaking in.
+    assert mock(0) == 0.0
+    assert mock(2) == (2 * 1234567.89) % 125
+
+
+def test_build_mock_from_spec_source_rejects_missing_name():
+    """If the source doesn't define a callable matching `name`, fail."""
+    spec = PatchSpec(
+        target="submission.x",
+        kind="source",
+        source="x = 7\n",  # no callable named `wrong_name`
+        name="wrong_name",
+    )
+    with pytest.raises(ValueError, match="did not define a callable"):
+        _build_mock_from_spec(spec)
+
+
+# ---- End-to-end through run_request -------------------------------------
+
+
+def test_run_request_applies_noop_patch_during_call(submission_dir):
+    """A `noop` patch_spec replaces the target inside the worker."""
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        import os
+        def main():
+            # If the patch worked, this call is a noop and we return 1.
+            # If it didn't, calling exit() would terminate the process.
+            exit(99)
+            return 1
+        """,
+    )
+    spec = PatchSpec(target="builtins.exit", kind="noop")
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is None
+    returns = [e for e in resp.events if e.type == "return"]
+    assert returns[0].value == 1
+
+
+def test_run_request_applies_iter_returns_patch(submission_dir):
+    """A patched submission.greet returns successive values from the spec."""
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def greet():
+            return "real"
+        def main():
+            return [greet(), greet()]
+        """,
+    )
+    spec = PatchSpec(
+        target="submission.greet", kind="iter_returns", values=["hi", "bye"]
+    )
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is None
+    returns = [e for e in resp.events if e.type == "return"]
+    assert returns[0].value == ["hi", "bye"]
+
+
+def test_run_request_applies_raise_error_patch(submission_dir):
+    """A `raise_error` patch raises the resolved class on call."""
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def main():
+            exit(0)
+        """,
+    )
+    spec = PatchSpec(
+        target="builtins.exit",
+        kind="raise_error",
+        error_qualname="generic_grader.utils.exceptions.ExitError",
+    )
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is not None
+    assert resp.exception[0]["type"] == "ExitError"
+
+
+def test_run_request_applies_source_patch(submission_dir):
+    """A `source` patch defines a callable that replaces the target."""
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def falling_dist(t):
+            # Real implementation would compute physics; we expect the
+            # patched fake to be called instead.
+            raise RuntimeError("real falling_dist should not run")
+
+        def main():
+            return [falling_dist(0), falling_dist(2)]
+        """,
+    )
+    src = textwrap.dedent(
+        """
+        def fake_falling_dist(time):
+            return (time * 1234567.89) % 125
+        """
+    )
+    spec = PatchSpec(
+        target="submission.falling_dist",
+        kind="source",
+        source=src,
+        name="fake_falling_dist",
+    )
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is None
+    returns = [e for e in resp.events if e.type == "return"]
+    assert returns[0].value == [0.0, (2 * 1234567.89) % 125]
+
+
+def test_run_request_patches_active_during_module_import(submission_dir):
+    """Module-top-level code observing the patched target sees the mock.
+
+    This catches the bug where patches were applied only around the
+    call (so module-level invocations of the target would see the
+    real attribute).
+    """
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        # Top-level call captures the patched value at import time.
+        TOP_LEVEL = exit  # bound reference at module load
+        def main():
+            return TOP_LEVEL.__name__
+        """,
+    )
+    # Replace `builtins.exit` with a noop so the top-level binding
+    # picks up the patched function.
+    spec = PatchSpec(target="builtins.exit", kind="noop")
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is None
+    returns = [e for e in resp.events if e.type == "return"]
+    # The patched noop is a locally-defined function named `_noop`.
+    assert returns[0].value == "_noop"
+
+
+def test_run_request_reports_patch_target_validation_error(submission_dir):
+    """A malformed patch target surfaces as a structured exception."""
+    _write(submission_dir, "submission.py", "def main(): return 1\n")
+    # ``target`` has no dot, so it can't be a dotted patch path.
+    spec = PatchSpec(target="invalidtarget", kind="noop")
+    resp = run_request(_request(submission_dir, patch_specs=(spec,)))
+    assert resp.exception is not None
+    assert resp.exception[0]["type"] == "ValueError"
+    assert "Invalid patch target" in resp.exception[0]["message"]
+
+
+def test_enter_patches_from_specs_with_empty_tuple_is_noop():
+    """No specs => stack unchanged; no exceptions."""
+    from contextlib import ExitStack
+
+    with ExitStack() as stack:
+        _enter_patches_from_specs(stack, ())
+
+
+def test_run_request_reverts_patches_after_call(submission_dir):
+    """Patches applied for one request don't leak into the next."""
+    import builtins as _b
+
+    original_exit = _b.exit
+    _write(submission_dir, "submission.py", "def main(): return 1\n")
+    spec = PatchSpec(target="builtins.exit", kind="noop")
+    run_request(_request(submission_dir, patch_specs=(spec,)))
+    # After the request completes, builtins.exit is restored.
+    assert _b.exit is original_exit

@@ -35,9 +35,10 @@ import time
 import traceback
 from contextlib import ExitStack, contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
+from unittest.mock import patch as _mock_patch
 
-from generic_grader.sandbox.protocol import Event, Request, Response
+from generic_grader.sandbox.protocol import Event, PatchSpec, Request, Response
 
 # ---------------------------------------------------------------------------
 # Path helpers
@@ -276,6 +277,133 @@ def _import_target(module: str, obj_name: str) -> Any:
 
 
 # ---------------------------------------------------------------------------
+# Patch reconstruction
+# ---------------------------------------------------------------------------
+
+# Dotted Python path matching ``module(.sub)*.attribute``.  This is
+# intentionally stricter than the module-name regex above because we
+# need at least one ``.`` to separate the target attribute from its
+# enclosing module.
+_PATCH_TARGET_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$")
+_ERROR_QUALNAME_RE = re.compile(
+    r"^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+$"
+)
+
+
+def _target_basename(target: str) -> str:
+    """Return the trailing attribute of a dotted patch target.
+
+    The student-facing error messages built inside the reconstructed
+    mocks only need the short name (e.g. ``"input"`` from
+    ``"submission.input"``), matching the behavior of the host-side
+    :func:`generic_grader.utils.mocks.make_mock_function` helper.
+    """
+    return target.rsplit(".", 1)[-1]
+
+
+def _resolve_error_class(qualname: str) -> type[BaseException]:
+    """Resolve a dotted ``module.Class`` path to an exception class.
+
+    Used by the ``raise_error`` patch kind so the host can ship just
+    the qualified name across the wire instead of a pickled class.
+    """
+    if not _ERROR_QUALNAME_RE.match(qualname):
+        raise ValueError(
+            f"Invalid error_qualname {qualname!r}; expected a dotted Python path."
+        )
+    module_name, _, attr = qualname.rpartition(".")
+    module = importlib.import_module(module_name)
+    cls = getattr(module, attr)
+    if not isinstance(cls, type) or not issubclass(cls, BaseException):
+        raise TypeError(
+            f"{qualname} resolved to {cls!r}, which is not an exception class."
+        )
+    return cls
+
+
+def _build_mock_from_spec(spec: PatchSpec) -> Callable[..., Any]:
+    """Reconstruct the callable described by a :class:`PatchSpec`.
+
+    Each kind maps to one of the host-side mock templates in
+    :mod:`generic_grader.utils.mocks`, but rebuilt locally inside the
+    worker so we never have to ship a live closure across the sandbox
+    boundary.  The fourth kind, ``source``, exec's a host-supplied
+    function source in an empty namespace -- this is the escape hatch
+    used for assignment-specific patches (e.g. a fake physics
+    function).  Running the exec in an empty namespace means the
+    source can't depend on any host-side variables and can't observe
+    the grader's own module globals.
+    """
+    if spec.kind == "noop":
+
+        def _noop(*args: Any, **kwargs: Any) -> None:
+            return None
+
+        return _noop
+
+    if spec.kind == "iter_returns":
+        # Avoid `deepcopy` (used by the host-side helper) because we
+        # already crossed JSON, so each element is a fresh primitive.
+        iterator = iter(list(spec.values))
+        # Import lazily so an unrelated import failure in
+        # generic_grader.utils.exceptions can't break worker startup.
+        from generic_grader.utils.exceptions import ExcessFunctionCallError
+
+        basename = _target_basename(spec.target)
+
+        def _iter_returns(*args: Any, **kwargs: Any) -> Any:
+            try:
+                return next(iterator)
+            except StopIteration as e:
+                raise ExcessFunctionCallError(basename) from e
+
+        return _iter_returns
+
+    if spec.kind == "raise_error":
+        error_cls = _resolve_error_class(spec.error_qualname or "")
+        from generic_grader.utils.docs import make_call_str
+
+        basename = _target_basename(spec.target)
+
+        def _raise(*args: Any, **kwargs: Any) -> Any:
+            call_str = make_call_str(basename, args, kwargs)
+            raise error_cls(f"Your program unexpectedly called `{call_str}`.")
+
+        return _raise
+
+    # spec.kind == "source" (validated in PatchSpec.__post_init__)
+    namespace: dict[str, Any] = {}
+    # The source string was captured with `inspect.getsource` on the
+    # host (already dedented) and is treated here as an isolated
+    # function definition: no access to grader globals, no builtins
+    # mutation, no shared state.
+    exec(compile(spec.source or "", "<patch_spec>", "exec"), namespace)
+    func = namespace.get(spec.name or "")
+    if not callable(func):
+        raise ValueError(
+            f"PatchSpec source did not define a callable named {spec.name!r}."
+        )
+    return func
+
+
+def _enter_patches_from_specs(stack: ExitStack, specs: tuple[PatchSpec, ...]) -> None:
+    """Apply each :class:`PatchSpec` via ``unittest.mock.patch`` on `stack`.
+
+    The patches are reverted automatically when ``stack`` unwinds, so
+    the worker's runtime state is clean by the time we serialize the
+    response.
+    """
+    for spec in specs:
+        if not _PATCH_TARGET_RE.match(spec.target):
+            raise ValueError(
+                f"Invalid patch target {spec.target!r}; expected a dotted path."
+            )
+        mock_fn = _build_mock_from_spec(spec)
+        kwargs = dict(spec.patch_kwargs or {})
+        stack.enter_context(_mock_patch(spec.target, new=mock_fn, **kwargs))
+
+
+# ---------------------------------------------------------------------------
 # fixed_time / freezegun
 # ---------------------------------------------------------------------------
 
@@ -343,19 +471,31 @@ def run_request(request: Request) -> Response:
         builtins.input = responder  # type: ignore[assignment]
         stack.callback(setattr, builtins, "input", original_input)
 
+        # Patches must be active across both the import (so module-level
+        # code that calls the patched target sees the mock) and the
+        # subsequent call.  Any error building/installing patches is
+        # treated like an import-time error so the host sees a
+        # structured exception chain rather than the worker crashing.
         try:
-            target = _import_target(request.module, request.obj_name)
-        except BaseException as e:  # noqa: BLE001 - report any import error
+            _enter_patches_from_specs(stack, tuple(request.patch_specs or ()))
+        except BaseException as e:  # noqa: BLE001 - report patch errors
             exception_chain = _serialize_exception_chain(e)
         else:
-            phase = "call"
             try:
-                returned = target(*tuple(request.args or ()), **(request.kwargs or {}))
-            except BaseException as e:  # noqa: BLE001 - report any student error
+                target = _import_target(request.module, request.obj_name)
+            except BaseException as e:  # noqa: BLE001 - report any import error
                 exception_chain = _serialize_exception_chain(e)
             else:
-                if "return" in captures:
-                    events.append(_make_return_event(returned))
+                phase = "call"
+                try:
+                    returned = target(
+                        *tuple(request.args or ()), **(request.kwargs or {})
+                    )
+                except BaseException as e:  # noqa: BLE001 - report any student error
+                    exception_chain = _serialize_exception_chain(e)
+                else:
+                    if "return" in captures:
+                        events.append(_make_return_event(returned))
 
     # After the patches have been torn down we can safely emit
     # bookkeeping events without polluting the student's stream.
