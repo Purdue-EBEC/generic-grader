@@ -109,7 +109,67 @@ pip install generic-grader
 
    - on Windows, download the latest installers from https://github.com/UB-Mannheim/tesseract/wiki
 
-5. Install ghostscript
+5. Install [isolate](https://github.com/ioi/isolate) (used by the Layer-3
+   sandbox; the test suite skips one isolate-dependent smoke test when it
+   isn't present, but full coverage runs require it).  The GitHub Actions
+   workflow `.github/workflows/pytest.yml` will need a corresponding
+   maintainer-side update to install `isolate` (see the install steps below).
+
+   - on Ubuntu (24.04 tested) -- `isolate` isn't packaged in apt, so
+     build from source.  The full sequence, verified end-to-end:
+
+     ``` bash
+     # Build dependencies.  asciidoc is needed for the manpages; if
+     # you'd rather skip the ~30 MB of asciidoc deps, you can build
+     # just the binary targets, but `make all` (which `make install`
+     # depends on) builds the manpages by default.
+     sudo apt install build-essential libcap-dev libseccomp-dev libsystemd-dev pkg-config asciidoc
+
+     # Clone and build.
+     git clone https://github.com/ioi/isolate.git
+     cd isolate
+     make all
+     sudo make install
+
+     # Create the unprivileged user isolate maps containerized
+     # processes into, and give it a subuid/subgid range.  On Ubuntu,
+     # `useradd --system` does NOT auto-populate /etc/sub{u,g}id, so
+     # the second command is required.
+     sudo useradd --system --no-create-home --shell /usr/sbin/nologin isolate
+     sudo usermod --add-subuids 524288-589823 --add-subgids 524288-589823 isolate
+
+     # Start the cgroup-keeper daemon installed by `make install`.
+     # The unit file is shipped to /usr/local/lib/systemd/system/,
+     # which systemd scans by default.
+     sudo systemctl daemon-reload
+     sudo systemctl enable --now isolate.service
+
+     # Smoke-test the install -- both commands should succeed.
+     sudo isolate --init --cg --box-id 0
+     sudo isolate --cleanup --cg --box-id 0
+     ```
+
+     If `make all` emits Python `SyntaxWarning: invalid escape
+     sequence '\S'` lines, ignore them -- they come from the asciidoc
+     toolchain on Python 3.12+ and don't affect the build.
+
+     If `isolate --init` reports `Cannot open /run/isolate/cgroup`,
+     the cgroup-keeper service isn't running -- re-run the
+     `systemctl enable --now isolate.service` line above and check
+     `systemctl status isolate.service`.
+
+   - other Linux distributions: same procedure -- the package names
+     for the build dependencies vary, but `useradd`, `usermod
+     --add-subuids`, and `systemctl enable --now isolate.service`
+     are identical.  See the
+     [isolate README](https://github.com/ioi/isolate?tab=readme-ov-file#installation)
+     for distro-specific notes.
+
+   - macOS / Windows: isolate is Linux-only.  Run the sandbox tests in a
+     Linux VM or container.  The rest of the test suite still runs on the
+     host.
+
+6. Install ghostscript
 
    - on Linux
 
@@ -125,7 +185,7 @@ pip install generic-grader
 
    - on Windows, download the latest installers from https://ghostscript.com/releases/gsdnld.html
 
-6. Install the package.  Note that this installs the package as editable, so
+7. Install the package.  Note that this installs the package as editable, so
    edits will be automatically reflected in the installed package.
 
    ``` bash
@@ -137,22 +197,34 @@ pip install generic-grader
    uv sync --extra dev
    ```
 
-7. Install the pre-commit hooks.
+8. Install the pre-commit hooks.
 
    ``` bash
    pre-commit install
    ```
 
-8. Run the tests.
+9. Run the tests.
 
    ``` bash
    pytest
    ```
 
-9. Make changes ...
+10. Make changes ...
 
-10. Deactivate the virtual environment.
+11. Deactivate the virtual environment.
 
    ``` bash
    deactivate
    ```
+
+## Sandbox isolation (Layer 3)
+
+The grader can run a student's submission in a fresh, isolated
+subprocess per call rather than in-process.  Set
+`Options(use_sandbox=True)` to opt in.  Patches that need to cross
+the sandbox boundary must be expressed as `PatchSpec` instances
+(see `generic_grader.sandbox.patch_specs`).
+
+The sandbox uses [isolate](https://github.com/ioi/isolate); install
+it as part of the contributing setup above.  See [`ROADMAP.md`](ROADMAP.md)
+for the rollout plan.

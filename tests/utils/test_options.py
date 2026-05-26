@@ -124,3 +124,64 @@ def test_duplicate_file_names(case):
     with pytest.raises(ValueError) as exc_info:
         Options(**case["options"])
     assert str(exc_info.value) == case["error"]
+
+
+# ---------------------------------------------------------------------------
+# Sandbox opt-in (Layer 3)
+# ---------------------------------------------------------------------------
+
+
+def test_use_sandbox_defaults_to_false():
+    assert Options().use_sandbox is False
+    assert Options().patch_specs == ()
+
+
+def test_use_sandbox_alone_is_accepted():
+    """Opting into the sandbox with no patches is fine."""
+    Options(use_sandbox=True)
+
+
+def test_use_sandbox_with_patch_specs_is_accepted():
+    """`patch_specs` is the sandbox-safe way to ship patches."""
+    from generic_grader.sandbox.patch_specs import make_noop_patch_spec
+
+    Options(
+        use_sandbox=True,
+        patch_specs=(make_noop_patch_spec("m.f"),),
+    )
+
+
+def test_use_sandbox_rejects_legacy_patches_without_specs():
+    """Live callables in `patches` cannot cross the sandbox boundary."""
+    with pytest.raises(ValueError, match="patch_specs"):
+        Options(
+            use_sandbox=True,
+            patches=[{"args": ["m.f", lambda *a, **k: None]}],
+        )
+
+
+def test_legacy_patches_allowed_when_use_sandbox_false():
+    """Layer 1 (in-process) is unaffected by the new check."""
+    Options(patches=[{"args": ["m.f", lambda *a, **k: None]}])
+
+
+# ---------------------------------------------------------------------------
+# ref_dir (Layer 3)
+# ---------------------------------------------------------------------------
+
+
+def test_ref_dir_defaults_to_tests():
+    """`ref_dir` defaults to `./tests` so the recommended layout works
+    out of the box."""
+    assert Options().ref_dir == "./tests"
+
+
+def test_ref_dir_can_be_overridden():
+    """`ref_dir` is a writable string field."""
+    assert Options(ref_dir="./graders/foo").ref_dir == "./graders/foo"
+
+
+def test_ref_dir_must_be_a_string():
+    """Type validation rejects non-string values."""
+    with pytest.raises(ValueError, match="ref_dir"):
+        Options(ref_dir=123)

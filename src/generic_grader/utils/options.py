@@ -19,6 +19,23 @@ class Options:
     weight: int | float = 0
     init: Callable | None = None
     ref_module: str = "tests.reference"
+    ref_dir: str = "./tests"
+    """
+    Directory (relative to the test harness CWD) that holds the reference
+    implementation and any supporting fixtures the reference code needs at
+    runtime.
+
+    **Not yet wired into the runtime.**  This field is declared so test
+    suites can adopt the option ahead of the bind-mount work, but the
+    Layer-3 sandbox integration in this PR does not yet bind-mount the
+    directory inside the sandbox; the value is currently read only by
+    user code and by the ``Options`` constructor.  Bind-mounting will
+    land in a follow-up PR (see ``ROADMAP.md``).  The legacy in-process
+    path imports the reference module via the standard Python import
+    machinery and likewise ignores this field.  Test authors are
+    recommended to keep reference code and data files under ``./tests/``
+    so they can be bind-mounted into the sandbox once that lands.
+    """
     sub_module: str = ""
     required_files: tuple = ()
     ignored_files: tuple = ()
@@ -28,6 +45,15 @@ class Options:
     There are some functions that cannot be patched due to other functions being dependent on their behavior.
     As of right now, those functions are `str` and `int`.
     """
+
+    # Sandbox (Layer 3) opt-in.  When True, import and call run in a fresh
+    # `isolate`-backed worker per call; the in-process Layer 1 path is
+    # bypassed.  Patches that need to cross the boundary must be supplied
+    # via `patch_specs` because live callables in `patches` cannot be
+    # JSON-serialized.  See `generic_grader.sandbox.patch_specs` for the
+    # helpers that build sandbox-safe specs.
+    use_sandbox: bool = False
+    patch_specs: tuple = ()
 
     # Input
     entries: tuple = ()
@@ -112,6 +138,13 @@ class Options:
             s = set(attr)
             if len(s) != len(attr):
                 raise ValueError(f"Duplicate entries in {name}.")
+        if self.use_sandbox and self.patches and not self.patch_specs:
+            raise ValueError(
+                "`use_sandbox=True` requires patches expressed as `patch_specs` "
+                "(JSON-serializable). The legacy `patches` field uses live "
+                "callables that cannot cross the sandbox boundary. See "
+                "`generic_grader.sandbox.patch_specs` for spec builders."
+            )
         if self.init is not None:
             sig = inspect.signature(self.init)
             positional_kinds = (
