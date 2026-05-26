@@ -110,11 +110,19 @@ class RunPlan:
             "--fsize",
             str(self.fsize_kb),
             # /box/submission is the worker's CWD and is writable.
+            # ``isolate --dir`` interprets the target path as relative
+            # to the box root (which is mounted at ``/box`` inside the
+            # sandbox), so we pass ``submission=<host>:rw`` and *not*
+            # ``/box/submission=<host>:rw``.  Using the absolute form
+            # causes isolate to error with ``Cannot mount ... on
+            # box/submission: Permission denied`` because it strips the
+            # leading slash and then tries to mount at
+            # ``<box_root>/box/submission`` -- doubled-up.
             "--dir",
-            f"/box/submission={self.submission_dir}:rw",
+            f"submission={self.submission_dir}:rw",
             # /box/grader is the generic_grader install, read only.
             "--dir",
-            f"/box/grader={self.grader_src}",
+            f"grader={self.grader_src}",
             # Set PYTHONPATH and a sane cwd.
             "--env",
             "PYTHONPATH=/box/grader",

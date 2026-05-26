@@ -147,10 +147,18 @@ def test_run_argv_includes_required_bind_mounts(tmp_path):
         meta_path="/tmp/meta.txt",
     )
     argv = plan.run_argv()
-    # /box/submission is RW and points at the request's submission_dir
-    assert f"/box/submission={tmp_path}:rw" in argv
-    # /box/grader is RO and points at the grader source
-    assert "/box/grader=/path/to/grader" in argv
+    # The mount targets are *relative* to the box root.  isolate
+    # refuses to create subdirectories in bound directories, so
+    # absolute paths like ``/box/submission`` would double-up the
+    # prefix and fail at mount time with ``Cannot mount ... on
+    # box/submission: Permission denied``.  Inside the sandbox the
+    # mounts still appear at ``/box/submission`` and ``/box/grader``
+    # because isolate exposes the box root at ``/box``.
+    assert f"submission={tmp_path}:rw" in argv
+    assert "grader=/path/to/grader" in argv
+    # Sanity: confirm we did NOT regress to the old absolute-path form.
+    assert f"/box/submission={tmp_path}:rw" not in argv
+    assert "/box/grader=/path/to/grader" not in argv
 
 
 def test_run_argv_sets_environment(tmp_path):
@@ -413,7 +421,7 @@ def test_runner_rewrites_submission_dir_in_frame_to_sandbox_path(tmp_path):
     run_argv = run_calls[0][0]
     bind_specs = [run_argv[i + 1] for i, a in enumerate(run_argv) if a == "--dir"]
     assert any(
-        spec.startswith("/box/submission=") and host_path in spec for spec in bind_specs
+        spec.startswith("submission=") and host_path in spec for spec in bind_specs
     )
 
 
