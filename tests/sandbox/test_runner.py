@@ -147,18 +147,19 @@ def test_run_argv_includes_required_bind_mounts(tmp_path):
         meta_path="/tmp/meta.txt",
     )
     argv = plan.run_argv()
-    # The mount targets are *relative* to the box root.  isolate
-    # refuses to create subdirectories in bound directories, so
-    # absolute paths like ``/box/submission`` would double-up the
-    # prefix and fail at mount time with ``Cannot mount ... on
-    # box/submission: Permission denied``.  Inside the sandbox the
-    # mounts still appear at ``/box/submission`` and ``/box/grader``
-    # because isolate exposes the box root at ``/box``.
+    # ``isolate --dir`` target paths are interpreted relative to the
+    # sandbox root (isolate strips the leading ``/``).  We mount the
+    # host submission and grader at ``/submission`` and ``/grader``
+    # in the sandbox -- not under ``/box``, because isolate refuses
+    # to create subdirectories in already-bound directories and
+    # ``/box`` is a default bind-mount.
     assert f"submission={tmp_path}:rw" in argv
     assert "grader=/path/to/grader" in argv
     # Sanity: confirm we did NOT regress to the old absolute-path form.
     assert f"/box/submission={tmp_path}:rw" not in argv
     assert "/box/grader=/path/to/grader" not in argv
+    assert f"/submission={tmp_path}:rw" not in argv
+    assert "/grader=/path/to/grader" not in argv
 
 
 def test_run_argv_sets_environment(tmp_path):
@@ -170,9 +171,11 @@ def test_run_argv_sets_environment(tmp_path):
         meta_path="/tmp/meta.txt",
     )
     argv = plan.run_argv()
-    assert "PYTHONPATH=/box/grader" in argv
+    # Env vars point at the sandbox-root mount paths; see
+    # ``test_run_argv_includes_required_bind_mounts``.
+    assert "PYTHONPATH=/grader" in argv
     assert "MPLBACKEND=Agg" in argv
-    assert "HOME=/box/submission" in argv
+    assert "HOME=/submission" in argv
 
 
 def test_run_argv_does_not_enable_network(tmp_path):
@@ -195,8 +198,40 @@ def test_run_argv_appends_extra_dirs(tmp_path):
         extra_dirs=[("etc", "/etc", ""), ("opt", "/opt/cache", "rw")],
     )
     argv = plan.run_argv()
-    assert "/box/etc=/etc" in argv
-    assert "/box/opt=/opt/cache:rw" in argv
+    # Mount targets are relative to the sandbox root (same as the
+    # ``submission`` / ``grader`` mounts above).  Inside the sandbox
+    # they appear at ``/etc`` and ``/opt``.
+    assert "etc=/etc" in argv
+    assert "opt=/opt/cache:rw" in argv
+    # Guard against regressing to the old absolute-path form.
+    assert "/box/etc=/etc" not in argv
+    assert "/box/opt=/opt/cache:rw" not in argv
+
+
+def test_run_argv_chdir_points_at_sandbox_submission(tmp_path):
+    """``--chdir`` must point at the in-sandbox submission mount.
+
+    isolate's chroot root is the sandbox root, *not* ``/box``.  The
+    submission is bind-mounted at ``/submission`` (because isolate
+    will not mount inside the default ``/box`` bind-mount), so the
+    worker's cwd must also be ``/submission``.  Passing
+    ``/box/submission`` -- or the relative ``submission`` -- causes
+    isolate to fail with ``chdir: No such file or directory`` because
+    the default cwd at chdir time is ``/box`` and ``box/submission``
+    does not exist.
+    """
+    plan = build_run_plan(
+        _request(str(tmp_path)),
+        box_id=0,
+        grader_src="/g",
+        meta_path="/tmp/meta.txt",
+    )
+    argv = plan.run_argv()
+    chdir_idx = argv.index("--chdir")
+    assert argv[chdir_idx + 1] == "/submission"
+    # Guard against regressing to either of the previous broken forms.
+    assert argv[chdir_idx + 1] != "/box/submission"
+    assert argv[chdir_idx + 1] != "submission"
 
 
 def test_run_argv_runs_worker_main_module(tmp_path):
@@ -215,6 +250,15 @@ def test_run_argv_runs_worker_main_module(tmp_path):
     assert tail[0] == "/usr/bin/python3"
     assert tail[-1] == "generic_grader.sandbox.worker_main"
     assert "-m" in tail
+    # The worker relies on ``PYTHONPATH=/grader`` to locate the
+    # generic_grader package.  ``-I`` (isolated mode) implies ``-E``
+    # which makes Python ignore ``PYTHONPATH`` -- so we must not pass
+    # ``-I``.  We still want ``-S``/``-s``/``-P`` for partial
+    # isolation.  See the long comment in ``runner.py`` for details.
+    assert "-I" not in tail
+    assert "-S" in tail
+    assert "-s" in tail
+    assert "-P" in tail
 
 
 # ---------------------------------------------------------------------------
@@ -392,7 +436,7 @@ def test_runner_writes_request_frame_to_worker_stdin(tmp_path):
 
 
 def test_runner_rewrites_submission_dir_in_frame_to_sandbox_path(tmp_path):
-    """The host's ``submission_dir`` is rewritten to ``/box/submission``
+    """The host's ``submission_dir`` is rewritten to ``/submission``
     before being serialized to the worker.  The host path is unreachable
     inside the sandbox -- only the bind-mounted path exists -- so the
     worker must receive the in-sandbox path or its ``os.chdir`` will
@@ -413,7 +457,7 @@ def test_runner_rewrites_submission_dir_in_frame_to_sandbox_path(tmp_path):
     newline_index = stdin_bytes.index(b"\n")
     payload = stdin_bytes[newline_index + 1 :].decode("utf-8")
     frame = json.loads(payload)
-    assert frame["submission_dir"] == "/box/submission"
+    assert frame["submission_dir"] == "/submission"
     # The original request must not have been mutated -- the host-side
     # caller may still inspect it (e.g. for logging).
     assert request.submission_dir == host_path
@@ -757,7 +801,8 @@ def _isolate_can_bind_mount() -> bool:  # pragma: no cover - env probe
                 [
                     REAL_ISOLATE,
                     "--box-id=99",
-                    f"--dir=/box/probe={probe}",
+                    # Mount target is relative to the box root.
+                    f"--dir=probe={probe}",
                     "--run",
                     "--",
                     "/bin/true",

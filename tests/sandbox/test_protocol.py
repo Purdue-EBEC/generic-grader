@@ -155,7 +155,7 @@ def test_request_minimal_fields():
     """A Request needs at least runtime + submission_dir + module + obj_name."""
     r = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="submission",
         obj_name="main",
     )
@@ -169,7 +169,7 @@ def test_request_minimal_fields():
 def test_request_to_json_round_trip():
     r = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="submission",
         obj_name="compute_area",
         args=(3, 4),
@@ -187,7 +187,7 @@ def test_request_to_json_round_trip():
 def test_request_to_json_is_valid_json():
     r = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="submission",
         obj_name="main",
     )
@@ -202,7 +202,7 @@ def test_request_from_json_rejects_wrong_protocol_version():
         {
             "protocol_version": PROTOCOL_VERSION + 99,
             "runtime": "python",
-            "submission_dir": "/box/submission",
+            "submission_dir": "/submission",
             "module": "submission",
             "obj_name": "main",
         }
@@ -222,7 +222,7 @@ def test_request_write_read_round_trip():
     """`write_request` -> `read_request` should be lossless across a stream."""
     r = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="m",
         obj_name="f",
         args=(1, 2),
@@ -454,7 +454,7 @@ def test_request_round_trips_patch_specs():
     )
     req = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="submission",
         obj_name="main",
         patch_specs=specs,
@@ -466,7 +466,7 @@ def test_request_round_trips_patch_specs():
 def test_request_patch_specs_defaults_to_empty_tuple():
     req = Request(
         runtime="python",
-        submission_dir="/box/submission",
+        submission_dir="/submission",
         module="submission",
         obj_name="main",
     )

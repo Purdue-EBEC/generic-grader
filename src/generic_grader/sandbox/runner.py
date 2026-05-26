@@ -57,7 +57,18 @@ DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
 # also set to this path.  We rewrite ``Request.submission_dir`` to
 # this value before serializing the frame, since the worker has no
 # way to see the host path.
-SANDBOX_SUBMISSION_DIR = "/box/submission"
+#
+# Note that isolate's chroot root is the sandbox root, *not* ``/box``.
+# By default isolate mounts the host ``<box_dir>/box`` directory at
+# the sandbox path ``/box`` and chdirs there before running the
+# program, but the default ``--dir`` mount points (``bin``, ``lib``,
+# ``submission``, ...) all live at the sandbox root.  isolate refuses
+# to create subdirectories in already-bound directories, so we cannot
+# mount inside ``/box`` without pre-creating the mountpoint.  Mounting
+# at the sandbox root is simpler and is what isolate does for every
+# other tool that uses it (gitlab-ci, MOE Judge, OI judge, ...).
+SANDBOX_SUBMISSION_DIR = "/submission"
+SANDBOX_GRADER_DIR = "/grader"
 
 
 # ---------------------------------------------------------------------------
@@ -105,38 +116,48 @@ class RunPlan:
             f"{self.wall_time_limit_seconds:.3f}",
             "--mem",
             str(self.memory_limit_mb * 1024),  # isolate expects KB
-            "--processes",
-            str(self.processes),
+            # ``--processes`` takes an *optional* argument per isolate's
+            # getopt spec (``-p, --processes[=<max>]``), so the value
+            # must be glued on with ``=``.  Passing them as separate
+            # tokens makes isolate ignore the max and treat the count
+            # as part of the command line, producing
+            # ``execve("<N>"): No such file or directory``.
+            f"--processes={self.processes}",
             "--fsize",
             str(self.fsize_kb),
-            # /box/submission is the worker's CWD and is writable.
-            # ``isolate --dir`` interprets the target path as relative
-            # to the box root (which is mounted at ``/box`` inside the
-            # sandbox), so we pass ``submission=<host>:rw`` and *not*
-            # ``/box/submission=<host>:rw``.  Using the absolute form
-            # causes isolate to error with ``Cannot mount ... on
-            # box/submission: Permission denied`` because it strips the
-            # leading slash and then tries to mount at
-            # ``<box_root>/box/submission`` -- doubled-up.
+            # ``isolate --dir`` target paths are relative to the
+            # sandbox root (isolate strips a leading ``/`` from the
+            # target).  We mount the host submission and grader at
+            # ``/submission`` and ``/grader`` in the sandbox.  We do
+            # *not* mount them under ``/box`` because isolate refuses
+            # to create subdirectories in bound directories, and
+            # ``/box`` is already a default bind-mount.
             "--dir",
             f"submission={self.submission_dir}:rw",
-            # /box/grader is the generic_grader install, read only.
+            # /grader is the generic_grader install, read only.
             "--dir",
             f"grader={self.grader_src}",
             # Set PYTHONPATH and a sane cwd.
             "--env",
-            "PYTHONPATH=/box/grader",
+            "PYTHONPATH=/grader",
             "--env",
             "MPLBACKEND=Agg",
             "--env",
-            "HOME=/box/submission",
+            "HOME=/submission",
+            # ``--chdir`` takes a path that, when ``chdir(2)``-ed from
+            # the sandbox cwd (which is ``/box`` by default), lands at
+            # the desired location.  Using ``/submission`` (absolute
+            # under the chroot) is the most explicit form and works
+            # regardless of any future change to the default cwd.
             "--chdir",
-            "/box/submission",
+            "/submission",
             # Default isolate already disables network; pass --share-net
             # is what enables it, so we deliberately omit that flag.
         ]
         for name, source, opts in self.extra_dirs:
-            spec = f"/box/{name}={source}"
+            # Mount targets must be relative to the box root; see the
+            # comment on the ``submission`` mount above.
+            spec = f"{name}={source}"
             if opts:
                 spec = f"{spec}:{opts}"
             argv.extend(["--dir", spec])
@@ -145,8 +166,20 @@ class RunPlan:
                 "--run",
                 "--",
                 self.python_executable,
-                "-I",
+                # We *cannot* use ``-I`` (isolated mode) here because
+                # it implies ``-E``, which makes Python ignore
+                # ``PYTHONPATH`` -- and we rely on ``PYTHONPATH`` to
+                # point at the bind-mounted grader install.  Instead
+                # we pass the individual flags we want:
+                #   ``-S`` -- do not run ``site.py`` on startup.
+                #   ``-s`` -- do not add the per-user site directory.
+                #   ``-P`` -- do not prepend the script's directory
+                #             (or ``''`` for ``-m``) to ``sys.path``.
+                #             Requires Python 3.11+, which is our
+                #             minimum per ``pyproject.toml``.
                 "-S",
+                "-s",
+                "-P",
                 "-m",
                 "generic_grader.sandbox.worker_main",
             ]
@@ -344,7 +377,7 @@ class IsolateRunner:
                 )
 
             try:
-                # The worker only sees ``/box/submission`` (the bind
+                # The worker only sees ``/submission`` (the bind
                 # mount); rewrite ``submission_dir`` before encoding
                 # so ``_patched_cwd_and_path`` chdirs to a path that
                 # actually exists inside the sandbox.  The build_run_plan

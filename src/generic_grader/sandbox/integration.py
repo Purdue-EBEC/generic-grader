@@ -228,7 +228,7 @@ def _resolve_submission_dir(options: Options, module: str) -> str:
 
     The legacy importer imports student code from `cwd` (set by the
     test harness).  When ``Options.use_sandbox=True`` we bind that
-    same directory in read-write under ``/box/submission``.  Module
+    same directory in read-write under ``/submission``.  Module
     paths supplied via dotted names (e.g. ``tests.reference``) are
     handled by adjusting the package directory below.
     """
@@ -299,7 +299,7 @@ def _grader_src_root() -> str:
     """Return the directory containing the ``generic_grader`` package."""
     # ``__file__`` is .../generic_grader/sandbox/integration.py; we
     # want the directory that *contains* the package so the worker's
-    # PYTHONPATH = /box/grader resolves ``import generic_grader``.
+    # PYTHONPATH = /grader resolves ``import generic_grader``.
     return str(Path(__file__).resolve().parent.parent.parent)
 
 
