@@ -52,6 +52,25 @@ DEFAULT_WALL_TIME_MULTIPLIER = 2.0
 DEFAULT_PROCESSES = 64
 DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
 
+# ``Request.time_limit_seconds`` carries the *student-code* budget
+# (matching the legacy non-sandbox ``Options.time_limit`` semantics --
+# see ``generic_grader.utils.resource_limits.time_limit``, which wraps
+# only the student call in a ``SIGALRM`` alarm).  Isolate's ``--time``,
+# in contrast, counts CPU for the *entire* subprocess: interpreter
+# startup, ``site``/grader imports, ``matplotlib`` if it's pulled in,
+# the worker protocol round-trip, and only then the student call.
+#
+# We add a fixed allowance on top of the student budget before passing
+# it to isolate so a typical ``time_limit=1`` test doesn't get killed
+# during interpreter startup on slower hosts (e.g. Gradescope CI
+# containers, where a cold ``python -m`` can chew through several
+# hundred milliseconds before the worker even reads the request).
+#
+# Step 2 of the timeout fix will additionally enforce the student
+# budget inside the worker with its own ``SIGALRM`` so the isolate
+# limit becomes purely a safety net.
+STARTUP_OVERHEAD_SECONDS = 2.0
+
 # isolate bind-mounts the following host paths by default (see
 # ``init_dir_rules`` in upstream ``rules.c``).  When the Python
 # executable we want to run lives outside *all* of these roots --
@@ -278,16 +297,18 @@ def build_run_plan(
 ) -> RunPlan:
     """Construct a :class:`RunPlan` from a :class:`Request`.
 
-    Resource limits come straight from the request -- `Request`
-    already supplies sensible defaults (1s, 1400 MB) so the runner
-    doesn't need to layer its own.  Tests that need a different
-    limit override it on the request.
+    Resource limits derive from the request -- `Request` already
+    supplies sensible defaults (1s student-code budget, 1400 MB).
+    The runner adds :data:`STARTUP_OVERHEAD_SECONDS` to the CPU
+    budget before passing it to isolate so interpreter startup and
+    grader-side imports don't eat into the student's time budget.
 
     If ``python_executable`` (or ``sys.executable`` when omitted)
     lives outside isolate's default bind-mount roots, an extra
     ``--dir`` rule is added so the chroot can see and ``execve`` it.
     """
-    time_limit = request.time_limit_seconds
+    student_budget = request.time_limit_seconds
+    time_limit = student_budget + STARTUP_OVERHEAD_SECONDS
     wall_limit = time_limit * DEFAULT_WALL_TIME_MULTIPLIER
     mem_mb = request.memory_limit_mb
     python_exe = python_executable or sys.executable

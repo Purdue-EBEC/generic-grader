@@ -35,6 +35,7 @@ from generic_grader.sandbox.protocol import (
     write_response,
 )
 from generic_grader.sandbox.runner import (
+    STARTUP_OVERHEAD_SECONDS,
     IsolateRunner,
     _python_prefix_mounts,
     build_run_plan,
@@ -73,12 +74,15 @@ def test_build_run_plan_uses_request_resource_limits(tmp_path):
     )
     assert plan.box_id == 3
     assert plan.submission_dir == str(tmp_path)
-    assert plan.time_limit_seconds == 5.0
+    # ``Request.time_limit_seconds`` is the student-code budget; the
+    # plan adds ``STARTUP_OVERHEAD_SECONDS`` for interpreter startup
+    # and grader-side imports before handing the number to isolate.
+    assert plan.time_limit_seconds == 5.0 + STARTUP_OVERHEAD_SECONDS
     assert plan.memory_limit_mb == 128
 
 
 def test_build_run_plan_uses_request_defaults_when_limits_unspecified(tmp_path):
-    """Request itself supplies defaults; the plan reflects them verbatim."""
+    """Request itself supplies defaults; the plan adds the startup overhead."""
     req = _request(str(tmp_path))
     plan = build_run_plan(
         req,
@@ -86,11 +90,34 @@ def test_build_run_plan_uses_request_defaults_when_limits_unspecified(tmp_path):
         grader_src="/grader/src",
         meta_path="/tmp/meta.txt",
     )
-    # Request default is 1.0s / 1400 MB
-    assert plan.time_limit_seconds == 1.0
+    # Request default is 1.0s student-code budget / 1400 MB.  The
+    # plan adds ``STARTUP_OVERHEAD_SECONDS`` on top for the CPU limit
+    # that goes to isolate.
+    expected_cpu = 1.0 + STARTUP_OVERHEAD_SECONDS
+    assert plan.time_limit_seconds == expected_cpu
     assert plan.memory_limit_mb == 1400
     # Wall-time is double the CPU time.
-    assert plan.wall_time_limit_seconds == 2.0
+    assert plan.wall_time_limit_seconds == expected_cpu * 2.0
+
+
+def test_startup_overhead_is_positive_and_added_on_top_of_student_budget(tmp_path):
+    """Regression: legacy ``Options.time_limit`` budgeted only the
+    student's code (SIGALRM-wrapped call); isolate's ``--time`` counts
+    CPU for the whole subprocess.  The runner must add a fixed
+    allowance so a trivial ``time_limit=1`` test isn't killed during
+    interpreter startup / grader imports on slower hosts.
+    """
+    assert STARTUP_OVERHEAD_SECONDS > 0
+    req = _request(str(tmp_path), time_limit_seconds=1.0)
+    plan = build_run_plan(
+        req,
+        box_id=0,
+        grader_src="/grader/src",
+        meta_path="/tmp/meta.txt",
+    )
+    # CPU limit handed to isolate strictly exceeds the student budget.
+    assert plan.time_limit_seconds > req.time_limit_seconds
+    assert plan.time_limit_seconds == req.time_limit_seconds + STARTUP_OVERHEAD_SECONDS
 
 
 def test_build_run_plan_uses_sys_executable_when_python_executable_unset(tmp_path):
@@ -132,7 +159,10 @@ def test_run_argv_carries_resource_limits(tmp_path):
     )
     argv = plan.run_argv()
     assert "--time" in argv
-    assert argv[argv.index("--time") + 1] == "4.000"
+    # The argv carries the *isolate* CPU limit, which is the student
+    # budget plus the fixed startup overhead.
+    expected_cpu = 4.0 + STARTUP_OVERHEAD_SECONDS
+    assert argv[argv.index("--time") + 1] == f"{expected_cpu:.3f}"
     assert "--wall-time" in argv
     # memory is in KB inside the argv
     assert "--mem" in argv
