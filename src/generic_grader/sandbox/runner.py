@@ -197,8 +197,16 @@ class RunPlan:
         return argv
 
 
-def _python_prefix_mount(python_exe: str) -> tuple[str, str, str] | None:
-    """Return an ``extra_dirs`` entry exposing ``python_exe`` in the sandbox.
+def _path_in_default_mounts(path: str) -> bool:
+    """Is ``path`` inside one of isolate's built-in bind-mount roots?"""
+    for root in _ISOLATE_DEFAULT_MOUNT_ROOTS:
+        if path == root or path.startswith(root + os.sep):
+            return True
+    return False
+
+
+def _python_prefix_mounts(python_exe: str) -> list[tuple[str, str, str]]:
+    """Return ``extra_dirs`` entries that make ``python_exe`` reachable.
 
     isolate's default ``--dir`` rules cover ``/bin``, ``/lib``,
     ``/lib64``, and ``/usr``.  A Python interpreter installed by
@@ -207,38 +215,55 @@ def _python_prefix_mount(python_exe: str) -> tuple[str, str, str] | None:
     with ``No such file or directory`` (exit 127).
 
     To make such an interpreter reachable we bind-mount its prefix
-    (e.g. ``~/.local/share/uv/python/cpython-3.12.X-...``) into the
-    sandbox at the *same* host path.  Binding at the original path
-    means the absolute ``python_executable`` argv string we already
-    pass to ``--run`` resolves correctly inside the chroot, without
-    any path rewriting.
+    -- e.g. ``~/.local/share/uv/python/cpython-3.12.X-...`` for a
+    uv-managed python, or ``/env`` for the Gradescope grader venv --
+    into the sandbox at the *same* host path.  Binding at the
+    original path means the absolute ``python_executable`` argv
+    string we already pass to ``--run`` resolves correctly inside
+    the chroot, without any path rewriting.
 
-    Returns ``None`` if the executable is already inside one of
-    isolate's default mount roots and no extra mount is needed.
+    We deliberately do *not* follow symlinks when deciding whether
+    a mount is needed: if the literal argv path lives outside
+    ``/usr`` (e.g. a venv binary at ``/env/bin/python3.13`` that
+    symlinks to ``/usr/bin/python3.13``), the chroot must still see
+    the literal path so ``execve`` can resolve it.
+
+    When the venv's interpreter symlinks to a base prefix that is
+    *also* outside the default mounts (uv, pyenv, conda), we add a
+    second mount for that prefix so the linker can find the stdlib
+    and shared libraries.
+
+    Returns an empty list if no extra mounts are needed.
     """
-    real_exe = os.path.realpath(python_exe)
-    for root in _ISOLATE_DEFAULT_MOUNT_ROOTS:
-        if real_exe == root or real_exe.startswith(root + os.sep):
-            return None
-    # Pick the smallest prefix that contains both the executable and
-    # its support files.  ``sys.base_prefix`` is the right answer for
-    # venvs (where ``sys.prefix`` points at the venv, but the actual
-    # interpreter binary and stdlib live under ``base_prefix``).  We
-    # can't query the subprocess's interpreter from here without
-    # spawning it, so we use the running interpreter's base_prefix
-    # when the requested exe matches ``sys.executable``; otherwise we
-    # fall back to ascending two directories from the binary path
-    # (``<prefix>/bin/python3`` -> ``<prefix>``), which covers every
-    # standard install layout we've seen.
-    if os.path.realpath(sys.executable) == real_exe:
-        prefix = os.path.realpath(sys.base_prefix)
+    if _path_in_default_mounts(python_exe):
+        return []
+    # Pick the smallest prefix that contains the executable.  When
+    # the caller asks us to run the current interpreter we know it
+    # is ``sys.prefix`` (the venv root, which contains the
+    # ``bin/python`` entry the chroot must see).  Otherwise we fall
+    # back to ascending two directories from the binary path
+    # (``<prefix>/bin/python3`` -> ``<prefix>``).
+    if sys.executable == python_exe:
+        prefix = sys.prefix
     else:
-        prefix = os.path.dirname(os.path.dirname(real_exe))
+        prefix = os.path.dirname(os.path.dirname(python_exe))
     # Mount at the same absolute path so the argv we pass to isolate
     # resolves inside the chroot.  isolate's ``--dir`` strips the
     # leading ``/`` for us (target is relative to the sandbox root).
-    target = prefix.lstrip("/")
-    return (target, prefix, "")
+    mounts: list[tuple[str, str, str]] = [(prefix.lstrip("/"), prefix, "")]
+    # If the venv's base interpreter also lives outside the default
+    # mounts (uv, pyenv, conda), expose it too -- the linker needs
+    # to find ``libpython*.so`` and the stdlib under ``base_prefix``.
+    if sys.executable == python_exe and sys.base_prefix != sys.prefix:
+        base = sys.base_prefix
+        if (
+            not _path_in_default_mounts(base)
+            and base != prefix
+            and not base.startswith(prefix + os.sep)
+            and not prefix.startswith(base + os.sep)
+        ):
+            mounts.append((base.lstrip("/"), base, ""))
+    return mounts
 
 
 def build_run_plan(
@@ -267,9 +292,9 @@ def build_run_plan(
     mem_mb = request.memory_limit_mb
     python_exe = python_executable or sys.executable
     all_extra_dirs = list(extra_dirs)
-    python_mount = _python_prefix_mount(python_exe)
-    if python_mount is not None and python_mount not in all_extra_dirs:
-        all_extra_dirs.append(python_mount)
+    for python_mount in _python_prefix_mounts(python_exe):
+        if python_mount not in all_extra_dirs:
+            all_extra_dirs.append(python_mount)
     return RunPlan(
         box_id=box_id,
         submission_dir=request.submission_dir,

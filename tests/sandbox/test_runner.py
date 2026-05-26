@@ -36,7 +36,7 @@ from generic_grader.sandbox.protocol import (
 )
 from generic_grader.sandbox.runner import (
     IsolateRunner,
-    _python_prefix_mount,
+    _python_prefix_mounts,
     build_run_plan,
     classify_meta,
     parse_meta,
@@ -212,13 +212,40 @@ def test_run_argv_appends_extra_dirs(tmp_path):
     assert "/box/opt=/opt/cache:rw" not in argv
 
 
-def test_python_prefix_mount_skips_default_roots():
+def test_python_prefix_mounts_skips_default_roots():
     """Pythons already inside isolate's default mounts need no extra ``--dir``."""
     for path in ("/usr/bin/python3", "/usr/local/bin/python3", "/bin/python"):
-        assert _python_prefix_mount(path) is None, path
+        assert _python_prefix_mounts(path) == [], path
 
 
-def test_python_prefix_mount_exposes_non_default_python(tmp_path):
+def test_python_prefix_mounts_does_not_follow_symlinks(monkeypatch, tmp_path):
+    """The literal argv path must be visible in the chroot, not its target.
+
+    A venv ``bin/python`` is a symlink to a base interpreter that
+    often lives under ``/usr``.  Resolving the symlink *before*
+    checking against default mounts would make us decide ``no mount
+    needed`` -- but the chroot still can't ``execve`` the literal
+    venv path because the venv directory itself is not mounted.
+    This regression hit the Gradescope grader, whose ``/env`` venv
+    symlinks to ``/usr/bin/python3.13``.
+    """
+    venv = tmp_path / "env"
+    (venv / "bin").mkdir(parents=True)
+    # The venv ``python`` is a symlink to a system python under /usr.
+    venv_exe = venv / "bin" / "python3.13"
+    venv_exe.symlink_to("/usr/bin/python3.13")
+    # Pretend the running interpreter *is* the venv.
+    monkeypatch.setattr(sys, "executable", str(venv_exe))
+    monkeypatch.setattr(sys, "prefix", str(venv))
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
+
+    mounts = _python_prefix_mounts(str(venv_exe))
+    # The venv directory must be exposed even though the symlink
+    # target lives under ``/usr`` (a default mount).
+    assert (str(venv).lstrip("/"), str(venv), "") in mounts
+
+
+def test_python_prefix_mounts_exposes_non_default_python(tmp_path):
     """A python under ``$HOME`` (e.g. uv, pyenv, venv) gets bind-mounted.
 
     The mount target equals the source path (with the leading ``/``
@@ -236,9 +263,9 @@ def test_python_prefix_mount_exposes_non_default_python(tmp_path):
     fake_exe.write_text("#!/bin/sh\necho hi\n")
     fake_exe.chmod(0o755)
 
-    mount = _python_prefix_mount(str(fake_exe))
-    assert mount is not None
-    target, source, opts = mount
+    mounts = _python_prefix_mounts(str(fake_exe))
+    assert len(mounts) == 1
+    target, source, opts = mounts[0]
     # Target is the source path minus the leading slash.
     assert source == str(fake_prefix)
     assert target == str(fake_prefix).lstrip("/")
@@ -247,32 +274,49 @@ def test_python_prefix_mount_exposes_non_default_python(tmp_path):
     assert opts == ""
 
 
-def test_python_prefix_mount_uses_base_prefix_for_running_interpreter(
+def test_python_prefix_mounts_uses_sys_prefix_for_running_interpreter(
     monkeypatch, tmp_path
 ):
-    """When ``python_exe == sys.executable``, use ``sys.base_prefix``.
+    """When ``python_exe == sys.executable``, use ``sys.prefix``."""
+    venv = tmp_path / "my-venv"
+    (venv / "bin").mkdir(parents=True)
+    venv_exe = venv / "bin" / "python3"
+    venv_exe.write_text("#!/bin/sh\n")
+    venv_exe.chmod(0o755)
+    monkeypatch.setattr(sys, "executable", str(venv_exe))
+    monkeypatch.setattr(sys, "prefix", str(venv))
+    # Base prefix is under /usr -- already a default mount, so it
+    # should NOT produce a second mount entry.
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
 
-    ``sys.base_prefix`` is the right answer for venvs (where
-    ``sys.prefix`` points at the venv but the actual interpreter
-    binary and stdlib live under ``base_prefix``).  This branch is
-    only taken when the caller asks us to run the *current*
-    interpreter; for any other path we fall back to ``../..``.
+    mounts = _python_prefix_mounts(str(venv_exe))
+    assert mounts == [(str(venv).lstrip("/"), str(venv), "")]
+
+
+def test_python_prefix_mounts_includes_base_prefix_when_outside_defaults(
+    monkeypatch, tmp_path
+):
+    """A uv-managed base interpreter outside ``/usr`` is also mounted.
+
+    When the venv's symlinked-to base prefix (``sys.base_prefix``)
+    lives outside isolate's default mounts -- as it does for uv,
+    pyenv, and conda managed pythons -- the chroot needs to see
+    *both* the venv prefix (for the ``bin/python`` entry argv points
+    at) and the base prefix (for ``libpython*.so`` and the stdlib).
     """
-    fake_prefix = tmp_path / "current-python"
-    (fake_prefix / "bin").mkdir(parents=True)
-    fake_exe = fake_prefix / "bin" / "python3"
-    fake_exe.write_text("#!/bin/sh\n")
-    fake_exe.chmod(0o755)
-    # Pretend the test runner *is* this fake interpreter.
-    monkeypatch.setattr(sys, "executable", str(fake_exe))
-    # And that its base_prefix is the directory we expect to mount.
-    monkeypatch.setattr(sys, "base_prefix", str(fake_prefix))
+    venv = tmp_path / "venv"
+    base = tmp_path / "uv-cpython-3.12"
+    (venv / "bin").mkdir(parents=True)
+    (base / "bin").mkdir(parents=True)
+    venv_exe = venv / "bin" / "python3"
+    venv_exe.symlink_to(base / "bin" / "python3")
+    monkeypatch.setattr(sys, "executable", str(venv_exe))
+    monkeypatch.setattr(sys, "prefix", str(venv))
+    monkeypatch.setattr(sys, "base_prefix", str(base))
 
-    mount = _python_prefix_mount(str(fake_exe))
-    assert mount is not None
-    target, source, _opts = mount
-    assert source == str(fake_prefix)
-    assert target == str(fake_prefix).lstrip("/")
+    mounts = _python_prefix_mounts(str(venv_exe))
+    assert (str(venv).lstrip("/"), str(venv), "") in mounts
+    assert (str(base).lstrip("/"), str(base), "") in mounts
 
 
 def test_build_run_plan_auto_mounts_external_python(tmp_path):
