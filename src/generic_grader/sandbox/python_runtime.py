@@ -30,6 +30,7 @@ import io
 import json
 import os
 import re
+import signal
 import sys
 import time
 import traceback
@@ -421,6 +422,55 @@ def _maybe_freeze_time(fixed_time: str | None):
         yield
 
 
+@contextmanager
+def _student_call_time_limit(seconds: float):
+    """Wrap the student call in a ``SIGALRM`` alarm matching legacy semantics.
+
+    The legacy non-sandbox path (`generic_grader.utils.resource_limits.
+    time_limit`) wraps *only* the student's call in a ``signal.alarm``,
+    not interpreter startup or grader-side imports.  We mirror that
+    here so ``Request.time_limit_seconds`` keeps its original meaning:
+    the budget for student code, with interpreter / import cost free.
+
+    Isolate's outer ``--time`` limit still applies as a hard safety
+    net (set by the runner to ``time_limit + STARTUP_OVERHEAD_SECONDS``),
+    so genuinely runaway processes are still killed -- they just get
+    a structured ``UserTimeoutError`` first when their student code
+    overruns its budget.
+
+    Uses ``signal.setitimer`` (not ``signal.alarm``) so fractional
+    budgets work; ``signal.alarm`` would silently truncate ``0.5``
+    seconds to ``0`` (disabling the alarm).
+
+    A non-positive ``seconds`` value disables the alarm entirely.
+    """
+    if seconds <= 0:
+        yield
+        return
+
+    # Imported lazily so non-sandbox code paths that re-import this
+    # module (e.g. unit tests) don't pull in the full grader package
+    # just to exercise the worker dispatch.
+    from generic_grader.utils.exceptions import UserTimeoutError
+
+    def _handler(signum, frame):  # pragma: no cover - exercised via signal
+        raise UserTimeoutError(
+            f"The time limit for this test is {seconds:g}"
+            + (" second." if seconds == 1 else " seconds.")
+        )
+
+    previous = signal.signal(signal.SIGALRM, _handler)
+    signal.setitimer(signal.ITIMER_REAL, seconds)
+    try:
+        yield
+    finally:
+        # Cancel any pending alarm and restore the previous handler
+        # so a leftover timer can't fire later (e.g. during figure
+        # serialization on the way out of ``run_request``).
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
 # ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
@@ -488,9 +538,17 @@ def run_request(request: Request) -> Response:
             else:
                 phase = "call"
                 try:
-                    returned = target(
-                        *tuple(request.args or ()), **(request.kwargs or {})
-                    )
+                    # ``Request.time_limit_seconds`` is the student-code
+                    # budget (legacy ``Options.time_limit`` semantics).
+                    # Isolate's outer ``--time`` flag is a wider safety
+                    # net; this alarm matches the legacy non-sandbox
+                    # ``resource_limits.time_limit`` behavior so timed
+                    # tests look the same to assignments regardless
+                    # of which runtime path executes them.
+                    with _student_call_time_limit(request.time_limit_seconds):
+                        returned = target(
+                            *tuple(request.args or ()), **(request.kwargs or {})
+                        )
                 except BaseException as e:  # noqa: BLE001 - report any student error
                     exception_chain = _serialize_exception_chain(e)
                 else:

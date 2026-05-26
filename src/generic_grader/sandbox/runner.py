@@ -60,16 +60,15 @@ DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
 # startup, ``site``/grader imports, ``matplotlib`` if it's pulled in,
 # the worker protocol round-trip, and only then the student call.
 #
-# We add a fixed allowance on top of the student budget before passing
-# it to isolate so a typical ``time_limit=1`` test doesn't get killed
-# during interpreter startup on slower hosts (e.g. Gradescope CI
-# containers, where a cold ``python -m`` can chew through several
-# hundred milliseconds before the worker even reads the request).
-#
-# Step 2 of the timeout fix will additionally enforce the student
-# budget inside the worker with its own ``SIGALRM`` so the isolate
-# limit becomes purely a safety net.
-STARTUP_OVERHEAD_SECONDS = 2.0
+# The Python runtime worker enforces the student budget itself via
+# ``_student_call_time_limit`` (see ``python_runtime.py``); the value
+# we send to isolate is therefore a *safety net*, not the primary
+# enforcement.  We add a generous allowance on top of the student
+# budget so that interpreter startup, ``matplotlib`` / grader
+# imports, and the figure-serialization tail are all comfortably
+# inside the isolate cap on slow hosts (e.g. Gradescope CI
+# containers).
+STARTUP_OVERHEAD_SECONDS = 10.0
 
 # isolate bind-mounts the following host paths by default (see
 # ``init_dir_rules`` in upstream ``rules.c``).  When the Python

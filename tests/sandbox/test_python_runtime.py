@@ -992,3 +992,109 @@ def test_run_request_reverts_patches_after_call(submission_dir):
     run_request(_request(submission_dir, patch_specs=(spec,)))
     # After the request completes, builtins.exit is restored.
     assert _b.exit is original_exit
+
+
+# ---------------------------------------------------------------------------
+# Student-call SIGALRM time limit
+# ---------------------------------------------------------------------------
+
+
+def test_run_request_enforces_student_call_time_limit_via_sigalrm(submission_dir):
+    """A student call that overruns ``time_limit_seconds`` raises
+    ``UserTimeoutError`` (legacy ``Options.time_limit`` semantics).
+
+    The alarm wraps only the call -- not interpreter startup, not
+    import.  We give a short student-code budget and a deliberately
+    slow ``main`` to force the alarm to fire deterministically.
+    """
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        import time
+
+        def main():
+            time.sleep(3)
+        """,
+    )
+    resp = run_request(_request(submission_dir, time_limit_seconds=0.05))
+    assert resp.exception is not None, "expected the alarm to fire"
+    head = resp.exception[0]
+    assert head["type"] == "UserTimeoutError"
+
+
+def test_run_request_disables_alarm_when_time_limit_non_positive(submission_dir):
+    """A non-positive ``time_limit_seconds`` disables the alarm.
+
+    This keeps the worker safe in pathological configurations and
+    documents the behavior of ``_student_call_time_limit(seconds<=0)``,
+    which is exercised by the early-return branch in the context
+    manager.
+    """
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def main():
+            return "ok"
+        """,
+    )
+    # A 0-second budget would kill *any* student code if the alarm
+    # were armed; we expect the disabled-alarm branch to let this run.
+    resp = run_request(_request(submission_dir, time_limit_seconds=0))
+    assert resp.exception is None
+
+
+def test_run_request_pluralizes_timeout_message_when_budget_is_one_second(
+    submission_dir,
+):
+    """``UserTimeoutError`` message says "1 second" (singular) when the
+    budget is exactly one second, matching the legacy non-sandbox
+    ``resource_limits.time_limit`` wording.
+    """
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        import time
+
+        def main():
+            time.sleep(3)
+        """,
+    )
+    resp = run_request(_request(submission_dir, time_limit_seconds=1))
+    assert resp.exception is not None
+    head = resp.exception[0]
+    assert head["type"] == "UserTimeoutError"
+    # The legacy phrasing is "1 second." (singular); anything else
+    # gets the plural form.
+    assert "1 second." in head["message"]
+
+
+def test_run_request_cancels_pending_alarm_when_call_returns_quickly(
+    submission_dir,
+):
+    """The alarm is cancelled on the way out of the call, even when
+    the student code returns well before the budget expires.
+
+    Without the cancellation in ``_student_call_time_limit``'s
+    ``finally`` block, a leftover ``setitimer`` could fire later (for
+    example during figure serialization) and turn a clean run into a
+    spurious ``UserTimeoutError``.
+    """
+    import signal as _signal
+
+    _write(
+        submission_dir,
+        "submission.py",
+        """
+        def main():
+            return 1
+        """,
+    )
+    resp = run_request(_request(submission_dir, time_limit_seconds=5.0))
+    assert resp.exception is None
+    # The timer should be disarmed once the request returns.
+    remaining, interval = _signal.getitimer(_signal.ITIMER_REAL)
+    assert remaining == 0.0
+    assert interval == 0.0
