@@ -36,6 +36,7 @@ from generic_grader.sandbox.protocol import (
 )
 from generic_grader.sandbox.runner import (
     IsolateRunner,
+    _python_prefix_mount,
     build_run_plan,
     classify_meta,
     parse_meta,
@@ -195,6 +196,9 @@ def test_run_argv_appends_extra_dirs(tmp_path):
         box_id=0,
         grader_src="/g",
         meta_path="/tmp/meta.txt",
+        # Pin to a default-mount python so the auto-mount logic
+        # doesn't append an extra entry to ``extra_dirs``.
+        python_executable="/usr/bin/python3",
         extra_dirs=[("etc", "/etc", ""), ("opt", "/opt/cache", "rw")],
     )
     argv = plan.run_argv()
@@ -206,6 +210,130 @@ def test_run_argv_appends_extra_dirs(tmp_path):
     # Guard against regressing to the old absolute-path form.
     assert "/box/etc=/etc" not in argv
     assert "/box/opt=/opt/cache:rw" not in argv
+
+
+def test_python_prefix_mount_skips_default_roots():
+    """Pythons already inside isolate's default mounts need no extra ``--dir``."""
+    for path in ("/usr/bin/python3", "/usr/local/bin/python3", "/bin/python"):
+        assert _python_prefix_mount(path) is None, path
+
+
+def test_python_prefix_mount_exposes_non_default_python(tmp_path):
+    """A python under ``$HOME`` (e.g. uv, pyenv, venv) gets bind-mounted.
+
+    The mount target equals the source path (with the leading ``/``
+    stripped, since isolate ``--dir`` targets are relative to the
+    sandbox root).  Mounting at the same absolute path means the
+    argv we already pass to ``--run`` resolves correctly inside the
+    chroot, without any path rewriting.  Without this entry the
+    chroot has no idea where the interpreter binary or its support
+    files live and ``execve`` fails with exit 127.
+    """
+    fake_prefix = tmp_path / "uv-python" / "cpython-3.12.5"
+    (fake_prefix / "bin").mkdir(parents=True)
+    (fake_prefix / "lib").mkdir()
+    fake_exe = fake_prefix / "bin" / "python3.12"
+    fake_exe.write_text("#!/bin/sh\necho hi\n")
+    fake_exe.chmod(0o755)
+
+    mount = _python_prefix_mount(str(fake_exe))
+    assert mount is not None
+    target, source, opts = mount
+    # Target is the source path minus the leading slash.
+    assert source == str(fake_prefix)
+    assert target == str(fake_prefix).lstrip("/")
+    # Read-only (no ``rw`` option): the interpreter directory should
+    # not be writable from inside the sandbox.
+    assert opts == ""
+
+
+def test_python_prefix_mount_uses_base_prefix_for_running_interpreter(
+    monkeypatch, tmp_path
+):
+    """When ``python_exe == sys.executable``, use ``sys.base_prefix``.
+
+    ``sys.base_prefix`` is the right answer for venvs (where
+    ``sys.prefix`` points at the venv but the actual interpreter
+    binary and stdlib live under ``base_prefix``).  This branch is
+    only taken when the caller asks us to run the *current*
+    interpreter; for any other path we fall back to ``../..``.
+    """
+    fake_prefix = tmp_path / "current-python"
+    (fake_prefix / "bin").mkdir(parents=True)
+    fake_exe = fake_prefix / "bin" / "python3"
+    fake_exe.write_text("#!/bin/sh\n")
+    fake_exe.chmod(0o755)
+    # Pretend the test runner *is* this fake interpreter.
+    monkeypatch.setattr(sys, "executable", str(fake_exe))
+    # And that its base_prefix is the directory we expect to mount.
+    monkeypatch.setattr(sys, "base_prefix", str(fake_prefix))
+
+    mount = _python_prefix_mount(str(fake_exe))
+    assert mount is not None
+    target, source, _opts = mount
+    assert source == str(fake_prefix)
+    assert target == str(fake_prefix).lstrip("/")
+
+
+def test_build_run_plan_auto_mounts_external_python(tmp_path):
+    """``build_run_plan`` adds the python prefix to ``extra_dirs`` when needed.
+
+    This is the integration point that makes the runtime tests work
+    when the grader is invoked through ``uv`` (or any other tool
+    that puts python outside ``/usr``).  Without it, the worker
+    fails to exec with exit 127.
+    """
+    fake_prefix = tmp_path / "venv"
+    (fake_prefix / "bin").mkdir(parents=True)
+    fake_exe = fake_prefix / "bin" / "python3"
+    fake_exe.write_text("#!/bin/sh\n")
+    fake_exe.chmod(0o755)
+
+    plan = build_run_plan(
+        _request(str(tmp_path)),
+        box_id=0,
+        grader_src="/g",
+        meta_path="/tmp/meta.txt",
+        python_executable=str(fake_exe),
+    )
+    target = str(fake_prefix).lstrip("/")
+    assert (target, str(fake_prefix), "") in plan.extra_dirs
+    # The mount also appears in the run argv.
+    assert f"{target}={fake_prefix}" in plan.run_argv()
+
+
+def test_build_run_plan_skips_python_mount_for_system_python(tmp_path):
+    """A system python under ``/usr/bin`` does not need an extra mount."""
+    plan = build_run_plan(
+        _request(str(tmp_path)),
+        box_id=0,
+        grader_src="/g",
+        meta_path="/tmp/meta.txt",
+        python_executable="/usr/bin/python3",
+    )
+    # No extra mount entries beyond what the caller passed in (none).
+    assert plan.extra_dirs == ()
+
+
+def test_build_run_plan_preserves_explicit_extra_dirs(tmp_path):
+    """User-supplied ``extra_dirs`` are preserved alongside any auto-mount."""
+    fake_prefix = tmp_path / "py"
+    (fake_prefix / "bin").mkdir(parents=True)
+    fake_exe = fake_prefix / "bin" / "python3"
+    fake_exe.write_text("#!/bin/sh\n")
+    fake_exe.chmod(0o755)
+
+    plan = build_run_plan(
+        _request(str(tmp_path)),
+        box_id=0,
+        grader_src="/g",
+        meta_path="/tmp/meta.txt",
+        python_executable=str(fake_exe),
+        extra_dirs=[("custom", "/some/host/dir", "rw")],
+    )
+    # Both the user-supplied and the auto-added mount are present.
+    assert ("custom", "/some/host/dir", "rw") in plan.extra_dirs
+    assert (str(fake_prefix).lstrip("/"), str(fake_prefix), "") in plan.extra_dirs
 
 
 def test_run_argv_chdir_points_at_sandbox_submission(tmp_path):

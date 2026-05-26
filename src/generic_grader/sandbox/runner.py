@@ -52,6 +52,16 @@ DEFAULT_WALL_TIME_MULTIPLIER = 2.0
 DEFAULT_PROCESSES = 64
 DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
 
+# isolate bind-mounts the following host paths by default (see
+# ``init_dir_rules`` in upstream ``rules.c``).  When the Python
+# executable we want to run lives outside *all* of these roots --
+# typical under ``uv``, ``pyenv``, ``conda``, or any venv outside
+# ``/usr`` -- the chroot can't see it and ``execve`` fails with
+# ``No such file or directory`` (exit 127).  In that case the
+# runner has to add an extra ``--dir`` rule to expose the python
+# prefix.
+_ISOLATE_DEFAULT_MOUNT_ROOTS = ("/bin", "/dev", "/lib", "/lib64", "/proc", "/usr")
+
 # The host-side submission directory is bind-mounted at this path
 # inside the sandbox (see ``RunPlan.run_argv``).  The worker's CWD is
 # also set to this path.  We rewrite ``Request.submission_dir`` to
@@ -187,6 +197,50 @@ class RunPlan:
         return argv
 
 
+def _python_prefix_mount(python_exe: str) -> tuple[str, str, str] | None:
+    """Return an ``extra_dirs`` entry exposing ``python_exe`` in the sandbox.
+
+    isolate's default ``--dir`` rules cover ``/bin``, ``/lib``,
+    ``/lib64``, and ``/usr``.  A Python interpreter installed by
+    ``uv``, ``pyenv``, ``conda``, or any virtualenv outside ``/usr``
+    is *not* visible in the chroot, so ``execve`` of that path fails
+    with ``No such file or directory`` (exit 127).
+
+    To make such an interpreter reachable we bind-mount its prefix
+    (e.g. ``~/.local/share/uv/python/cpython-3.12.X-...``) into the
+    sandbox at the *same* host path.  Binding at the original path
+    means the absolute ``python_executable`` argv string we already
+    pass to ``--run`` resolves correctly inside the chroot, without
+    any path rewriting.
+
+    Returns ``None`` if the executable is already inside one of
+    isolate's default mount roots and no extra mount is needed.
+    """
+    real_exe = os.path.realpath(python_exe)
+    for root in _ISOLATE_DEFAULT_MOUNT_ROOTS:
+        if real_exe == root or real_exe.startswith(root + os.sep):
+            return None
+    # Pick the smallest prefix that contains both the executable and
+    # its support files.  ``sys.base_prefix`` is the right answer for
+    # venvs (where ``sys.prefix`` points at the venv, but the actual
+    # interpreter binary and stdlib live under ``base_prefix``).  We
+    # can't query the subprocess's interpreter from here without
+    # spawning it, so we use the running interpreter's base_prefix
+    # when the requested exe matches ``sys.executable``; otherwise we
+    # fall back to ascending two directories from the binary path
+    # (``<prefix>/bin/python3`` -> ``<prefix>``), which covers every
+    # standard install layout we've seen.
+    if os.path.realpath(sys.executable) == real_exe:
+        prefix = os.path.realpath(sys.base_prefix)
+    else:
+        prefix = os.path.dirname(os.path.dirname(real_exe))
+    # Mount at the same absolute path so the argv we pass to isolate
+    # resolves inside the chroot.  isolate's ``--dir`` strips the
+    # leading ``/`` for us (target is relative to the sandbox root).
+    target = prefix.lstrip("/")
+    return (target, prefix, "")
+
+
 def build_run_plan(
     request: Request,
     *,
@@ -203,11 +257,19 @@ def build_run_plan(
     already supplies sensible defaults (1s, 1400 MB) so the runner
     doesn't need to layer its own.  Tests that need a different
     limit override it on the request.
+
+    If ``python_executable`` (or ``sys.executable`` when omitted)
+    lives outside isolate's default bind-mount roots, an extra
+    ``--dir`` rule is added so the chroot can see and ``execve`` it.
     """
     time_limit = request.time_limit_seconds
     wall_limit = time_limit * DEFAULT_WALL_TIME_MULTIPLIER
     mem_mb = request.memory_limit_mb
     python_exe = python_executable or sys.executable
+    all_extra_dirs = list(extra_dirs)
+    python_mount = _python_prefix_mount(python_exe)
+    if python_mount is not None and python_mount not in all_extra_dirs:
+        all_extra_dirs.append(python_mount)
     return RunPlan(
         box_id=box_id,
         submission_dir=request.submission_dir,
@@ -219,7 +281,7 @@ def build_run_plan(
         memory_limit_mb=mem_mb,
         processes=DEFAULT_PROCESSES,
         fsize_kb=DEFAULT_FSIZE_KB,
-        extra_dirs=tuple(extra_dirs),
+        extra_dirs=tuple(all_extra_dirs),
         isolate_binary=isolate_binary,
     )
 
