@@ -31,13 +31,15 @@ real install when one is available.
 from __future__ import annotations
 
 import io
+import json
 import os
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from dataclasses import dataclass, field, replace
-from typing import Callable, Sequence
+from typing import Any, Callable, Sequence
 
 from generic_grader.sandbox.protocol import (
     Request,
@@ -69,6 +71,31 @@ DEFAULT_FSIZE_KB = 65536  # 64 MB of file writes per test
 # inside the isolate cap on slow hosts (e.g. Gradescope CI
 # containers).
 STARTUP_OVERHEAD_SECONDS = 10.0
+
+# When ``GENERIC_GRADER_PROFILE`` is set to a writable file path, the
+# runner appends one JSON line per sandbox call describing where the
+# time went.  Unset means zero overhead -- the worker still records
+# its checkpoint list (5 ``perf_counter`` calls, ~250 ns) but the
+# host never opens a file or formats anything.
+#
+# Each line has the shape::
+#
+#   {"request": {"module": ..., "obj_name": ...},
+#    "host":    {"init_seconds": ..., "run_seconds": ...,
+#                "cleanup_seconds": ..., "total_seconds": ...},
+#    "isolate": {"time": ..., "time-wall": ..., "max-rss": ...},
+#    "worker":  {"checkpoints": [[name, seconds_since_enter], ...],
+#                "elapsed_seconds": ...}}
+#
+# This is a debugging knob, not part of the public API; the env-var
+# name carries the ``GENERIC_GRADER_`` prefix to keep it out of the
+# way of student / grader env namespaces.
+PROFILE_ENV_VAR = "GENERIC_GRADER_PROFILE"
+
+# Meta-file keys we surface in the profile line.  Anything else in
+# the meta file is dropped from the profile but still classified by
+# :func:`classify_meta`.
+_PROFILE_META_KEYS = ("time", "time-wall", "max-rss", "status", "exitcode")
 
 # isolate bind-mounts the following host paths by default (see
 # ``init_dir_rules`` in upstream ``rules.c``).  When the Python
@@ -407,6 +434,105 @@ def classify_meta(meta: dict[str, str]) -> dict[str, str] | None:
 
 
 # ---------------------------------------------------------------------------
+# Profile log writer
+# ---------------------------------------------------------------------------
+
+
+def _profile_destination() -> str | None:
+    """Return the path to write profile records to, or ``None`` if disabled.
+
+    A blank value (``""``) is treated as disabled so callers can clear
+    the env var without having to ``unset`` it.
+    """
+    dest = os.environ.get(PROFILE_ENV_VAR)
+    if not dest:
+        return None
+    return dest
+
+
+def _extract_worker_profile(response: Response) -> dict[str, Any] | None:
+    """Pull the worker's profile event out of `response`, if present.
+
+    The worker emits one ``Event(type="profile", checkpoints=[...])``
+    per request.  We surface it as a small dict; older workers (or
+    failed runs that never produced a frame) won't have one.
+    """
+    for event in response.events or ():
+        if event.type == "profile":
+            return {
+                "checkpoints": list(event.extra.get("checkpoints", ())),
+                "elapsed_seconds": response.elapsed_seconds,
+            }
+    return None
+
+
+def _meta_profile_subset(meta: dict[str, str]) -> dict[str, Any]:
+    """Pick the meta-file keys we want in profile records.
+
+    isolate's meta file uses string values throughout; we coerce the
+    numeric ones so downstream tooling doesn't have to.
+    """
+    out: dict[str, Any] = {}
+    for key in _PROFILE_META_KEYS:
+        if key not in meta:
+            continue
+        raw = meta[key]
+        if key in ("time", "time-wall"):
+            try:
+                out[key] = float(raw)
+                continue
+            except ValueError:  # pragma: no cover - meta is well-formed
+                pass
+        if key in ("max-rss", "exitcode"):
+            try:
+                out[key] = int(raw)
+                continue
+            except ValueError:  # pragma: no cover - meta is well-formed
+                pass
+        out[key] = raw
+    return out
+
+
+def _write_profile_record(
+    dest: str,
+    *,
+    request: Request,
+    host_timings: dict[str, float],
+    meta_text: str | None,
+    response: Response | None,
+) -> None:
+    """Append one JSON line summarizing the run to `dest`.
+
+    A failure to open or write the file is intentionally silent --
+    profiling is a debugging knob, and we don't want it to escalate
+    a half-broken disk into a grader failure.
+    """
+    record: dict[str, Any] = {
+        "request": {
+            "module": request.module,
+            "obj_name": request.obj_name,
+            "submission_dir": request.submission_dir,
+        },
+        "host": host_timings,
+    }
+    if meta_text is not None:
+        record["isolate"] = _meta_profile_subset(parse_meta(meta_text))
+    if response is not None:
+        worker = _extract_worker_profile(response)
+        if worker is not None:
+            record["worker"] = worker
+    line = json.dumps(record, separators=(",", ":")) + "\n"
+    try:
+        # Append-mode is intentional: many sandbox calls per grader
+        # run produce one line each, building up a profile log.
+        with open(dest, "a", encoding="utf-8") as f:
+            f.write(line)
+    except OSError:
+        # Profiling must never break grading.
+        pass
+
+
+# ---------------------------------------------------------------------------
 # Subprocess hook
 # ---------------------------------------------------------------------------
 
@@ -458,6 +584,15 @@ class IsolateRunner:
                 "`sudo isolate --init` once before grading."
             )
 
+        profile_dest = _profile_destination()
+        # ``perf_counter`` is monotonic and cheap (~250 ns); a handful
+        # of calls per request is well below the noise floor of any
+        # downstream timing we'd care to measure.
+        t_enter = time.perf_counter()
+        host_timings: dict[str, float] = {}
+        response: Response | None = None
+        meta_text: str | None = None
+
         meta_fd, meta_path = tempfile.mkstemp(prefix="isolate-meta-", suffix=".txt")
         os.close(meta_fd)
         try:
@@ -471,12 +606,15 @@ class IsolateRunner:
                 extra_dirs=self.extra_dirs,
             )
 
+            t_init_start = time.perf_counter()
             init = self.subprocess_runner(
                 plan.init_argv(),
                 capture_output=True,
                 text=True,
                 check=False,
             )
+            t_init_end = time.perf_counter()
+            host_timings["init_seconds"] = t_init_end - t_init_start
             if init.returncode != 0:
                 raise SandboxException(
                     f"`isolate --init` failed for box_id={self.box_id}: "
@@ -492,12 +630,15 @@ class IsolateRunner:
                 # spec, which is exactly what's needed there.
                 worker_request = replace(request, submission_dir=SANDBOX_SUBMISSION_DIR)
                 stdin_bytes = _encode_request(worker_request)
+                t_run_start = time.perf_counter()
                 completed = self.subprocess_runner(
                     plan.run_argv(),
                     input=stdin_bytes,
                     capture_output=True,
                     check=False,
                 )
+                t_run_end = time.perf_counter()
+                host_timings["run_seconds"] = t_run_end - t_run_start
                 stdout_bytes = completed.stdout or b""
                 if len(stdout_bytes) > self.max_response_bytes:
                     raise SandboxException(
@@ -506,24 +647,41 @@ class IsolateRunner:
                         "indicates a malformed worker that wrote outside the "
                         "framed protocol; check the worker's stderr for clues."
                     )
+                # Read the meta file once and reuse the text both for
+                # response decoding and (when enabled) profile logging.
+                # ``_decode_response_or_raise`` is happy to be handed
+                # the already-read text instead of a path.
+                meta_text = _read_meta(meta_path)
                 response = _decode_response_or_raise(
                     stdout_bytes,
                     completed.stderr,
                     completed.returncode,
-                    meta_path,
+                    meta_text,
                 )
             finally:
+                t_cleanup_start = time.perf_counter()
                 self.subprocess_runner(
                     plan.cleanup_argv(),
                     capture_output=True,
                     text=True,
                     check=False,
                 )
+                t_cleanup_end = time.perf_counter()
+                host_timings["cleanup_seconds"] = t_cleanup_end - t_cleanup_start
         finally:
             try:
                 os.unlink(meta_path)
             except OSError:  # pragma: no cover - best effort
                 pass
+            if profile_dest is not None:
+                host_timings["total_seconds"] = time.perf_counter() - t_enter
+                _write_profile_record(
+                    profile_dest,
+                    request=request,
+                    host_timings=host_timings,
+                    meta_text=meta_text,
+                    response=response,
+                )
 
         return response
 
@@ -540,11 +698,25 @@ def _encode_request(request: Request) -> bytes:
     return buf.getvalue()
 
 
+def _read_meta(meta_path: str) -> str:
+    """Read isolate's meta file, returning ``""`` if it can't be read.
+
+    Pulled out into its own helper so the runner can read the meta
+    text once and hand it to both the response decoder and the
+    optional profile writer without re-opening the file.
+    """
+    try:
+        with open(meta_path, encoding="utf-8") as f:
+            return f.read()
+    except OSError:
+        return ""
+
+
 def _decode_response_or_raise(
     stdout_bytes: bytes,
     stderr_bytes: bytes,
     exit_code: int,
-    meta_path: str,
+    meta_text: str,
 ) -> Response:
     """Decode the worker's response or synthesize one from the meta file.
 
@@ -565,12 +737,6 @@ def _decode_response_or_raise(
        student can see Python's complaint about a missing module
        etc.
     """
-    meta_text = ""
-    try:
-        with open(meta_path, encoding="utf-8") as f:
-            meta_text = f.read()
-    except OSError:
-        meta_text = ""
     meta = parse_meta(meta_text)
     classified = classify_meta(meta)
 

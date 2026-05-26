@@ -35,9 +35,14 @@ from generic_grader.sandbox.protocol import (
     write_response,
 )
 from generic_grader.sandbox.runner import (
+    PROFILE_ENV_VAR,
     STARTUP_OVERHEAD_SECONDS,
     IsolateRunner,
+    _extract_worker_profile,
+    _meta_profile_subset,
+    _profile_destination,
     _python_prefix_mounts,
+    _write_profile_record,
     build_run_plan,
     classify_meta,
     parse_meta,
@@ -961,6 +966,268 @@ def test_run_rejects_worker_stdout_exceeding_cap(tmp_path):
     )
     with pytest.raises(SandboxException, match="exceeded"):
         runner.run(_request(str(tmp_path)))
+
+
+# ---------------------------------------------------------------------------
+# Profiling instrumentation
+# ---------------------------------------------------------------------------
+
+
+def test_profile_destination_unset_returns_none(monkeypatch: pytest.MonkeyPatch):
+    """Without the env var, profiling is off (no file ever opened)."""
+    monkeypatch.delenv(PROFILE_ENV_VAR, raising=False)
+    assert _profile_destination() is None
+
+
+def test_profile_destination_blank_string_treated_as_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """A blank value clears profiling without requiring ``unset``."""
+    monkeypatch.setenv(PROFILE_ENV_VAR, "")
+    assert _profile_destination() is None
+
+
+def test_profile_destination_returns_path_when_set(
+    monkeypatch: pytest.MonkeyPatch, tmp_path
+):
+    dest = str(tmp_path / "profile.jsonl")
+    monkeypatch.setenv(PROFILE_ENV_VAR, dest)
+    assert _profile_destination() == dest
+
+
+def test_extract_worker_profile_returns_none_without_event():
+    response = Response(events=[Event(type="return", value=1)], elapsed_seconds=0.5)
+    assert _extract_worker_profile(response) is None
+
+
+def test_extract_worker_profile_returns_checkpoints_when_present():
+    response = Response(
+        events=[
+            Event(type="return", value=1),
+            Event(
+                type="profile",
+                checkpoints=[("enter", 0.0), ("patches_installed", 0.001)],
+            ),
+        ],
+        elapsed_seconds=0.5,
+    )
+    extracted = _extract_worker_profile(response)
+    assert extracted == {
+        "checkpoints": [("enter", 0.0), ("patches_installed", 0.001)],
+        "elapsed_seconds": 0.5,
+    }
+
+
+def test_extract_worker_profile_handles_empty_events_iterable():
+    """`response.events` may be ``None`` for synthesized failure paths."""
+    response = Response(events=[], exception=None, elapsed_seconds=0.0)
+    response.events = None  # type: ignore[assignment]
+    assert _extract_worker_profile(response) is None
+
+
+def test_meta_profile_subset_coerces_numeric_fields():
+    meta = {
+        "time": "0.123",
+        "time-wall": "0.456",
+        "max-rss": "4096",
+        "status": "OK",
+        "exitcode": "0",
+        "ignored": "x",
+    }
+    assert _meta_profile_subset(meta) == {
+        "time": 0.123,
+        "time-wall": 0.456,
+        "max-rss": 4096,
+        "status": "OK",
+        "exitcode": 0,
+    }
+
+
+def test_meta_profile_subset_drops_absent_keys():
+    assert _meta_profile_subset({"time": "0.1"}) == {"time": 0.1}
+
+
+def test_write_profile_record_appends_one_json_line(tmp_path):
+    dest = tmp_path / "profile.jsonl"
+    request = Request(
+        runtime="python",
+        submission_dir="/home/sub",
+        module="submission",
+        obj_name="main",
+    )
+    response = Response(
+        events=[
+            Event(type="return", value=1),
+            Event(
+                type="profile",
+                checkpoints=[("enter", 0.0), ("completed", 0.005)],
+            ),
+        ],
+        elapsed_seconds=0.005,
+    )
+    _write_profile_record(
+        str(dest),
+        request=request,
+        host_timings={
+            "init_seconds": 0.01,
+            "run_seconds": 0.02,
+            "cleanup_seconds": 0.005,
+            "total_seconds": 0.04,
+        },
+        meta_text="time:0.02\nmax-rss:1024\nexitcode:0\n",
+        response=response,
+    )
+    # And again -- the writer is append-only.
+    _write_profile_record(
+        str(dest),
+        request=request,
+        host_timings={"init_seconds": 0.0},
+        meta_text=None,
+        response=None,
+    )
+    lines = dest.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2
+    first = __import__("json").loads(lines[0])
+    assert first["request"] == {
+        "module": "submission",
+        "obj_name": "main",
+        "submission_dir": "/home/sub",
+    }
+    assert first["host"]["run_seconds"] == 0.02
+    assert first["isolate"] == {"time": 0.02, "max-rss": 1024, "exitcode": 0}
+    assert first["worker"]["checkpoints"][0] == ["enter", 0.0]
+    assert first["worker"]["elapsed_seconds"] == 0.005
+    second = __import__("json").loads(lines[1])
+    assert "isolate" not in second
+    assert "worker" not in second
+
+
+def test_write_profile_record_silently_ignores_oserror(tmp_path, monkeypatch):
+    """A broken disk must never escalate into a grader failure."""
+    dest = str(tmp_path / "profile.jsonl")
+
+    def _boom(*_a, **_k):
+        raise OSError("disk full")
+
+    # Patch the builtin ``open`` only inside the runner module so we don't
+    # break the rest of pytest.
+    monkeypatch.setattr("generic_grader.sandbox.runner.open", _boom, raising=False)
+    request = Request(
+        runtime="python",
+        submission_dir="/home/sub",
+        module="submission",
+        obj_name="main",
+    )
+    # Should not raise.
+    _write_profile_record(
+        dest,
+        request=request,
+        host_timings={"init_seconds": 0.0},
+        meta_text=None,
+        response=None,
+    )
+    assert not Path(dest).exists()
+
+
+def test_runner_emits_profile_event_unconditionally(tmp_path):
+    """Even with profiling off, the worker still emits a profile event.
+
+    This is the property the host-side writer relies on: profiling is
+    enabled by setting an env var on the host, and the worker emits
+    checkpoints whether or not anyone is listening (the cost is ~250 ns
+    per ``perf_counter`` call -- well below any timing we care about).
+    """
+    # Build a real frame the way the worker would, and feed it through
+    # the runner -- the runner just decodes it.
+    profile_event = Event(
+        type="profile",
+        checkpoints=[("enter", 0.0), ("completed", 0.001)],
+    )
+    fake = FakeIsolate(
+        run_stdout=_make_response_bytes(
+            events=(Event(type="return", value=7), profile_event),
+        ),
+    )
+    runner = _make_runner(fake)
+    resp = runner.run(_request(str(tmp_path)))
+    profile_events = [e for e in resp.events if e.type == "profile"]
+    assert len(profile_events) == 1
+    assert profile_events[0].checkpoints[0] == ["enter", 0.0]
+
+
+def test_runner_writes_profile_line_when_env_set(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    """End-to-end: env var set -> one JSON line per ``run()``."""
+    dest = tmp_path / "profile.jsonl"
+    monkeypatch.setenv(PROFILE_ENV_VAR, str(dest))
+    fake = FakeIsolate(
+        run_stdout=_make_response_bytes(
+            events=(
+                Event(type="return", value=7),
+                Event(
+                    type="profile",
+                    checkpoints=[("enter", 0.0), ("completed", 0.001)],
+                ),
+            ),
+        ),
+        meta_text="time:0.01\ntime-wall:0.02\nmax-rss:2048\nexitcode:0\n",
+    )
+    runner = _make_runner(fake)
+    runner.run(_request(str(tmp_path)))
+    runner.run(_request(str(tmp_path)))
+    lines = dest.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 2
+    record = __import__("json").loads(lines[0])
+    assert set(record["host"]) == {
+        "init_seconds",
+        "run_seconds",
+        "cleanup_seconds",
+        "total_seconds",
+    }
+    # Non-negative timings -- ``perf_counter`` is monotonic.
+    assert all(v >= 0 for v in record["host"].values())
+    assert record["isolate"]["time"] == 0.01
+    assert record["worker"]["checkpoints"][-1] == ["completed", 0.001]
+
+
+def test_runner_skips_profile_write_when_env_unset(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    """With no env var, the runner never opens the profile file."""
+    monkeypatch.delenv(PROFILE_ENV_VAR, raising=False)
+    dest = tmp_path / "profile.jsonl"
+    fake = FakeIsolate(
+        run_stdout=_make_response_bytes(events=(Event(type="return", value=7),)),
+    )
+    runner = _make_runner(fake)
+    runner.run(_request(str(tmp_path)))
+    assert not dest.exists()
+
+
+def test_runner_writes_profile_line_even_on_init_failure(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+):
+    """Partial timings are still useful when isolate --init fails."""
+    dest = tmp_path / "profile.jsonl"
+    monkeypatch.setenv(PROFILE_ENV_VAR, str(dest))
+    fake = FakeIsolate(
+        run_stdout=b"",
+        meta_text="",
+        init_returncode=1,
+        init_stderr="oops",
+    )
+    runner = _make_runner(fake)
+    with pytest.raises(SandboxException):
+        runner.run(_request(str(tmp_path)))
+    lines = dest.read_text(encoding="utf-8").splitlines()
+    assert len(lines) == 1
+    record = __import__("json").loads(lines[0])
+    # init ran (and recorded a timing); run / cleanup did not.
+    assert "init_seconds" in record["host"]
+    assert "run_seconds" not in record["host"]
+    assert "cleanup_seconds" not in record["host"]
+    assert "total_seconds" in record["host"]
 
 
 # ---------------------------------------------------------------------------

@@ -491,6 +491,17 @@ def run_request(request: Request) -> Response:
     phase = "import"
     start = time.perf_counter()
 
+    # Cheap unconditional checkpoint log -- one ``perf_counter`` call
+    # per major phase.  The host's profile writer (see ``runner.py``,
+    # ``GENERIC_GRADER_PROFILE``) merges this list into its JSON line
+    # when profiling is enabled, and ignores it otherwise.  Keeping
+    # the worker side unconditional means the host doesn't have to
+    # propagate an env var across the sandbox boundary.
+    checkpoints: list[tuple[str, float]] = [("enter", 0.0)]
+
+    def _checkpoint(name: str) -> None:
+        checkpoints.append((name, time.perf_counter() - start))
+
     def _push_phase(name: str) -> None:
         events.append(Event(type="phase", name=name))
 
@@ -531,11 +542,13 @@ def run_request(request: Request) -> Response:
         except BaseException as e:  # noqa: BLE001 - report patch errors
             exception_chain = _serialize_exception_chain(e)
         else:
+            _checkpoint("patches_installed")
             try:
                 target = _import_target(request.module, request.obj_name)
             except BaseException as e:  # noqa: BLE001 - report any import error
                 exception_chain = _serialize_exception_chain(e)
             else:
+                _checkpoint("import_target")
                 phase = "call"
                 try:
                     # ``Request.time_limit_seconds`` is the student-code
@@ -554,6 +567,7 @@ def run_request(request: Request) -> Response:
                 else:
                     if "return" in captures:
                         events.append(_make_return_event(returned))
+                _checkpoint("call_returned")
 
     # After the patches have been torn down we can safely emit
     # bookkeeping events without polluting the student's stream.
@@ -568,6 +582,7 @@ def run_request(request: Request) -> Response:
     # them on the host side. We always close figures afterwards so the
     # next in-process run starts clean -- the isolate runner spawns a
     # fresh worker per test, but unit tests reuse this process.
+    _checkpoint("figures_start")
     if "figures" in captures:
         try:
             # Imported lazily so non-plot tests don't pay the matplotlib
@@ -590,7 +605,10 @@ def run_request(request: Request) -> Response:
         except ImportError:
             pass
 
+    _checkpoint("figures_done")
     _push_phase(phase)
+    _checkpoint("completed")
+    events.append(Event(type="profile", checkpoints=checkpoints))
 
     elapsed = time.perf_counter() - start
     return Response(events=events, exception=exception_chain, elapsed_seconds=elapsed)
