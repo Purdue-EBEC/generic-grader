@@ -34,6 +34,20 @@ def test_utils_options():
     assert Options()
 
 
+def test_language_default_is_python():
+    """The historical, in-process Python behavior must remain the
+    default — changing it would silently reroute every existing test
+    to a non-Python runtime."""
+    assert Options().language == "python"
+
+
+def test_language_accepts_octave():
+    """Test authors opt in to the Octave runtime by passing
+    ``language='octave'``.  The registry must accept the string
+    without complaint."""
+    assert Options(language="octave").language == "octave"
+
+
 def test_expected_distribution_default_is_not_shared():
     """Mutating one instance's default must not leak into another."""
     first, second = Options(), Options()
@@ -67,6 +81,15 @@ typecheck_options = [
         "options": {"mode": "unknown"},
         "error_type": ValueError,
         "error": "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'.",
+    },
+    # ``language`` was added in the Octave runtime PR.  A misspelling
+    # or reference to an unsupported backend must fail at Options
+    # construction — well before ``__User__`` tries to dispatch —
+    # so the test author sees the mistake early and with the list of
+    # registered runtimes.
+    {
+        "options": {"language": "cobol"},
+        "error": "`language` must be one of: octave, python. Got 'cobol'.",
     },
 ]
 
