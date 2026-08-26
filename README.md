@@ -75,6 +75,108 @@ import sys
 logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdout__))
 ```
 
+## Grading Octave / MATLAB code
+
+`generic-grader` can also run tests against GNU&nbsp;Octave scripts and
+function files (with the same syntax MATLAB uses).  The runtime is
+selected per-test via `Options.language`:
+
+``` python
+from parameterized import param
+from generic_grader.output import output_lines_match_reference
+from generic_grader.utils.options import Options
+
+test_01_HelloWorld = output_lines_match_reference.build(
+    [
+        param(
+            Options(
+                language="octave",
+                sub_module="hello_world",  # → hello_world.m in the CWD
+                ref_module="ref_hello_world",  # → ref_hello_world.m (reference)
+                obj_name="hello_world",
+                weight=1,
+            ),
+        ),
+    ]
+)
+```
+
+### Prerequisites
+
+* GNU&nbsp;Octave must be installed on the grader host and reachable on
+  `PATH`.  On Debian / Ubuntu:
+
+  ``` bash
+  sudo apt install octave
+  ```
+
+  You can override the executable with the `OCTAVE_EXECUTABLE`
+  environment variable if it lives outside the default location.
+
+* The runtime is POSIX-only — the language-independent sandbox applies
+  `RLIMIT_AS`, `RLIMIT_CPU`, `RLIMIT_FSIZE`, and `RLIMIT_NOFILE` to the
+  Octave child via a small launcher process, which requires Linux or macOS.
+
+* `sub_module` and `ref_module` are file stems (`hello_world` means
+  `hello_world.m` in the working directory), not dotted Python paths.
+  Set `ref_module` explicitly; the default `tests.reference` is
+  rejected for Octave.
+
+### Script vs. function mode
+
+The Octave runtime picks between two dispatch shapes based on whether
+the test passes `args`/`kwargs`:
+
+* **Script mode** — no `args`, no `kwargs`.  The `.m` file is run
+  top-to-bottom.  The reference and student files may live under
+  different stems (e.g. `main.m` and `ref_main.m`); each side runs
+  its own file.
+* **Function mode** — any `args` or `kwargs` supplied.  The runtime
+  calls `<obj_name>(<args>)`.  Each file runs from a private copy, so
+  the reference and student files may have different names.  If
+  `obj_name` is the stem of `sub_module`, it is the file's primary
+  function, and the reference's primary function is called under the
+  same name.  Otherwise it is a subfunction: the file is loaded as a
+  script, which requires every function in it to end with `end` or
+  `endfunction`.  Other `.m` files next to the submission are copied
+  along, so helper functions are found.  Positional arguments are
+  serialized as Octave scalars; keyword arguments become trailing
+  `('key', value)` pairs — the same convention functions like `plot`
+  already use.
+
+Supported argument types in this release are `bool`, `int`, `float`,
+and `str`.  Cell arrays, structs, and numpy arrays are planned for
+follow-on releases.
+
+`entries` are piped to Octave's stdin.  Octave reads all of its stdin
+up front, so unused entries cannot be detected and `ExtraEntriesError`
+is never raised for Octave code.
+
+### Limits and isolation
+
+Each call runs a fresh Octave subprocess.  What is enforced:
+
+* a scrubbed environment (`PATH`, `HOME`, `LANG`, `LC_ALL`,
+  `LD_LIBRARY_PATH`, and `TMPDIR` are forwarded; `OCTAVE_HISTFILE`,
+  `OPENBLAS_NUM_THREADS`, and `OMP_NUM_THREADS` are pinned);
+* the resource limits above (memory, CPU time, file size, open files);
+* stdout and stderr captured in temp files bounded by `RLIMIT_FSIZE`;
+  reaching the bound is reported as too much output;
+* a wall-clock `time_limit`, with the whole process group killed on
+  every exit path.
+
+What is **not** enforced: there is no filesystem, network, or process
+isolation.  Student `.m` code can run shell commands with `system()` and
+read any file the grader user can read, including the reference solution
+and test files.  Filesystem isolation (`isolate`) is not available on
+Gradescope.  Run the grader as an unprivileged user in a throwaway
+container, and keep the reference solution unreadable by that user where
+possible.
+
+`Options.obj_name` and the `.m` file stem must be valid Octave
+identifiers (letters, digits, and underscores, not starting with a
+digit); anything else is rejected as a grader misconfiguration.
+
 
 ## Contributing
 
