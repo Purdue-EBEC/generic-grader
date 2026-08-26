@@ -57,8 +57,12 @@ class RuntimeResult:
             decoded into native Python objects (numbers, strings, or
             tuples of the same) in follow-on PRs.
         artifacts: Optional bag of extra runtime-specific values that a
-            future test type may consume (e.g. serialized figures for
-            plot tests).  Not used by the initial output-lines PR.
+            test type may consume.  The Octave runtime populates
+            ``artifacts["plot"]`` with a decoded JSON payload of every
+            open figure after each ``run`` (see
+            :mod:`generic_grader.utils.octave_plot`) so plot tests can
+            compare properties without matplotlib.  Runtimes that do
+            not need this stay with the default empty dict.
     """
 
     returned_values: Any = None
