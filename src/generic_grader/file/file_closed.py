@@ -8,6 +8,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str, oxford_list
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
@@ -30,6 +31,12 @@ def catch_warnings(func):
 
     @functools.wraps(func)
     def wrapper(self, options):
+        # ``file_closed`` relies on Python's ``ResourceWarning``, which
+        # only fires for :class:`io` file handles inside this process.
+        # Guard here (outside ``@reference_test``) so the Octave
+        # subprocess isn't even spawned when ``language="octave"``.
+        require_python_language(self, options, "file.file_closed")
+
         with warnings.catch_warnings(record=True) as self.warning_list:
             # Don't suppress any warnings
             warnings.simplefilter("always")

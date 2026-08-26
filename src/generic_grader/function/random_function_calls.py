@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.math_utils import n_trials
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.user import SubUser
@@ -40,6 +41,8 @@ def build(the_options):
         @weighted
         def test_random_function_calls(self, options):
             """Check for extra or missing function calls."""
+
+            require_python_language(self, options, "function.random_function_calls")
 
             o = options
             call_list = []
