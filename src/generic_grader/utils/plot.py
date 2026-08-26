@@ -5,11 +5,45 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+def _draw_current_figure(test):
+    """Force a draw on the live current figure, no-op in sandbox mode.
+
+    The sandbox worker has already called ``canvas.draw()`` before
+    serializing, so the host-side facade already has the tick labels
+    populated.  When ``test._sandbox_figures`` is present we therefore
+    avoid touching ``plt`` at all.
+    """
+    if getattr(test, "_sandbox_figures", None):
+        return
+    plt.gcf().canvas.draw()
+
+
+def _sandbox_axes_for(test):
+    """Return the serialized-figure axes attached to ``test`` if any.
+
+    Sandbox-mode users (``User._sandbox_call_obj``) attach the most
+    recently produced figures to the test instance under
+    ``test._sandbox_figures``.  When that attribute is present we read
+    plot properties from the serialized dict via the host-side facade
+    instead of reaching into ``plt.gcf()`` -- the latter is empty
+    because the live figure lives in the sandbox process.
+    """
+    figures = getattr(test, "_sandbox_figures", None)
+    if not figures:
+        return None
+    # Match matplotlib's "current figure is the last one created" rule.
+    from generic_grader.sandbox.figure_facade import SerializedFigure
+
+    return SerializedFigure(figures[-1]).get_axes()
+
+
 def get_current_axes(test):
     """Find and return a list of axes in the current figure."""
 
-    # Get the axes from the current figure (creates figure if none exists).
-    axes_list = plt.gcf().get_axes()
+    axes_list = _sandbox_axes_for(test)
+    if axes_list is None:
+        # Get the axes from the current figure (creates figure if none exists).
+        axes_list = plt.gcf().get_axes()
 
     if not axes_list:
         # Axes list is empty.
@@ -195,8 +229,8 @@ def get_x_tick_labels(test):
     """Find and return the x tick labels of the plot."""
     ax = get_current_axes(test)[0]
 
-    # Force pyplot to produce the labels
-    plt.gcf().canvas.draw()
+    # Force pyplot to produce the labels (no-op in sandbox mode).
+    _draw_current_figure(test)
 
     return [label.get_text() for label in ax.get_xticklabels()]
 
@@ -205,8 +239,8 @@ def get_y_tick_labels(test):
     """Find and return the y tick labels of the plot."""
     ax = get_current_axes(test)[0]
 
-    # Force pyplot to produce the labels
-    plt.gcf().canvas.draw()
+    # Force pyplot to produce the labels (no-op in sandbox mode).
+    _draw_current_figure(test)
 
     return [label.get_text() for label in ax.get_yticklabels()]
 
@@ -224,7 +258,7 @@ def get_y_label(test):
 def get_grid_lines(test):
     """Find and return the visible grid lines of the current axes as a list of
     line tuples of vertex tuples."""
-    plt.gcf().canvas.draw()
+    _draw_current_figure(test)
 
     axes = get_current_axes(test)[0]
     x_gridlines = axes.get_xaxis().get_gridlines()
