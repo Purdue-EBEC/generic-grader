@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import LoopDepthTracker
 
@@ -36,6 +37,8 @@ def build(the_options):
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
         def test_static_loop_depth(self, options):
+            require_python_language(self, options, "function.static_loop_depth")
+
             o = options
 
             """Check that loop depth meets requirements."""

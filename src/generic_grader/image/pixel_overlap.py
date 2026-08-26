@@ -8,6 +8,7 @@ from PIL.ImageChops import logical_and
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 
 
@@ -42,6 +43,8 @@ def build(options):
             """Check if white pixels in black and white images A and B
             overlap the expected amount.
             """
+
+            require_python_language(self, options, "image.pixel_overlap")
 
             o = options
 
