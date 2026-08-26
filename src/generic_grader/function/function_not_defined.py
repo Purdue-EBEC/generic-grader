@@ -5,6 +5,7 @@ import unittest
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.user import SubUser
 
@@ -31,6 +32,8 @@ def build(the_options):
         @weighted
         def test_function_not_defined(self, options):
             """Check that sub_module does not have its own obj_name."""
+
+            require_python_language(self, options, "function.function_not_defined")
 
             o = options
 
