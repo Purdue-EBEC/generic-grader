@@ -34,6 +34,29 @@ def test_utils_options():
     assert Options()
 
 
+def test_language_default_is_python():
+    """The historical, in-process Python behavior must remain the
+    default — changing it would silently reroute every existing test
+    to a non-Python runtime."""
+    assert Options().language == "python"
+
+
+def test_language_accepts_octave():
+    """Test authors opt in to the Octave runtime by passing
+    ``language='octave'``.  The registry must accept the string
+    without complaint."""
+    assert Options(language="octave").language == "octave"
+
+
+def test_python_obj_name_is_not_identifier_checked():
+    """The identifier rule applies to Octave only."""
+    assert Options(obj_name="Not.An Identifier").obj_name == "Not.An Identifier"
+
+
+def test_octave_accepts_underscored_identifier():
+    assert Options(language="octave", obj_name="_my_func2").obj_name == "_my_func2"
+
+
 def test_expected_distribution_default_is_not_shared():
     """Mutating one instance's default must not leak into another."""
     first, second = Options(), Options()
@@ -92,6 +115,31 @@ typecheck_options = [
         "options": {"relative_tolerance": float("inf")},
         "error_type": ValueError,
         "error": "`relative_tolerance` must be finite and non-negative. Got inf.",
+    },
+    # ``language`` was added in the Octave runtime PR.  A misspelling
+    # or reference to an unsupported backend must fail at Options
+    # construction — well before ``__User__`` tries to dispatch —
+    # so the test author sees the mistake early and with the list of
+    # registered runtimes.
+    {
+        "options": {"language": "cobol"},
+        "error_type": ValueError,
+        "error": "`language` must be one of: octave, python. Got 'cobol'.",
+    },
+    {
+        "options": {"language": "octave", "obj_name": "foo; system('x')"},
+        "error_type": ValueError,
+        "error": "`obj_name` must be a valid Octave identifier. Got \"foo; system('x')\".",
+    },
+    {
+        "options": {"language": "octave", "obj_name": "my func"},
+        "error_type": ValueError,
+        "error": "`obj_name` must be a valid Octave identifier. Got 'my func'.",
+    },
+    {
+        "options": {"language": "octave", "obj_name": "1abc"},
+        "error_type": ValueError,
+        "error": "`obj_name` must be a valid Octave identifier. Got '1abc'.",
     },
 ]
 
