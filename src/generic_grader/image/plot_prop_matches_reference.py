@@ -11,6 +11,7 @@ from rapidfuzz.distance.Levenshtein import normalized_similarity
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.math_utils import calc_log_limit
+from generic_grader.utils.octave_plot import get_property as get_property_octave
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.plot import get_property
 from generic_grader.utils.safe_equal import safe_assert_equal
@@ -56,18 +57,44 @@ def build(the_options):
             # Create the reference user.
             self.ref_user = RefUser(self, o)
 
+            # Language dispatch: the Python runtime reads matplotlib's
+            # live global state via :func:`plot.get_property`; the
+            # Octave runtime captures a JSON sidecar per call and we
+            # extract properties from that via
+            # :func:`octave_plot.get_property`.  Keeping both paths in
+            # this one method (rather than duplicating ``build``)
+            # means the parameterization, weighting, and message
+            # formatting stay identical across languages.
+            is_octave = o.language == "octave"
+
             # Run the reference code and extract the expected property.
             self.ref_user.call_obj()
-            expected = get_property(self, o.prop, o.prop_kwargs)
-            mpl.pyplot.close()  # Delete the generated figure.
+            if is_octave:
+                expected = get_property_octave(
+                    self,
+                    self.ref_user.artifacts.get("plot"),
+                    o.prop,
+                    o.prop_kwargs,
+                )
+            else:
+                expected = get_property(self, o.prop, o.prop_kwargs)
+                mpl.pyplot.close()  # Delete the generated figure.
 
             # Run the submitted code and extract the actual property.
             log_limit = calc_log_limit(self.ref_user.log)
             student_o = evolve(o, log_limit=log_limit)
             self.student_user = SubUser(self, student_o)
             self.student_user.call_obj()
-            actual = get_property(self, o.prop, o.prop_kwargs)
-            mpl.pyplot.close()  # Delete the generated figure.
+            if is_octave:
+                actual = get_property_octave(
+                    self,
+                    self.student_user.artifacts.get("plot"),
+                    o.prop,
+                    o.prop_kwargs,
+                )
+            else:
+                actual = get_property(self, o.prop, o.prop_kwargs)
+                mpl.pyplot.close()  # Delete the generated figure.
 
             # Build an error message.
             call_str = make_call_str(o.obj_name, o.args, o.kwargs)
