@@ -27,8 +27,17 @@ class Importer:
 
     @classmethod
     def _import_location_hint(cls, e: BaseException):
-        """Return a concise location hint for a failed import from traceback."""
-        tb = traceback.extract_tb(e.__traceback__)
+        """Return a concise location hint for a failed import from traceback.
+
+        Frames inside the `generic_grader` package are filtered out so that
+        in-process security wrappers (e.g. `patches.safe_import`) and other
+        grader machinery do not appear in student-facing hints.
+        """
+        tb = [
+            f
+            for f in traceback.extract_tb(e.__traceback__)
+            if "generic_grader" not in f.filename
+        ]
         if not tb:
             return None
 

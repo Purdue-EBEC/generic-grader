@@ -1,9 +1,17 @@
+import builtins
+import importlib
+import os
+import sys
+import sysconfig
 from contextlib import ExitStack, contextmanager
 from unittest.mock import patch
 
 from freezegun import freeze_time
 
 from generic_grader.utils.exceptions import (
+    DisallowedFileAccessError,
+    DisallowedFunctionCallError,
+    DisallowedImportError,
     ExitError,
     QuitError,
     TurtleDoneError,
@@ -15,6 +23,333 @@ from generic_grader.utils.mocks import (
 )
 from generic_grader.utils.options import Options
 from generic_grader.utils.resource_limits import memory_limit, time_limit
+
+# ---------------------------------------------------------------------------
+# Security: Layer 1 — in-process import blocklist, dangerous-attr patches,
+# and a sandboxed open().  See issue #98.  This is defense in depth; full
+# isolation requires a separate process / sandbox (tracked in #98 follow-up).
+# ---------------------------------------------------------------------------
+
+BLOCKED_MODULES = frozenset(
+    {
+        # Subprocess / shell
+        "subprocess",
+        "pty",
+        # Network
+        "socket",
+        "socketserver",
+        "ssl",
+        "urllib",
+        "urllib.request",
+        "urllib.parse",
+        "urllib.error",
+        "http",
+        "http.client",
+        "http.server",
+        "requests",
+        "ftplib",
+        "smtplib",
+        "poplib",
+        "imaplib",
+        "telnetlib",
+        "nntplib",
+        "xmlrpc",
+        "xmlrpc.client",
+        "xmlrpc.server",
+        # Native / FFI / process
+        "ctypes",
+        "ctypes.util",
+        "cffi",
+        "multiprocessing",
+        "_multiprocessing",
+        # Misc dangerous
+        "webbrowser",
+    }
+)
+
+# Specific dangerous attributes on modules students legitimately need.
+_DANGEROUS_ATTRS = (
+    # os: shell and process management
+    "os.system",
+    "os.popen",
+    "os.execv",
+    "os.execve",
+    "os.execvp",
+    "os.execvpe",
+    "os.execl",
+    "os.execle",
+    "os.execlp",
+    "os.execlpe",
+    "os.spawnv",
+    "os.spawnve",
+    "os.spawnvp",
+    "os.spawnvpe",
+    "os.spawnl",
+    "os.spawnle",
+    "os.spawnlp",
+    "os.spawnlpe",
+    "os.fork",
+    "os.forkpty",
+    "os.kill",
+    "os.killpg",
+    # os: destructive filesystem ops
+    "os.remove",
+    "os.unlink",
+    "os.rmdir",
+    "os.removedirs",
+    # shutil: destructive
+    "shutil.rmtree",
+    "shutil.move",
+    # signal: would let students disarm our SIGALRM-based time limit
+    "signal.signal",
+    "signal.alarm",
+    "signal.setitimer",
+    # resource: would let students raise the memory limit
+    "resource.setrlimit",
+    "resource.prlimit",
+    # sys: tracing/profiling can be abused to escape patches
+    "sys.settrace",
+    "sys.setprofile",
+)
+
+
+# Paths the sandboxed open() refuses by default.  These cover the most
+# common exfiltration / grade-tampering targets on Gradescope.
+_DEFAULT_PROTECTED_DIRS = (
+    "tests",  # contains reference.py, expected_output, configs
+    "/autograder/source/tests",
+    "/autograder/results",
+)
+_DEFAULT_PROTECTED_FILES = (
+    "results.json",
+    "/autograder/results/results.json",
+)
+
+
+def _module_is_blocked(name, blocked):
+    """Return True if `name` (or any parent package) is in `blocked`."""
+    parts = name.split(".")
+    for i in range(len(parts)):
+        prefix = ".".join(parts[: i + 1])
+        if prefix in blocked:
+            return True
+    return False
+
+
+# Trusted directories: imports originating from any of these are considered
+# transitive imports performed by trusted libraries (the stdlib, installed
+# third-party packages, and the grader itself) rather than direct imports
+# by student code, so they bypass the blocklist.  This is required because
+# many "safe" libraries the student is expected to use (numpy, matplotlib,
+# pandas, ...) transitively import otherwise-blocked modules such as
+# `ctypes`, `socket`, or `multiprocessing`.
+def _compute_trusted_import_dirs():
+    paths = {
+        sysconfig.get_paths()["stdlib"],
+        sysconfig.get_paths()["platstdlib"],
+        sysconfig.get_paths()["purelib"],
+        sysconfig.get_paths()["platlib"],
+        os.path.dirname(os.__file__),  # stdlib catch-all
+    }
+    # Also trust the grader's own install location — when running from an
+    # editable install the grader lives outside site-packages, so we need
+    # an explicit entry to cover both that case and Gradescope's
+    # site-packages install.
+    try:
+        import generic_grader as _gg
+
+        paths.add(os.path.dirname(os.path.dirname(_gg.__file__)))
+    except ImportError:  # pragma: no cover - grader package always importable here
+        pass
+    return tuple(os.path.realpath(p) for p in paths if p)
+
+
+_TRUSTED_IMPORT_DIRS = _compute_trusted_import_dirs()
+
+# Substrings used by `_caller_is_trusted` to skip over the import machinery,
+# the mock-patch shim, and our own wrapper module when walking the stack.
+# Precomputed at module load so each import-check call is cheap and isn't
+# affected by tests monkeypatching `os.path.realpath`.
+_CALLER_SKIP_SUBSTRINGS = (
+    os.sep + "importlib" + os.sep,
+    os.sep + "unittest" + os.sep + "mock.py",
+    os.path.realpath(__file__),
+)
+
+
+def _caller_is_trusted():
+    """Return True if the import is being driven by trusted (library) code.
+
+    We walk the caller frames upward and look for the first frame that is
+    *not* this module, not the import machinery itself, and not the
+    `unittest.mock` patching shim.  If that frame's file lives inside a
+    trusted location (stdlib / site-packages / grader package) we treat
+    the import as a transitive library import and allow it.  Otherwise the
+    import originated from student code and is subject to the blocklist.
+    """
+    # Walk the Python frames; sys._getframe(0) is _caller_is_trusted itself.
+    depth = 1
+    while True:
+        try:
+            frame = sys._getframe(depth)
+        except ValueError:
+            return False  # Reached the top without finding a real caller.
+        depth += 1
+        filename = frame.f_code.co_filename
+        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
+            continue
+        # First non-skipped frame: classify it.
+        try:
+            real = os.path.realpath(filename)
+        except (OSError, ValueError):
+            return False
+        return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
+
+
+def make_import_blocklist_patches(extra_blocked=()):
+    """Block dangerous imports at both `builtins.__import__` and
+    `importlib.import_module` when initiated by student code.
+
+    Transitive imports performed by trusted libraries (the stdlib and
+    anything installed in site-packages) are allowed even when the target
+    module is on the blocklist; otherwise legitimate scientific libraries
+    such as `numpy` (which imports `ctypes`) or `matplotlib` (which pulls
+    in `urllib` via its font cache) would be unusable.
+
+    `extra_blocked` lets a caller (or test) add additional module names.
+    """
+    blocked = frozenset(BLOCKED_MODULES | set(extra_blocked))
+    real_import = builtins.__import__
+    real_import_module = importlib.import_module
+
+    def safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if _module_is_blocked(name, blocked) and not _caller_is_trusted():
+            raise DisallowedImportError(name)
+        return real_import(name, globals, locals, fromlist, level)
+
+    def safe_import_module(name, package=None):
+        resolved = name
+        if package and name.startswith("."):
+            # Resolve relative imports to absolute names before checking.
+            resolved = importlib.util.resolve_name(name, package)
+        if _module_is_blocked(resolved, blocked) and not _caller_is_trusted():
+            raise DisallowedImportError(resolved)
+        return real_import_module(name, package)
+
+    return [
+        {"args": ("builtins.__import__", safe_import)},
+        {"args": ("importlib.import_module", safe_import_module)},
+    ]
+
+
+def make_dangerous_attr_patches():
+    """Patch dangerous attributes on otherwise-allowed modules so calls raise
+    `DisallowedFunctionCallError`.
+
+    `create=True` keeps the patch usable on attributes that may not exist on
+    all platforms (e.g. `os.fork` is POSIX-only).
+    """
+
+    def make(target):
+        def blocked(*args, **kwargs):
+            raise DisallowedFunctionCallError(target)
+
+        return {"args": (target, blocked), "kwargs": {"create": True}}
+
+    return [make(t) for t in _DANGEROUS_ATTRS]
+
+
+def _resolve(path_like):
+    """Resolve a path-like to an absolute string without requiring it to exist."""
+    try:
+        return os.path.realpath(os.fspath(path_like))
+    except TypeError:
+        # File descriptors / other non-path arguments: not a path we can check.
+        return None
+
+
+def make_open_sandbox_patch(extra_allowed=(), extra_blocked=()):
+    """Patch `builtins.open` to refuse reads/writes on grader-internal files.
+
+    The block list covers the test fixtures, the grader package itself, and
+    common Gradescope result paths.  Files inside the student's current
+    working directory remain accessible (excluding any explicitly protected
+    subdirectory such as `tests/`).
+
+    Callers can extend either list:
+      - `extra_allowed`: explicit file paths or directories to permit.
+      - `extra_blocked`: extra paths to forbid.
+    """
+    real_open = builtins.open
+
+    # Resolve grader package install path once (covers both editable and
+    # site-packages installs).
+    import generic_grader  # local import to avoid a cycle at module load
+
+    grader_pkg_dir = os.path.realpath(os.path.dirname(generic_grader.__file__))
+
+    allowed = {os.path.realpath(p) for p in extra_allowed}
+    extra_blocked_resolved = {os.path.realpath(p) for p in extra_blocked}
+
+    def _is_inside(path, directory):
+        try:
+            return os.path.commonpath([path, directory]) == directory
+        except ValueError:
+            # Different drives on Windows etc.
+            return False
+
+    def sandboxed_open(file, *args, **kwargs):
+        resolved = _resolve(file)
+        if resolved is None:
+            # e.g. an int file descriptor — let the real open handle it.
+            return real_open(file, *args, **kwargs)
+
+        # Explicit user-supplied allow list wins.
+        if resolved in allowed:
+            return real_open(file, *args, **kwargs)
+        for path in allowed:
+            if _is_inside(resolved, path):
+                return real_open(file, *args, **kwargs)
+
+        # Hard blocks: grader package internals.
+        if _is_inside(resolved, grader_pkg_dir):
+            raise DisallowedFileAccessError(str(file))
+
+        # Caller-supplied extra blocks.
+        if resolved in extra_blocked_resolved:
+            raise DisallowedFileAccessError(str(file))
+
+        # Default protected files (e.g. results.json).
+        basename = os.path.basename(resolved)
+        if basename in _DEFAULT_PROTECTED_FILES or resolved in {
+            os.path.realpath(p) for p in _DEFAULT_PROTECTED_FILES
+        }:
+            raise DisallowedFileAccessError(str(file))
+
+        # Default protected directories (e.g. tests/, /autograder/results).
+        for prot in _DEFAULT_PROTECTED_DIRS:
+            prot_abs = os.path.realpath(prot)
+            if os.path.isdir(prot_abs) and _is_inside(resolved, prot_abs):
+                raise DisallowedFileAccessError(str(file))
+
+        return real_open(file, *args, **kwargs)
+
+    return {"args": ("builtins.open", sandboxed_open)}
+
+
+def make_security_patches(o: Options):
+    """Bundle all Layer-1 security patches based on `o`.
+
+    Returns an empty list when `o.disable_security_patches` is True so that
+    legacy assignments which require e.g. `socket` can opt out.
+    """
+    if getattr(o, "disable_security_patches", False):
+        return []
+    patches = []
+    patches.extend(make_import_blocklist_patches())
+    patches.extend(make_dangerous_attr_patches())
+    patches.append(make_open_sandbox_patch())
+    return patches
 
 
 def make_turtle_done_patches(modules):
@@ -82,7 +417,14 @@ def custom_stack(o: Options):
         stack.enter_context(memory_limit(o.memory_limit_GB))
         if o.fixed_time:
             stack.enter_context(freeze_time(o.fixed_time))
-        patches = (o.patches or []) + make_exit_quit_patches()
+
+        # Order matters: security patches go first, then exit/quit, then
+        # caller-supplied patches.  `mock.patch` is LIFO when stacked, so
+        # later entries win — caller patches can override security defaults
+        # when explicitly needed (e.g. tests that exercise our own internals).
+        patches = (
+            make_security_patches(o) + make_exit_quit_patches() + (o.patches or [])
+        )
         for p in patches:
             stack.enter_context(
                 patch(

@@ -44,6 +44,11 @@ class Options:
     debug: bool = False
     time_limit: int = 1
     memory_limit_GB: float = 1.4
+    # Set to True to disable the in-process security patches (import
+    # blocklist, dangerous-attr blocks, sandboxed open).  Only do this for
+    # assignments that legitimately need normally-blocked modules (e.g. a
+    # networking lab that requires `socket`).  See issue #98.
+    disable_security_patches: bool = False
 
     # Callable
     obj_name: str = "main"
