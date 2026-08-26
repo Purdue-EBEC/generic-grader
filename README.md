@@ -191,21 +191,49 @@ These test types work with `language="octave"` today:
   Bar-chart, pie-chart, grid-line, and spine properties are not
   supported yet and stay Python-only.
 
+### Static-analysis test types (Python **and** Octave)
+
+The following test types now dispatch on `language` and can be
+run against `.m` submissions in addition to `.py` submissions.
+On the Octave side they use a small regex-based analyser in
+`generic_grader.utils.octave_static` (comments, tokens, docstring
+header block, and a `for`/`while`/`do` depth tracker), so no live
+Octave subprocess is required:
+
+* `style.comments` — comment-density check.  Both `%`- and `#`-line
+  comments count, and `%{ … %}` / `#{ … #}` block comments count as
+  a single comment each.  `%` characters inside string literals are
+  ignored.
+* `style.program_length` — token count.  Tokens are Octave
+  identifiers, numbers, punctuation, and one- or two-character
+  operators (`==`, `~=`, `.*`, etc.); string bodies and comment
+  bodies do not add to the count.
+* `style.docstring` — reads the contiguous leading `%`/`#` header
+  block (skipping a leading `#!` shebang or a `function` line, if
+  present) and hands it to the same `parse_docstring` used for
+  Python, so the `Author:` / `Assignment:` / `Date:` / `Description`
+  / `Contributors` / `Academic Integrity Statement` conventions
+  transfer without change.
+* `function.static_loop_depth` — walks the source and counts the
+  deepest nesting of `for` / `parfor` / `while` / `do … until`
+  blocks, tracking their `end` / `endfor` / `endwhile` / `until`
+  closers.  `if`, `switch`, `try`, `function`, and
+  `unwind_protect` blocks push onto the stack but do not add to
+  loop depth, matching the semantics of the AST-based Python
+  version.
+
 ### Python-only test types
 
-The following test types have no Octave analogue — they rely on
-CPython-specific machinery (`ast`, `inspect`, `sys.settrace`,
-`ResourceWarning`, `pytesseract`, `PIL`) that cannot be reproduced
-against a `.m` file.  Setting `language="octave"` on any of them fails
-the individual test with a clear message rather than a cryptic
-traceback:
+The remaining Python-only test types rely on CPython-specific
+machinery (`inspect`, `sys.settrace`, `ResourceWarning`, `pytesseract`,
+`PIL`, and `ast` features with no direct Octave analogue) and still
+refuse to run under `language="octave"`, failing the individual test
+with a clear message instead of a cryptic traceback:
 
-* `style.comments`, `style.docstring`, `style.program_length`
 * `class_.class_is_defined`, `class_.class_attributes_match_reference`,
   `class_.class_method_signatures_match_reference`,
   `class_.instance_attributes_match_reference`
-* `function.function_not_defined`, `function.random_function_calls`,
-  `function.static_loop_depth`
+* `function.function_not_defined`, `function.random_function_calls`
 * `file.file_closed`
 * `image.ocr_words_match_reference`, `image.pixel_overlap`
 

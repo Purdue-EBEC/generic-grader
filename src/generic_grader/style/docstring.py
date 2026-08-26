@@ -9,7 +9,8 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
-from generic_grader.utils.language_guard import require_python_language
+from generic_grader.utils.language import LANGUAGE_EXTENSIONS, resolve_language
+from generic_grader.utils.octave_static import get_docstring as get_docstring_octave
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.safe_equal import safe_assert_equal
 
@@ -53,9 +54,36 @@ def titlecase(phrase):
     return " ".join(word.capitalize() for word in phrase.split())
 
 
+def _load_docstring(test, path, language):
+    """Return the module docstring at *path*, dispatching on *language*.
+
+    Fails *test* on a Python ``SyntaxError`` so the error surfaces in
+    the grading report the same way it did before this refactor.
+    """
+
+    if language == "octave":
+        return get_docstring_octave(test, path)
+
+    with open(path) as fo:
+        fail_msg = None
+        try:
+            doc = ast.get_docstring(ast.parse(fo.read()))
+        except SyntaxError as e:
+            fail_msg = (
+                f"Error while parsing `{path}`. "
+                + f'The error was "{e.__class__.__name__}: {e}".'
+            )
+            doc = None
+    if fail_msg:
+        test.fail(fail_msg)
+    return doc
+
+
 def build(the_options):
-    submission = the_options.sub_module.replace(".", os.path.sep) + ".py"
-    reference = the_options.ref_module.replace(".", os.path.sep) + ".py"
+    language = resolve_language(the_options)
+    extension = LANGUAGE_EXTENSIONS[language]
+    submission = the_options.sub_module.replace(".", os.path.sep) + extension
+    reference = the_options.ref_module.replace(".", os.path.sep) + extension
 
     the_params = options_to_params(the_options)
 
@@ -65,24 +93,7 @@ def build(the_options):
         wrapper = get_wrapper()
 
         def set_up(self):
-            # ``set_up`` is called by every test method in this class, so
-            # guarding here covers all docstring subtests with a single
-            # check.
-            require_python_language(self, the_options, "style.docstring")
-
-            with open(submission) as fo:
-                fail_msg = None
-                try:
-                    self.doc = ast.get_docstring(ast.parse(fo.read()))
-                except SyntaxError as e:
-                    fail_msg = (
-                        f"Error while parsing `{submission}`. "
-                        + f'The error was "{e.__class__.__name__}: {e}".'
-                    )
-                # Fail outside of the except block
-                # so that AssertionError(s) will be handled properly.
-                if fail_msg:
-                    self.fail(fail_msg)
+            self.doc = _load_docstring(self, submission, language)
             (
                 self.author,
                 self.assignment,
@@ -193,9 +204,8 @@ def build(the_options):
             self.set_up()
 
             actual = len("".join(self.description))
-            with open(reference) as fo:
-                reference_doc = ast.get_docstring(ast.parse(fo.read()))
-            _, _, _, reference_desc, _, _ = parse_docstring(reference_doc)
+            reference_doc = _load_docstring(self, reference, language)
+            _, _, _, reference_desc, _, _ = parse_docstring(reference_doc or "")
             minimum = len("".join(reference_desc)) // 2
             maximum = len("".join(reference_desc)) * 5
 

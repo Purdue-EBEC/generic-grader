@@ -7,9 +7,10 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
-from generic_grader.utils.language_guard import require_python_language
+from generic_grader.utils.language import LANGUAGE_EXTENSIONS, resolve_language
+from generic_grader.utils.octave_static import get_comments as get_comments_octave
 from generic_grader.utils.options import options_to_params
-from generic_grader.utils.static import get_comments
+from generic_grader.utils.static import get_comments as get_comments_python
 
 
 def doc_func(func, num, param):
@@ -33,13 +34,17 @@ def build(the_options):
         def test_comment_length(self, options):
             """Check if the program is well commented."""
 
-            require_python_language(self, options, "style.comments")
+            language = resolve_language(options)
+            extension = LANGUAGE_EXTENSIONS[language]
+            get_comments = (
+                get_comments_octave if language == "octave" else get_comments_python
+            )
 
-            submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
+            submission_file = options.sub_module.replace(".", os.path.sep) + extension
             _, actual_body_comments = get_comments(self, submission_file)
             actual = sum([len(c) for c in actual_body_comments])
 
-            reference_file = options.ref_module.replace(".", os.path.sep) + ".py"
+            reference_file = options.ref_module.replace(".", os.path.sep) + extension
             _, ref_body_comments = get_comments(self, reference_file)
             expected = sum([len(c) for c in ref_body_comments])
 
