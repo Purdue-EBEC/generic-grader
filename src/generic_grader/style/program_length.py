@@ -7,9 +7,10 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
-from generic_grader.utils.language_guard import require_python_language
+from generic_grader.utils.language import LANGUAGE_EXTENSIONS, resolve_language
+from generic_grader.utils.octave_static import get_tokens as get_tokens_octave
 from generic_grader.utils.options import options_to_params
-from generic_grader.utils.static import get_tokens
+from generic_grader.utils.static import get_tokens as get_tokens_python
 
 
 def doc_func(func, num, param):
@@ -34,12 +35,16 @@ def build(the_options):
         def test_program_length(self, options):
             """Check if the program is bigger than expected."""
 
-            require_python_language(self, options, "style.program_length")
+            language = resolve_language(options)
+            extension = LANGUAGE_EXTENSIONS[language]
+            get_tokens = (
+                get_tokens_octave if language == "octave" else get_tokens_python
+            )
 
-            submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
+            submission_file = options.sub_module.replace(".", os.path.sep) + extension
             actual = len(get_tokens(self, submission_file))
 
-            reference_file = options.ref_module.replace(".", os.path.sep) + ".py"
+            reference_file = options.ref_module.replace(".", os.path.sep) + extension
             expected = len(get_tokens(self, reference_file))
 
             maximum = int(2 * expected)
