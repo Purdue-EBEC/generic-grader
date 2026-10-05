@@ -114,33 +114,29 @@ def test_make_import_blocklist_patches_format():
 def test_import_blocklist_blocks_subprocess():
     """Importing subprocess inside custom_stack should raise."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            __import__("subprocess")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        __import__("subprocess")
 
 
 def test_import_blocklist_blocks_socket():
     """Importing socket inside custom_stack should raise."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            __import__("socket")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        __import__("socket")
 
 
 def test_import_blocklist_blocks_via_importlib():
     """importlib.import_module should also be blocked."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            importlib.import_module("subprocess")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        importlib.import_module("subprocess")
 
 
 def test_import_blocklist_blocks_submodule_of_blocked():
     """Submodules of a blocked top-level package should also be blocked."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            __import__("urllib.parse")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        __import__("urllib.parse")
 
 
 def test_import_blocklist_allows_safe_modules():
@@ -156,9 +152,8 @@ def test_import_blocklist_allows_extra_blocked_param():
     """Callers may extend the blocklist via the extra_blocked parameter."""
     patches = make_import_blocklist_patches(extra_blocked=("json",))
     o = Options(patches=patches)
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            __import__("json")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        __import__("json")
 
 
 def test_import_blocklist_allows_trusted_transitive_imports(tmp_path):
@@ -183,7 +178,7 @@ def test_import_blocklist_allows_trusted_transitive_imports(tmp_path):
     o = Options()
     with custom_stack(o):
         ns = {}
-        exec(code, ns)
+        exec(code, ns)  # noqa: S102 - exec is the point: forge the caller frame
         assert ns["result"] is not None
 
 
@@ -194,15 +189,14 @@ def test_import_blocklist_blocks_when_caller_is_student_code(tmp_path):
     code = compile(src, fake_caller, "exec")
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            exec(code, {})
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        exec(code, {})  # noqa: S102 - exec is the point: forge the caller frame
 
 
 def test_import_blocklist_outside_stack_does_not_raise():
     """Outside custom_stack, imports should be unaffected."""
     # subprocess is heavy but importable. We do not actually need to use it.
-    import subprocess  # noqa: F401
+    import subprocess
 
     assert subprocess is not None
 
@@ -239,9 +233,8 @@ def test_make_dangerous_attr_patches_targets_include_resource_setrlimit():
 def test_dangerous_attr_blocks_os_system():
     """Calling os.system inside custom_stack should raise."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFunctionCallError):
-            os.system("echo hi")
+    with custom_stack(o), pytest.raises(DisallowedFunctionCallError):
+        os.system("echo hi")
 
 
 def test_dangerous_attr_blocks_shutil_rmtree():
@@ -249,9 +242,8 @@ def test_dangerous_attr_blocks_shutil_rmtree():
     import shutil
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFunctionCallError):
-            shutil.rmtree("/tmp/does_not_matter")
+    with custom_stack(o), pytest.raises(DisallowedFunctionCallError):
+        shutil.rmtree("/tmp/does_not_matter")
 
 
 def test_dangerous_attr_blocks_signal_signal():
@@ -259,9 +251,8 @@ def test_dangerous_attr_blocks_signal_signal():
     import signal
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFunctionCallError):
-            signal.signal(signal.SIGALRM, lambda s, f: None)
+    with custom_stack(o), pytest.raises(DisallowedFunctionCallError):
+        signal.signal(signal.SIGALRM, lambda s, f: None)
 
 
 def test_dangerous_attr_blocks_resource_setrlimit():
@@ -269,9 +260,8 @@ def test_dangerous_attr_blocks_resource_setrlimit():
     import resource
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFunctionCallError):
-            resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_INFINITY,) * 2)
+    with custom_stack(o), pytest.raises(DisallowedFunctionCallError):
+        resource.setrlimit(resource.RLIMIT_AS, (resource.RLIM_INFINITY,) * 2)
 
 
 # ---------------------------------------------------------------------------
@@ -299,9 +289,8 @@ def test_open_sandbox_blocks_reference_solution(tmp_path, monkeypatch):
     ref.write_text("SECRET = 42\n")
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFileAccessError):
-            open(ref)
+    with custom_stack(o), pytest.raises(DisallowedFileAccessError):
+        open(ref)  # noqa: SIM115 - open() is expected to raise here
 
 
 def test_open_sandbox_blocks_results_json(tmp_path, monkeypatch):
@@ -311,9 +300,8 @@ def test_open_sandbox_blocks_results_json(tmp_path, monkeypatch):
     rj.write_text("{}")
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFileAccessError):
-            open(rj, "w")
+    with custom_stack(o), pytest.raises(DisallowedFileAccessError):
+        open(rj, "w")  # noqa: SIM115 - open() is expected to raise here
 
 
 def test_open_sandbox_blocks_grader_package(tmp_path, monkeypatch):
@@ -324,9 +312,8 @@ def test_open_sandbox_blocks_grader_package(tmp_path, monkeypatch):
     pkg_init = Path(generic_grader.__file__)
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFileAccessError):
-            open(pkg_init)
+    with custom_stack(o), pytest.raises(DisallowedFileAccessError):
+        open(pkg_init)  # noqa: SIM115 - open() is expected to raise here
 
 
 def test_open_sandbox_allows_student_files(tmp_path, monkeypatch):
@@ -336,9 +323,8 @@ def test_open_sandbox_allows_student_files(tmp_path, monkeypatch):
     student.write_text("hello")
 
     o = Options()
-    with custom_stack(o):
-        with open(student) as f:
-            assert f.read() == "hello"
+    with custom_stack(o), open(student) as f:
+        assert f.read() == "hello"
 
 
 def test_open_sandbox_allows_extra_paths(tmp_path, monkeypatch):
@@ -350,9 +336,8 @@ def test_open_sandbox_allows_extra_paths(tmp_path, monkeypatch):
 
     patch = make_open_sandbox_patch(extra_allowed=(str(expected),))
     o = Options(patches=[patch])
-    with custom_stack(o):
-        with open(expected) as f:
-            assert f.read() == "data"
+    with custom_stack(o), open(expected) as f:
+        assert f.read() == "data"
 
 
 def test_open_sandbox_blocks_tests_subdir(tmp_path, monkeypatch):
@@ -363,9 +348,8 @@ def test_open_sandbox_blocks_tests_subdir(tmp_path, monkeypatch):
     config.write_text("# config")
 
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedFileAccessError):
-            open(config)
+    with custom_stack(o), pytest.raises(DisallowedFileAccessError):
+        open(config)  # noqa: SIM115 - open() is expected to raise here
 
 
 # ---------------------------------------------------------------------------
@@ -376,10 +360,9 @@ def test_open_sandbox_blocks_tests_subdir(tmp_path, monkeypatch):
 def test_custom_stack_security_patches_on_by_default():
     """custom_stack should apply the security patches automatically."""
     o = Options()
-    with custom_stack(o):
+    with custom_stack(o), pytest.raises(DisallowedImportError):
         # subprocess is in the default blocklist.
-        with pytest.raises(DisallowedImportError):
-            __import__("subprocess")
+        __import__("subprocess")
 
 
 def test_custom_stack_security_disabled_flag():
@@ -399,11 +382,10 @@ def test_custom_stack_security_disabled_flag():
 def test_import_blocklist_blocks_relative_via_importlib():
     """Relative imports through importlib should resolve and be checked."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(DisallowedImportError):
-            # ".request" inside the (blocked) urllib package resolves to
-            # urllib.request, which is blocked.
-            importlib.import_module(".request", package="urllib")
+    with custom_stack(o), pytest.raises(DisallowedImportError):
+        # ".request" inside the (blocked) urllib package resolves to
+        # urllib.request, which is blocked.
+        importlib.import_module(".request", package="urllib")
 
 
 def test_resolve_returns_none_for_non_path():
@@ -421,11 +403,10 @@ def test_open_sandbox_passes_through_file_descriptor(tmp_path, monkeypatch):
     fd = os.open(str(target), os.O_RDONLY)
     try:
         o = Options()
-        with custom_stack(o):
-            # closefd=False so the with-statement does not close our fd; we'll
-            # close it ourselves in `finally`.
-            with builtins.open(fd, closefd=False) as f:
-                assert f.read() == "fd-data"
+        # closefd=False so the with-statement does not close our fd; we'll
+        # close it ourselves in `finally`.
+        with custom_stack(o), builtins.open(fd, closefd=False) as f:
+            assert f.read() == "fd-data"
     finally:
         os.close(fd)
 
@@ -439,9 +420,8 @@ def test_open_sandbox_allows_extra_directory(tmp_path, monkeypatch):
 
     patch_dict = make_open_sandbox_patch(extra_allowed=(str(tmp_path / "tests"),))
     o = Options(patches=[patch_dict])
-    with custom_stack(o):
-        with open(target) as f:
-            assert f.read() == "value"
+    with custom_stack(o), open(target) as f:
+        assert f.read() == "value"
 
 
 def test_open_sandbox_blocks_extra_blocked_path(tmp_path, monkeypatch):
@@ -452,9 +432,8 @@ def test_open_sandbox_blocks_extra_blocked_path(tmp_path, monkeypatch):
 
     patch_dict = make_open_sandbox_patch(extra_blocked=(str(target),))
     o = Options(patches=[patch_dict])
-    with custom_stack(o):
-        with pytest.raises(DisallowedFileAccessError):
-            open(target)
+    with custom_stack(o), pytest.raises(DisallowedFileAccessError):
+        open(target)  # noqa: SIM115 - open() is expected to raise here
 
 
 def test_is_inside_handles_value_error(tmp_path):
@@ -484,9 +463,8 @@ def test_is_inside_handles_value_error(tmp_path):
     os.path.commonpath = boom
     try:
         o = Options(patches=[patch_dict])
-        with custom_stack(o):
-            with open(target) as f:
-                assert f.read() == "ok"
+        with custom_stack(o), open(target) as f:
+            assert f.read() == "ok"
     finally:
         os.path.commonpath = real_commonpath
 

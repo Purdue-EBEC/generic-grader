@@ -97,7 +97,7 @@ def case_test_method(request, fix_syspath):
 
 def test_program_length(case_test_method):
     """Test response of test_submitted_files function."""
-    case, built_instance, test_method = case_test_method
+    case, _built_instance, test_method = case_test_method
 
     if case["result"] == "pass":
         test_method()

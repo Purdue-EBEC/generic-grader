@@ -168,7 +168,9 @@ def build(the_options):
 
             actual = self.date and len(self.date) or 0
             minimum = 8  # e.g. "01/01/22"
-            today = datetime.datetime.today().date().isoformat()
+            # Local (naive) date is intentional: the hint shows the student's
+            # own calendar date, not a timezone-aware instant.
+            today = datetime.datetime.today().date().isoformat()  # noqa: DTZ002
             message = "\n\nHint:\n" + self.wrapper.fill(
                 "The program's date was not found."
                 "  Make sure you have included this program's completion date"
@@ -241,13 +243,11 @@ def build(the_options):
 
             actual_integrity = "\n".join(self.integrity) + "\n"
 
-            expected_integrity = "\n".join(
-                [
-                    "I have not used source code obtained from any unauthorized",
-                    "source, either modified or unmodified; nor have I provided",
-                    "another student access to my code.  The project I am",
-                    "submitting is my own original work.\n",
-                ]
+            expected_integrity = (
+                "I have not used source code obtained from any unauthorized\n"
+                "source, either modified or unmodified; nor have I provided\n"
+                "another student access to my code.  The project I am\n"
+                "submitting is my own original work.\n"
             )
 
             message = "\n\nHint:\n" + self.wrapper.fill(

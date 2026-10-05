@@ -145,8 +145,10 @@ failing_cases = [
         "expected": {1, 2, 3, 4},
         "msg": (
             "Items in the first set but not the second:\n5",
-            "  The lengths of values returned from your `sub.func` function when\n  "
-            "called as `func()` did not match the expected lengths.",
+            (
+                "  The lengths of values returned from your `sub.func` function when\n  "
+                "called as `func()` did not match the expected lengths."
+            ),
         ),
     },
     {  # Got 1-4
@@ -170,8 +172,10 @@ failing_cases = [
         "expected": {1, 2, 3, 4, 5},
         "msg": (
             "Items in the first set but not the second:\n6",
-            "  The lengths of values returned from your `sub.func` function when\n"
-            "  called as `func()` did not match the expected lengths.\n\n",
+            (
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths.\n\n"
+            ),
         ),
     },
     {  # Got 1
@@ -179,9 +183,11 @@ failing_cases = [
         "expected": {1, 2},
         "msg": (
             "Items in the second set but not the first:",
-            "Hint:\n"
-            "  The lengths of values returned from your `sub.func` function when\n"
-            "  called as `func()` did not match the expected lengths.\n\n",
+            (
+                "Hint:\n"
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths.\n\n"
+            ),
         ),
     },
     {  # Got NoneType

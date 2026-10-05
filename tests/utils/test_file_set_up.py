@@ -87,7 +87,7 @@ set_up_cases = [
         "expected_symlinks": {"foo.py"},
     },
     {
-        "present": tuple(),
+        "present": (),
         "required": (
             "foo*.py",
             "bar*.py",
@@ -129,9 +129,7 @@ def set_up_case_test_method(request, fix_syspath):
     for file_name in case["present"]:
         file_path = fix_syspath / file_name
         file_path.write_text("")
-    o = Options(
-        required_files=case["required"], ignored_files=case.get("ignored", tuple())
-    )
+    o = Options(required_files=case["required"], ignored_files=case.get("ignored", ()))
     return case, o
 
 

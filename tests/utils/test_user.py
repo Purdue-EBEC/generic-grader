@@ -40,8 +40,6 @@ def test_user_log(case):
 class FakeTest(unittest.TestCase):
     """Fake test class for testing User class."""
 
-    pass
-
 
 call_obj_pass = [
     {
@@ -78,7 +76,8 @@ call_obj_pass = [
     },
     {
         "options": Options(
-            sub_module="freeze_time", fixed_time=datetime(2021, 1, 1, 0, 0, 0)
+            sub_module="freeze_time",
+            fixed_time=datetime(2021, 1, 1, 0, 0, 0),  # noqa: DTZ001
         ),
         "file_text": "import datetime\n\ndef main():\n    print(datetime.datetime.now())",
         "result": "2021-01-01 00:00:00\n",
@@ -579,9 +578,11 @@ def test_call_obj_grader_internal_fault_reports_autograder_bug(
 
     test = FakeTest()
     user = SubUser(test, Options(sub_module="fake_module"))
-    with caplog.at_level("ERROR", logger="generic_grader.attribution"):
-        with pytest.raises(AssertionError) as exc_info:
-            user.call_obj()
+    with (
+        caplog.at_level("ERROR", logger="generic_grader.attribution"),
+        pytest.raises(AssertionError) as exc_info,
+    ):
+        user.call_obj()
 
     # The instructor-facing log keeps the diagnostics the student message omits.
     (record,) = caplog.records

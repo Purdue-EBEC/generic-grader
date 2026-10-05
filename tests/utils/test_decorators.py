@@ -42,7 +42,6 @@ def case_weighted_test_class(request):
         @weighted
         def test_func(self, *args, **kwargs):
             """Some test function."""
-            pass
 
     return case, TestClass
 

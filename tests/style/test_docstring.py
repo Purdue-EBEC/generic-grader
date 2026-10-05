@@ -593,7 +593,7 @@ def case_test_method(request, fix_syspath):
 
 def test_docstring(case_test_method):
     """Test docstrings of test_docstring functions."""
-    case, options, test_method = case_test_method
+    case, _options, test_method = case_test_method
 
     if case["result"] == "pass":
         test_method()  # should not raise an error

@@ -252,7 +252,9 @@ class __User__:
             with custom_stack(stack_o):
                 # Call the attached object with copies of r args and kwargs.
                 self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
-        except Exception as e:
+        # Broad catch is deliberate: student code can raise anything, and every
+        # failure must be classified (student error vs. grader fault).
+        except Exception as e:  # noqa: BLE001
             # TODO This function is going to be refactored
             if fault := report_grader_fault(e):
                 # A security exception raised from library code is a grader

@@ -4,10 +4,10 @@ from contextlib import ExitStack
 from unittest.mock import patch
 
 import matplotlib as mpl
-import matplotlib.patches as patches
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from matplotlib import patches
 
 from generic_grader.utils.plot import (
     get_bar_widths,
@@ -317,7 +317,7 @@ def test_get_y_limits(setup_line_plot):
 def test_get_x_tick_labels(setup_line_plot):
     """Test that the get_x_tick_labels function returns the correct x tick labels."""
     labels = get_x_tick_labels(MockTest())
-    expected_labels = [str((label)) for label in range(10)]
+    expected_labels = [str(label) for label in range(10)]
 
     assert labels == expected_labels
 

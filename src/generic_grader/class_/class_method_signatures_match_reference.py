@@ -50,9 +50,9 @@ def build(the_options):
             ref_funcs = dict(inspect.getmembers(ref_class, inspect.isfunction))
 
             message = ""
-            for func_name in ref_funcs.keys():
+            for func_name, ref_func in ref_funcs.items():
                 try:
-                    ref_sig = f"{func_name}{inspect.signature(ref_funcs[func_name])}\n"
+                    ref_sig = f"{func_name}{inspect.signature(ref_func)}\n"
                     sub_sig = f"{func_name}{inspect.signature(sub_funcs[func_name])}\n"
                 except KeyError:
                     # The method is missing from the submitted class.

@@ -41,7 +41,7 @@ def test_make_mock_function():
 
     func_name = "test_func"
     return_values = (1, 2, 3, 4, 5)
-    mock_name, mocked_func = make_mock_function(func_name, return_values)
+    _mock_name, mocked_func = make_mock_function(func_name, return_values)
 
     for val in return_values:
         assert val == mocked_func("str", 1, spam="spam")

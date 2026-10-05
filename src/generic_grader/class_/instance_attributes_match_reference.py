@@ -43,32 +43,26 @@ def build(the_options):
             o = options
 
             # Construct the set of default object attributes.
-            nul_attrs = set(
+            nul_attrs = {
                 (type(value).__name__, name)
                 for (name, value) in inspect.getmembers(object)
-            )
+            }
             # Ignore missing docstrings.
             nul_attrs.add(("NoneType", "__doc__"))
 
             # Construct sets of the submitted and reference instance attributes that
             # are not in default object.
             sub_instance = self.student_user.returned_values
-            sub_attrs = (
-                set(
-                    (type(value).__name__, name)
-                    for (name, value) in inspect.getmembers(sub_instance)
-                )
-                - nul_attrs
-            )
+            sub_attrs = {
+                (type(value).__name__, name)
+                for (name, value) in inspect.getmembers(sub_instance)
+            } - nul_attrs
 
             ref_instance = self.ref_user.returned_values
-            ref_attrs = (
-                set(
-                    (type(value).__name__, name)
-                    for (name, value) in inspect.getmembers(ref_instance)
-                )
-                - nul_attrs
-            )
+            ref_attrs = {
+                (type(value).__name__, name)
+                for (name, value) in inspect.getmembers(ref_instance)
+            } - nul_attrs
 
             missing_attrs = sorted(ref_attrs - sub_attrs)
             extra_attrs = sorted(sub_attrs - ref_attrs)
