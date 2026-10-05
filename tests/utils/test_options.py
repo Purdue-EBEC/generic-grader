@@ -34,6 +34,14 @@ def test_utils_options():
     assert Options()
 
 
+def test_expected_distribution_default_is_not_shared():
+    """Mutating one instance's default must not leak into another."""
+    first, second = Options(), Options()
+    first.expected_distribution[1] = 1
+
+    assert second.expected_distribution == {0: 0}
+
+
 typecheck_options = [
     {
         "options": {"init": ""},
