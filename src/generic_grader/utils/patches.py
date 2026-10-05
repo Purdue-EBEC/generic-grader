@@ -232,14 +232,6 @@ def _in_trusted_dirs(filename):
     return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
 
 
-# Frames to ignore when classifying who is making a blocked call: the mock
-# shim and this module's own wrappers.
-_CALL_SKIP_SUBSTRINGS = (
-    os.sep + "unittest" + os.sep + "mock.py",
-    os.path.realpath(__file__),
-)
-
-
 def _library_import_is_calling(attr):
     """Return True if a library, run by a student `import`, is calling `attr`.
 
@@ -270,7 +262,7 @@ def _library_import_is_calling(attr):
         depth += 1
         code = frame.f_code
         filename = code.co_filename
-        if any(s in filename for s in _CALL_SKIP_SUBSTRINGS):
+        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
             continue
         if _is_import_machinery(filename):
             kind = "import"
@@ -341,6 +333,8 @@ def make_dangerous_attr_patches():
     def make(target):
         module_name, attr = target.rsplit(".", 1)
         original = getattr(importlib.import_module(module_name), attr, None)
+        # Unwrap if the patches are already active so we never delegate to a wrapper.
+        original = getattr(original, "_grader_original", original)
         trustable = original is not None and target not in _NEVER_TRUST_ATTRS
 
         def blocked(*args, **kwargs):
@@ -348,6 +342,7 @@ def make_dangerous_attr_patches():
                 return original(*args, **kwargs)
             raise DisallowedFunctionCallError(target)
 
+        blocked._grader_original = original
         return {"args": (target, blocked), "kwargs": {"create": True}}
 
     return [make(t) for t in _DANGEROUS_ATTRS]

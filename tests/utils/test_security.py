@@ -10,7 +10,9 @@ import os
 import subprocess
 import sys
 import threading
+from contextlib import ExitStack
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -305,6 +307,17 @@ def _student_run(tmp_path, source):
     exec(code, {})  # noqa: S102 - exec is the point: forge the caller frame
 
 
+def test_dangerous_attr_patches_built_while_active_keep_real_original():
+    """Patches built under active patches must delegate to the real function."""
+    real_unlink = os.unlink
+    with ExitStack() as stack:
+        for p in make_dangerous_attr_patches():
+            stack.enter_context(patch(*p["args"], **p["kwargs"]))
+        nested = {p["args"][0]: p["args"][1] for p in make_dangerous_attr_patches()}
+
+    assert nested["os.unlink"]._grader_original is real_unlink
+
+
 def test_dangerous_attr_allows_os_unlink_during_library_import(tmp_path, fake_library):
     """A library removing a file while a student imports it is allowed."""
     victim = tmp_path / "lockfile"
@@ -545,7 +558,8 @@ def test_cold_matplotlib_font_cache_import_is_allowed(tmp_path):
     script = (
         "from generic_grader.utils.options import Options\n"
         "from generic_grader.utils.patches import custom_stack\n"
-        "with custom_stack(Options()):\n"
+        # Building a cold font cache can exceed the default 1 s time limit.
+        "with custom_stack(Options(time_limit=60)):\n"
         "    import matplotlib.pyplot\n"
         "print('OK')\n"
     )
