@@ -381,6 +381,46 @@ def test_dangerous_attr_blocks_student_pathlib_unlink(tmp_path):
     assert victim.exists()
 
 
+def test_dangerous_attr_blocks_student_helper_in_importlib_named_dir(tmp_path):
+    """A student file under a folder named `importlib` is not import machinery."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    helper = compile(
+        "import pathlib\n\n\ndef go(p):\n    pathlib.Path(p).unlink()\n",
+        str(tmp_path / "importlib" / "helper.py"),
+        "exec",
+    )
+    ns = {}
+    exec(helper, ns)  # noqa: S102 - exec is the point: forge the caller frame
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        ns["go"](str(victim))
+
+    assert victim.exists()
+
+
+def test_import_blocklist_blocks_student_helper_in_importlib_named_dir(tmp_path):
+    """A student callback under `importlib/` must not borrow its trusted caller."""
+    from generic_grader.utils import patches as patches_mod
+
+    trusted = compile(
+        "def call(f):\n    f()\n",
+        os.path.join(patches_mod._TRUSTED_IMPORT_DIRS[0], "fake_trusted_lib.py"),
+        "exec",
+    )
+    helper = compile(
+        "def go():\n    __import__('subprocess')\n",
+        str(tmp_path / "importlib" / "helper.py"),
+        "exec",
+    )
+    trusted_ns, helper_ns = {}, {}
+    exec(trusted, trusted_ns)  # noqa: S102 - exec is the point: forge the caller frame
+    exec(helper, helper_ns)  # noqa: S102 - exec is the point: forge the caller frame
+
+    with custom_stack(Options()), pytest.raises(DisallowedImportError):
+        trusted_ns["call"](helper_ns["go"])
+
+
 def test_dangerous_attr_blocks_callable_passed_to_library(tmp_path, fake_library):
     """A blocked callable handed to library code outside an import is blocked."""
     victim = tmp_path / "victim"
@@ -743,7 +783,7 @@ def test_caller_is_trusted_handles_top_of_stack(monkeypatch):
             self.f_code = type(
                 "C",
                 (),
-                {"co_filename": "/usr/lib/python/importlib/_bootstrap.py"},
+                {"co_filename": patches_mod._IMPORTLIB_DIR + "_bootstrap.py"},
             )()
 
     def boom(depth):

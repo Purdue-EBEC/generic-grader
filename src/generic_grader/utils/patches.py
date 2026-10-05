@@ -180,15 +180,20 @@ def _compute_trusted_import_dirs():
 
 _TRUSTED_IMPORT_DIRS = _compute_trusted_import_dirs()
 
-# Substrings used by `_caller_is_trusted` to skip over the import machinery,
-# the mock-patch shim, and our own wrapper module when walking the stack.
-# Precomputed at module load so each import-check call is cheap and isn't
-# affected by tests monkeypatching `os.path.realpath`.
+# Substrings used by `_caller_is_trusted` to skip over the mock-patch shim
+# and our own wrapper module (import machinery is skipped separately via
+# `_is_import_machinery`) when walking the stack.  Precomputed at module
+# load so each import-check call is cheap and isn't affected by tests
+# monkeypatching `os.path.realpath`.
 _CALLER_SKIP_SUBSTRINGS = (
-    os.sep + "importlib" + os.sep,
     os.sep + "unittest" + os.sep + "mock.py",
     os.path.realpath(__file__),
 )
+
+# The stdlib `importlib` package directory, exactly as it appears in
+# `co_filename`.  Matching the full directory (not a substring) stops student
+# files under a folder named `importlib` from posing as import machinery.
+_IMPORTLIB_DIR = os.path.dirname(importlib.__file__) + os.sep
 
 
 def _caller_is_trusted():
@@ -210,7 +215,9 @@ def _caller_is_trusted():
             return False  # Reached the top without finding a real caller.
         depth += 1
         filename = frame.f_code.co_filename
-        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
+        if _is_import_machinery(filename) or any(
+            s in filename for s in _CALLER_SKIP_SUBSTRINGS
+        ):
             continue
         # First non-skipped frame: classify it.
         return _in_trusted_dirs(filename)
@@ -248,6 +255,10 @@ def _library_import_is_calling(attr):
     A student calling a stdlib wrapper such as `Path.unlink`, passing a
     blocked callable to a library, or starting a thread has no such import
     frame and stays blocked.
+
+    Frames are classified by `co_filename`, which student code can forge with
+    `compile()`; like `_caller_is_trusted`, this guards against accidents and
+    casual misuse, not a determined adversary.
     """
     previous = None  # "trusted" or "import": kind of the frame below this one.
     depth = 1  # sys._getframe(0) is this function.
@@ -267,6 +278,7 @@ def _library_import_is_calling(attr):
             kind = "trusted"
         else:
             return previous == "import"
+        # Innermost frame: the library itself must be the one naming `attr`.
         if previous is None and (kind != "trusted" or attr not in code.co_names):
             return False
         previous = kind
@@ -274,9 +286,7 @@ def _library_import_is_calling(attr):
 
 def _is_import_machinery(filename):
     """Return True for the frozen or stdlib `importlib` frames."""
-    return filename.startswith("<frozen importlib") or (
-        os.sep + "importlib" + os.sep in filename
-    )
+    return filename.startswith(("<frozen importlib.", _IMPORTLIB_DIR))
 
 
 def make_import_blocklist_patches(extra_blocked=()):
