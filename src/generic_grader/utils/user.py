@@ -6,6 +6,7 @@ from io import StringIO
 
 from attrs import evolve
 
+from generic_grader.utils.attribution import report_grader_fault
 from generic_grader.utils.docs import get_wrapper, make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
     EndOfInputError,
@@ -253,8 +254,19 @@ class __User__:
                 self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
         except Exception as e:
             # TODO This function is going to be refactored
-            self.test.failureException = safe_exception_type(type(e))
-            msg = handle_error(e, error_msg)
+            if fault := report_grader_fault(e):
+                # A security exception raised from library code is a grader
+                # bug, not a student error.  `failureException` stays at its
+                # default: this is not a student exception type.
+                msg = "\n" + self.wrapper.fill(
+                    f"Your `{o.obj_name}` could not be checked because the "
+                    f"autograder encountered an internal error "
+                    f"({fault}). This is a bug "
+                    "in the autograder. Please notify your instructor."
+                )
+            else:
+                self.test.failureException = safe_exception_type(type(e))
+                msg = handle_error(e, error_msg)
         else:
             try:  # Check for left over entries.
                 next(self.entries)

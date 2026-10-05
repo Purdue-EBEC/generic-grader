@@ -6,6 +6,7 @@ from pathlib import Path
 
 from attrs import evolve
 
+from generic_grader.utils.attribution import report_grader_fault
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.exceptions import handle_error, safe_exception_type
 from generic_grader.utils.options import Options
@@ -138,8 +139,20 @@ class Importer:
                 + cls.wrapper.fill(hint)
             )
         except Exception as e:
-            fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
-            test.failureException = safe_exception_type(type(e))
+            if fault := report_grader_fault(e):
+                # A security exception raised from library code is a grader
+                # bug, not a student error.  Do not show the student a course
+                # hint for something they did not do.  `failureException`
+                # stays at its default: this is not a student exception type.
+                fail_msg = cls.wrapper.fill(
+                    f"The autograder encountered an internal error while "
+                    f"importing `{obj_name}` ({fault}). "
+                    "This is a bug in the autograder. "
+                    "Please notify your instructor."
+                )
+            else:
+                fail_msg = handle_error(e, f"Error while importing `{obj_name}`.")
+                test.failureException = safe_exception_type(type(e))
 
         # Fail outside of the except block
         # so that AssertionError(s) will be handled properly.

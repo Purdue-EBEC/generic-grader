@@ -54,6 +54,27 @@ pip install generic-grader
    python -m unittest tests/config.py
    ```
 
+### Instructor log for grader faults
+
+When a security error is raised from library code (for example matplotlib
+writing its font cache), the student sees a short "bug in the autograder"
+message.  The full traceback is logged to the `generic_grader` logger, which is
+silent by default so that it cannot end up in student-visible test output.
+
+To show it to instructors only, attach a handler to the real `sys.__stdout__`
+in the script that runs the tests (e.g. `run_tests.py`).  Test runners such as
+Gradescope's `JSONTestRunner` replace `sys.stdout` and `sys.stderr` with
+per-test buffers, but not `sys.__stdout__`.  Gradescope shows the script's
+stdout as "Autograder Output" to the teaching team unless `stdout_visibility`
+is set.
+
+``` python
+import logging
+import sys
+
+logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdout__))
+```
+
 
 ## Contributing
 

@@ -5,6 +5,7 @@ import pytest
 from attrs import evolve
 
 from generic_grader.utils.exceptions import (
+    DisallowedFunctionCallError,
     EndOfInputError,
     ExitError,
     ExtraEntriesError,
@@ -549,3 +550,63 @@ def test_end_of_input_error_message_formatting(fix_syspath):
     # The traceback header must be on its own line, not run together with the
     # preceding text (the original bug: newlines were stripped by re-formatting).
     assert "Traceback (most recent call last):\n" in error_str
+
+
+def test_call_obj_grader_internal_fault_reports_autograder_bug(
+    fix_syspath, monkeypatch, caplog
+):
+    """A security block tripped by library code is reported as a grader bug.
+
+    Regression for issue #198: a `DisallowedFunctionCallError` raised from
+    trusted library code must not be shown to the student as their own
+    mistake.
+    """
+    from generic_grader.utils import attribution as attribution_mod
+
+    libdir = fix_syspath / "fakelib"
+    libdir.mkdir()
+    (libdir / "helper.py").write_text(
+        "import os\n\ndef do_unlink(path):\n    os.unlink(path)\n"
+    )
+    target = fix_syspath / "lockfile"
+    target.write_text("")
+    fake_file = fix_syspath / "fake_module.py"
+    fake_file.write_text(
+        f"import helper\n\ndef main():\n    helper.do_unlink({str(target)!r})\n"
+    )
+    monkeypatch.syspath_prepend(str(libdir))
+    monkeypatch.setattr(attribution_mod, "_LIBRARY_DIRS", (str(libdir),))
+
+    test = FakeTest()
+    user = SubUser(test, Options(sub_module="fake_module"))
+    with caplog.at_level("ERROR", logger="generic_grader.attribution"):
+        with pytest.raises(AssertionError) as exc_info:
+            user.call_obj()
+
+    # The instructor-facing log keeps the diagnostics the student message omits.
+    (record,) = caplog.records
+    assert record.exc_info[0] is DisallowedFunctionCallError
+
+    message = str(exc_info.value)
+    assert "bug in the autograder" in " ".join(message.split())
+    assert "covered in the course" not in message
+    flat = " ".join(message.split())
+    assert "DisallowedFunctionCallError" in flat
+    assert "helper.py" in flat
+
+
+def test_call_obj_student_violation_reports_student_error(fix_syspath):
+    """A security block tripped by student code keeps its student message."""
+    target = fix_syspath / "victim"
+    target.write_text("")
+    fake_file = fix_syspath / "fake_module.py"
+    fake_file.write_text(f"import os\n\ndef main():\n    os.unlink({str(target)!r})\n")
+
+    test = FakeTest()
+    user = SubUser(test, Options(sub_module="fake_module"))
+    with pytest.raises(DisallowedFunctionCallError) as exc_info:
+        user.call_obj()
+
+    message = str(exc_info.value)
+    assert "not allowed in this course" in message
+    assert "bug in the autograder" not in message
