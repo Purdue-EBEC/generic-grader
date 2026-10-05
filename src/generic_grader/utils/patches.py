@@ -237,8 +237,9 @@ def _library_import_is_calling(attr):
 
     A blocked call is allowed only when all of the following hold:
 
-    * the immediate caller is trusted code whose source names `attr` (the
-      library chose to call it; it was not handed the callable);
+    * the immediate caller is trusted code whose bytecode mentions the name
+      `attr` (a heuristic: the library appears to call it itself rather than
+      being handed the callable; it matches the bare attribute name only);
     * every frame up to the first student frame is trusted or import
       machinery; and
     * the frame directly beneath that student frame is import machinery, so
@@ -247,6 +248,11 @@ def _library_import_is_calling(attr):
     A student calling a stdlib wrapper such as `Path.unlink`, passing a
     blocked callable to a library, or starting a thread has no such import
     frame and stays blocked.
+
+    Known limitation: a library imported lazily from inside a function the
+    student called (rather than directly by the student's `import`) has a
+    trusted frame beneath the student frame, so its import-time calls stay
+    blocked.
 
     Frames are classified by `co_filename`, which student code can forge with
     `compile()`; like `_caller_is_trusted`, this guards against accidents and
