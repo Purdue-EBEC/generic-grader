@@ -137,7 +137,10 @@ failing_cases = [
         "expected": {1, 2, 3, 4},
         "msg": (
             "Items in the first set but not the second:\n5",
-            "  The lengths of values returned from your `sub.func` function when\n  called as `func()` did not match the expected lengths.",
+            (
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths."
+            ),
         ),
     },
     {  # Got 2-5
@@ -146,8 +149,8 @@ failing_cases = [
         "msg": (
             "Items in the first set but not the second:\n5",
             (
-                "  The lengths of values returned from your `sub.func` function when\n  "
-                "called as `func()` did not match the expected lengths."
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths."
             ),
         ),
     },
@@ -156,7 +159,10 @@ failing_cases = [
         "expected": {1, 2, 3, 4, 5},
         "msg": (
             "Items in the second set but not the first:\n5",
-            "  The lengths of values returned from your `sub.func` function when\n  called as `func()` did not match the expected lengths.",
+            (
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths."
+            ),
         ),
     },
     {  # Got 1-5
@@ -164,7 +170,10 @@ failing_cases = [
         "expected": {1, 2, 3, 4},
         "msg": (
             "Items in the first set but not the second:\n5",
-            "  The lengths of values returned from your `sub.func` function when\n  called as `func()` did not match the expected lengths.",
+            (
+                "  The lengths of values returned from your `sub.func` function when\n"
+                "  called as `func()` did not match the expected lengths."
+            ),
         ),
     },
     {  # Got 1-6
@@ -194,10 +203,12 @@ failing_cases = [
         "func": func_seven,
         "expected": {1},
         "msg": (
-            "Hint:\n"
-            "  Your `sub.func` function when called as `func()` did not return a\n"
-            "  value that has a length. Make sure your function returns a value\n"
-            "  that supports the `len()` function.\n"
+            (
+                "Hint:\n"
+                "  Your `sub.func` function when called as `func()` did not return a\n"
+                "  value that has a length. Make sure your function returns a value\n"
+                "  that supports the `len()` function.\n"
+            ),
         ),
         "init": lambda *args, **kwargs: print("init has run"),
     },
