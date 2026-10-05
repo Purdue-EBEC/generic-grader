@@ -20,7 +20,7 @@ pip install generic-grader
 
    ``` python
    from parameterized import param
-   from generic_grader.style import comments # Import the tests you want to use
+   from generic_grader.style import comments  # Import the tests you want to use
    from generic_grader.utils.options import Options
 
    # Create tests by calling each test type's build method.
@@ -29,22 +29,22 @@ pip install generic-grader
    # The argument is a list of `param` objects, each with an `Options` object.
    # See the Options class for more information on the available options.
    test_01_TestCommentLength = comments.build(
-      [
-         param(
-             Options(
-                 sub_module="hello_user",
-                 hint="Check the volume of comments in your code.",
-                 entries=("Tim the Enchanter",),
-             ),
-         ),
-         param(
-             Options(
-                 sub_module="hello_user",
-                 hint="Check the volume of comments in your code.",
-                 entries=("King Arthur",),
-             ),
-         ),
-      ]
+       [
+           param(
+               Options(
+                   sub_module="hello_user",
+                   hint="Check the volume of comments in your code.",
+                   entries=("Tim the Enchanter",),
+               ),
+           ),
+           param(
+               Options(
+                   sub_module="hello_user",
+                   hint="Check the volume of comments in your code.",
+                   entries=("King Arthur",),
+               ),
+           ),
+       ]
    )
    ```
 

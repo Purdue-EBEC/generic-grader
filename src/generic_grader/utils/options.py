@@ -69,7 +69,7 @@ class Options:
     prop_kwargs: dict = Factory(dict)
 
     # Stats
-    expected_distribution: dict = {0: 0}
+    expected_distribution: dict = {0: 0}  # noqa: RUF008
     relative_tolerance: float = 1e-7
     absolute_tolerance: float = 0.0
 
@@ -95,17 +95,14 @@ class Options:
             if attr == "init":
                 expected_type = (Callable, type(None))
                 attr_type = f"<class 'function'> or {type(None)}. "
-            elif attr == "patches":
-                expected_type = list
-                attr_type = f"{list}. "
-            elif attr == "random_func_calls":
+            elif attr in ("patches", "random_func_calls"):
                 expected_type = list
                 attr_type = f"{list}. "
             else:
                 expected_type = annotations[attr]
                 attr_type = f"{annotations[attr]}. "
             if not isinstance(getattr(self, attr), expected_type):
-                raise ValueError(
+                raise TypeError(
                     f"`{attr}` must be of type "
                     + attr_type
                     + f"Got {type(getattr(self, attr))} instead."

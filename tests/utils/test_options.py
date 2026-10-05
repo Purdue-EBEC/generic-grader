@@ -37,22 +37,27 @@ def test_utils_options():
 typecheck_options = [
     {
         "options": {"init": ""},
+        "error_type": TypeError,
         "error": "`init` must be of type <class 'function'> or <class 'NoneType'>. Got <class 'str'> instead.",
     },
     {
         "options": {"patches": {}},
+        "error_type": TypeError,
         "error": "`patches` must be of type <class 'list'>. Got <class 'dict'> instead.",
     },
     {
         "options": {"entries": ""},
+        "error_type": TypeError,
         "error": "`entries` must be of type <class 'tuple'>. Got <class 'str'> instead.",
     },
     {
         "options": {"weight": "0"},
+        "error_type": TypeError,
         "error": "`weight` must be of type int | float. Got <class 'str'> instead.",
     },
     {
         "options": {"mode": "unknown"},
+        "error_type": ValueError,
         "error": "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'.",
     },
 ]
@@ -61,7 +66,7 @@ typecheck_options = [
 @pytest.mark.parametrize("case", typecheck_options)
 def test_typecheck_options(case):
     """Test that the runtime error is raised."""
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(case["error_type"]) as exc_info:
         Options(**case["options"])
     assert str(exc_info.value) == case["error"]
 

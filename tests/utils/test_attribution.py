@@ -24,7 +24,7 @@ def _run_as(filename, src):
     This forges the caller location the classifier inspects, so a test can
     pretend to be an installed library or a student submission.
     """
-    exec(compile(src, filename, "exec"), {})
+    exec(compile(src, filename, "exec"), {})  # noqa: S102 - exec forges the frame
 
 
 def _library_file():
@@ -45,9 +45,8 @@ def test_library_direct_unlink_is_internal_fault(tmp_path):
     target = tmp_path / "lockfile"
     target.write_text("")
 
-    with custom_stack(Options()):
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            _run_as(_library_file(), f"import os\nos.unlink({str(target)!r})\n")
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
+        _run_as(_library_file(), f"import os\nos.unlink({str(target)!r})\n")
 
     assert is_grader_internal_fault(info.value) is True
 
@@ -57,9 +56,8 @@ def test_student_direct_unlink_is_not_internal_fault(tmp_path):
     target = tmp_path / "victim"
     target.write_text("")
 
-    with custom_stack(Options()):
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            _run_as(_student_file(tmp_path), f"import os\nos.unlink({str(target)!r})\n")
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
+        _run_as(_student_file(tmp_path), f"import os\nos.unlink({str(target)!r})\n")
 
     assert is_grader_internal_fault(info.value) is False
 
@@ -78,12 +76,11 @@ def test_library_pathlib_unlink_is_internal_fault(tmp_path):
     target = tmp_path / "lockfile"
     target.write_text("")
 
-    with custom_stack(Options()):
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            _run_as(
-                _library_file(),
-                f"import pathlib\npathlib.Path({str(target)!r}).unlink()\n",
-            )
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
+        _run_as(
+            _library_file(),
+            f"import pathlib\npathlib.Path({str(target)!r}).unlink()\n",
+        )
 
     assert is_grader_internal_fault(info.value) is True
 
@@ -97,12 +94,11 @@ def test_student_pathlib_unlink_is_not_internal_fault(tmp_path):
     target = tmp_path / "victim"
     target.write_text("")
 
-    with custom_stack(Options()):
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            _run_as(
-                _student_file(tmp_path),
-                f"import pathlib\npathlib.Path({str(target)!r}).unlink()\n",
-            )
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
+        _run_as(
+            _student_file(tmp_path),
+            f"import pathlib\npathlib.Path({str(target)!r}).unlink()\n",
+        )
 
     assert is_grader_internal_fault(info.value) is False
 
@@ -152,7 +148,7 @@ def test_dynamically_compiled_frame_is_skipped():
 def test_frozen_frame_between_library_and_block_is_transparent():
     """`<frozen os>` frames (Python 3.11+) must not hide a library origin."""
     frozen_ns = {}
-    exec(
+    exec(  # noqa: S102 - exec forges the frame
         compile(
             "from generic_grader.utils.exceptions import DisallowedFunctionCallError\n"
             "def blocked():\n"
@@ -163,7 +159,9 @@ def test_frozen_frame_between_library_and_block_is_transparent():
         frozen_ns,
     )
     lib_ns = {}
-    exec(compile("def run(f):\n    f()\n", _library_file(), "exec"), lib_ns)
+    exec(  # noqa: S102 - exec forges the frame
+        compile("def run(f):\n    f()\n", _library_file(), "exec"), lib_ns
+    )
 
     with pytest.raises(DisallowedFunctionCallError) as info:
         lib_ns["run"](frozen_ns["blocked"])
@@ -182,9 +180,8 @@ def test_library_package_named_importlib_is_still_a_library():
     """Skipping must not be a substring match on path components."""
     path = os.path.join(attribution_mod._LIBRARY_DIRS[0], "importlib", "core.py")
 
-    with custom_stack(Options()):
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            _run_as(path, "import os\nos.unlink('x')\n")
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
+        _run_as(path, "import os\nos.unlink('x')\n")
 
     assert is_grader_internal_fault(info.value) is True
 
@@ -410,13 +407,14 @@ def test_known_limitation_student_callback_through_library_is_attributed_to_grad
     target = tmp_path / "victim"
     target.write_text("")
     lib_ns = {}
-    exec(compile("def apply(f, p):\n    f(p)\n", _library_file(), "exec"), lib_ns)
+    exec(  # noqa: S102 - exec forges the frame
+        compile("def apply(f, p):\n    f(p)\n", _library_file(), "exec"), lib_ns
+    )
 
-    with custom_stack(Options()):
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError) as info:
         import os as patched_os
 
-        with pytest.raises(DisallowedFunctionCallError) as info:
-            lib_ns["apply"](patched_os.unlink, str(target))
+        lib_ns["apply"](patched_os.unlink, str(target))
 
     assert target.exists()
     assert is_grader_internal_fault(info.value) is True

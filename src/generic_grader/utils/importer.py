@@ -138,7 +138,9 @@ class Importer:
                 + "\n\nHint:\n"
                 + cls.wrapper.fill(hint)
             )
-        except Exception as e:
+        # Broad catch is deliberate: any failure while importing student code
+        # must be classified (student error vs. grader fault), not propagated.
+        except Exception as e:  # noqa: BLE001
             if fault := report_grader_fault(e):
                 # A security exception raised from library code is a grader
                 # bug, not a student error.  Do not show the student a course

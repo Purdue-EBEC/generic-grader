@@ -71,7 +71,7 @@ def _compute_library_dirs():
         sysconfig.get_paths()["purelib"],
         sysconfig.get_paths()["platlib"],
         site.getusersitepackages(),
-        *getattr(site, "getsitepackages", lambda: [])(),
+        *getattr(site, "getsitepackages", list)(),
     }
     return tuple(sorted(os.path.realpath(p) for p in paths if p))
 

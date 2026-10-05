@@ -128,9 +128,11 @@ def test_make_exit_quit_patches_format():
 
 def test_stack_time():
     """Test that the custom stack properly freezes time."""
-    o = Options(fixed_time=datetime.datetime(2000, 1, 1, 1))
+    o = Options(fixed_time=datetime.datetime(2000, 1, 1, 1))  # noqa: DTZ001
     with custom_stack(o):
-        assert datetime.datetime.now() == datetime.datetime(2000, 1, 1, 1)
+        assert datetime.datetime.now() == datetime.datetime(  # noqa: DTZ001, DTZ005
+            2000, 1, 1, 1
+        )
 
 
 def test_stack_exit():
@@ -138,26 +140,24 @@ def test_stack_exit():
     o = Options(patches=make_exit_quit_patches())
     with custom_stack(o):
         with pytest.raises(ExitError):
-            exit()
+            exit()  # noqa: PLR1722 - exit() is the builtin under test
         with pytest.raises(QuitError):
-            quit()
+            quit()  # noqa: PLR1722 - quit() is the builtin under test
 
 
 def test_stack_timelimit():
     """Test that the custom stack properly patches time limit."""
     o = Options(time_limit=1)
-    with custom_stack(o):
-        with pytest.raises(UserTimeoutError):
-            while True:
-                time.sleep(1)
+    with custom_stack(o), pytest.raises(UserTimeoutError):
+        while True:
+            time.sleep(1)
 
 
 def test_stack_memorylimit():
     """Test that the custom stack properly patches memory limit."""
     o = Options()
-    with custom_stack(o):
-        with pytest.raises(MemoryError):
-            [1] * 100000000000
+    with custom_stack(o), pytest.raises(MemoryError):
+        [1] * 100000000000  # noqa: B018 - allocation is the point
 
 
 def test_stack_extra_patches():
@@ -165,6 +165,5 @@ def test_stack_extra_patches():
     o = Options(
         patches=[{"args": make_mock_function_raise_error("builtins.print", ValueError)}]
     )
-    with custom_stack(o):
-        with pytest.raises(ValueError):
-            print("Hello, world!")
+    with custom_stack(o), pytest.raises(ValueError):
+        print("Hello, world!")

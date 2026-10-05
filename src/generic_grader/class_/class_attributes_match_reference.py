@@ -45,32 +45,26 @@ def build(the_options):
                 o.init(self, o)
 
             # Construct the set of default object attributes.
-            nul_attrs = set(
+            nul_attrs = {
                 (type(value).__name__, name)
                 for (name, value) in inspect.getmembers(object)
-            )
+            }
             # Ignore missing docstrings.
             nul_attrs.add(("NoneType", "__doc__"))
 
             # Construct sets of the submitted and reference class attributes that
             # are not in default object.
             sub_class = Importer.import_obj(self, o.sub_module, o)
-            sub_attrs = (
-                set(
-                    (type(value).__name__, name)
-                    for (name, value) in inspect.getmembers(sub_class)
-                )
-                - nul_attrs
-            )
+            sub_attrs = {
+                (type(value).__name__, name)
+                for (name, value) in inspect.getmembers(sub_class)
+            } - nul_attrs
 
             ref_class = Importer.import_obj(self, o.ref_module, o)
-            ref_attrs = (
-                set(
-                    (type(value).__name__, name)
-                    for (name, value) in inspect.getmembers(ref_class)
-                )
-                - nul_attrs
-            )
+            ref_attrs = {
+                (type(value).__name__, name)
+                for (name, value) in inspect.getmembers(ref_class)
+            } - nul_attrs
 
             missing_attrs = sorted(ref_attrs - sub_attrs)
             extra_attrs = sorted(sub_attrs - ref_attrs)

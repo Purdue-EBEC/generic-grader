@@ -14,8 +14,6 @@ from generic_grader.utils.safe_equal import (
 class _DummyTestCase(unittest.TestCase):
     """Minimal TestCase used to call safe_assert_equal."""
 
-    pass
-
 
 @pytest.fixture()
 def tc():
@@ -35,9 +33,9 @@ def test_safe_assert_equal_small_diff_uses_assertEqual(tc):
     message = str(exc_info.value)
     # assertEqual's assertDictEqual produces ndiff output with +/- lines
     # and '^' character-level markers.
-    assert (
-        "^" in message
-    ), "Expected assertEqual-style diff with '^' markers for small values"
+    assert "^" in message, (
+        "Expected assertEqual-style diff with '^' markers for small values"
+    )
 
 
 def test_safe_assert_equal_large_diff_is_truncated(tc):
@@ -50,9 +48,9 @@ def test_safe_assert_equal_large_diff_is_truncated(tc):
     # The truncated repr should contain '...' from reprlib truncation.
     assert "..." in message, "Expected truncated repr with '...' for large values"
     # The message should NOT contain the full 500 keys.
-    assert (
-        "key_499" not in message
-    ), "Expected repr to be truncated, but found the last key"
+    assert "key_499" not in message, (
+        "Expected repr to be truncated, but found the last key"
+    )
 
 
 def test_safe_assert_equal_large_values_complete_quickly(tc):
@@ -67,9 +65,9 @@ def test_safe_assert_equal_large_values_complete_quickly(tc):
         safe_assert_equal(tc, large_a, large_b, msg="")
     elapsed = time.time() - start
 
-    assert (
-        elapsed < 10
-    ), f"safe_assert_equal on large diffs took {elapsed:.1f}s; expected < 10s"
+    assert elapsed < 10, (
+        f"safe_assert_equal on large diffs took {elapsed:.1f}s; expected < 10s"
+    )
 
 
 def test_safe_assert_equal_threshold_boundary(tc):

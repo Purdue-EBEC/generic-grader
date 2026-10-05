@@ -3,15 +3,18 @@
 import textwrap
 
 
-def make_call_str(func_name="main", args=[], kwargs={}):
+def make_call_str(func_name="main", args=None, kwargs=None):
     """Construct and return a function call string from its name, and
     arguments.
     """
+    args = [] if args is None else args
+    kwargs = {} if kwargs is None else kwargs
+
     # Create a list of position argument strings.
     args_lst = list(map(repr, args))
 
     # Add keyword argument strings.
-    args_lst.extend(f"{k}={repr(v)}" for k, v in kwargs.items())
+    args_lst.extend(f"{k}={v!r}" for k, v in kwargs.items())
 
     # Construct the function call with a comma separated list of arguments.
     call_str = f"{func_name}({', '.join(args_lst)})"

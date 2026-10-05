@@ -15,7 +15,7 @@ def array_diff_details(actual, expected, max_samples: int = 5) -> str:
     # Find indices where arrays differ
     try:
         diff_indices = np.argwhere(diff_mask)
-    except Exception:
+    except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
         diff_indices = None
 
     details = []
@@ -24,11 +24,11 @@ def array_diff_details(actual, expected, max_samples: int = 5) -> str:
             idx_t = tuple(int(i) for i in idx)
             try:
                 exp_val = expected[idx_t]
-            except Exception:
+            except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
                 exp_val = "<out-of-bounds>"
             try:
                 act_val = actual[idx_t]
-            except Exception:
+            except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
                 act_val = "<out-of-bounds>"
             details.append(f"at {idx_t}: expected={exp_val!r}, actual={act_val!r}")
     else:
@@ -49,7 +49,7 @@ def array_compare(
     try:
         # submitted code could do anything, so be safe.
         actual_dtype = actual.dtype
-    except Exception:
+    except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
         actual_dtype = None
 
     if expected_dtype != actual_dtype:
@@ -63,7 +63,7 @@ def array_compare(
     try:
         # submitted code could do anything, so be safe.
         actual_shape = actual.shape
-    except Exception:
+    except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
         actual_shape = None
 
     if expected_shape != actual_shape:

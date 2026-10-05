@@ -266,9 +266,11 @@ def test_import_grader_internal_fault_reports_autograder_bug(
     monkeypatch.setattr(attribution_mod, "_LIBRARY_DIRS", (str(fix_syspath),))
 
     test = FakeTest()
-    with caplog.at_level("ERROR", logger="generic_grader.attribution"):
-        with pytest.raises(AssertionError) as exc_info:
-            Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
+    with (
+        caplog.at_level("ERROR", logger="generic_grader.attribution"),
+        pytest.raises(AssertionError) as exc_info,
+    ):
+        Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
 
     # The instructor-facing log keeps the diagnostics the student message omits.
     (record,) = caplog.records

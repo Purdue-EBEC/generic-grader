@@ -20,9 +20,8 @@ time_limit_cases = [
 def test_time_limit(case):
     """Test the time_limit function."""
     if case["result"] is not None:
-        with pytest.raises(case["result"]):
-            with time_limit(1):
-                time.sleep(case["length"])
+        with pytest.raises(case["result"]), time_limit(1):
+            time.sleep(case["length"])
     else:  #  The ideal case where no exception is raised
         with time_limit(1):
             time.sleep(case["length"])
@@ -51,9 +50,8 @@ def test_memory_limit(case):
     usage is well below the limit.
     """
     if case["result"] is not None:
-        with pytest.raises(case["result"]):
-            with memory_limit(1):
-                " " * int(case["usage"] * 2**30)
+        with pytest.raises(case["result"]), memory_limit(1):
+            " " * int(case["usage"] * 2**30)
     else:
         with memory_limit(1):
             " " * int(case["usage"] * 2**30)
@@ -61,9 +59,8 @@ def test_memory_limit(case):
 
 def test_memory_limit_message():
     """Test that the MemoryError includes a descriptive message."""
-    with pytest.raises(MemoryError, match="maximum allowed memory"):
-        with memory_limit(1):
-            " " * int(2 * 2**30)
+    with pytest.raises(MemoryError, match="maximum allowed memory"), memory_limit(1):
+        " " * (2 * 2**30)
 
 
 def test_memory_limit_restores_on_success():
@@ -83,9 +80,8 @@ def test_memory_limit_restores_on_error():
     import resource
 
     soft_before, hard_before = resource.getrlimit(resource.RLIMIT_AS)
-    with pytest.raises(MemoryError):
-        with memory_limit(1):
-            " " * int(2 * 2**30)
+    with pytest.raises(MemoryError), memory_limit(1):
+        " " * (2 * 2**30)
     soft_after, hard_after = resource.getrlimit(resource.RLIMIT_AS)
     assert soft_before == soft_after
     assert hard_before == hard_after
