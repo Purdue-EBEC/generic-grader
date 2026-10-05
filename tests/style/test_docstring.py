@@ -585,7 +585,7 @@ def case_test_method(request, fix_syspath):
         weight=case["weight"],
     )
     built_class = build(options)
-    built_instance = built_class(methodName=f'{case["method"]}')
+    built_instance = built_class(methodName=f"{case['method']}")
     test_method = getattr(built_instance, case["method"])
 
     return case, options, test_method

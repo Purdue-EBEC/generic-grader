@@ -45,21 +45,19 @@ def test_class_is_defined_doc_func_test_string(built_instance):
     )
 
 
-class_text_1 = "class FakeClass:\n" "    pass\n"
+class_text_1 = "class FakeClass:\n    pass\n"
 
-class_text_2 = "import unittest\n" "class FakeClass(unittest.TestCase):\n" "    pass\n"
+class_text_2 = "import unittest\nclass FakeClass(unittest.TestCase):\n    pass\n"
 
-class_text_3 = (
-    "class FakeClass:\n" "    def __init__(self):\n" "        self.fake_attr = 1\n"
-)
+class_text_3 = "class FakeClass:\n    def __init__(self):\n        self.fake_attr = 1\n"
 
-class_text_4 = "class FakeClass:\n" "    def fake_method(self):\n" "        return 1\n"
+class_text_4 = "class FakeClass:\n    def fake_method(self):\n        return 1\n"
 
-class_text_5 = "def fake_function():\n" "    pass\n"
+class_text_5 = "def fake_function():\n    pass\n"
 
-class_text_6 = "def FakeClass():\n" "    pass\n"
+class_text_6 = "def FakeClass():\n    pass\n"
 
-class_text_7 = "def main():\n" "    class FakeClass:\n" "        pass\n"
+class_text_7 = "def main():\n    class FakeClass:\n        pass\n"
 
 
 passing_cases = [

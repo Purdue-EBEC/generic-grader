@@ -14,7 +14,7 @@ def make_call_str(func_name="main", args=[], kwargs={}):
     args_lst.extend(f"{k}={repr(v)}" for k, v in kwargs.items())
 
     # Construct the function call with a comma separated list of arguments.
-    call_str = f'{func_name}({", ".join(args_lst)})'
+    call_str = f"{func_name}({', '.join(args_lst)})"
 
     return call_str
 

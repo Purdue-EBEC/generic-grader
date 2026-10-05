@@ -119,7 +119,7 @@ one_file_time = (
     "        f.write(str(time.time()))\n"
 )
 two_files_time = one_file_time + (
-    "    with open('file2.txt', 'w') as f:\n" "        f.write(str(time.time()))\n"
+    "    with open('file2.txt', 'w') as f:\n        f.write(str(time.time()))\n"
 )
 passing_cases = [
     {
