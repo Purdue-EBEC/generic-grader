@@ -69,7 +69,7 @@ class Options:
     prop_kwargs: dict = Factory(dict)
 
     # Stats
-    expected_distribution: dict = {0: 0}  # noqa: RUF008
+    expected_distribution: dict = Factory(lambda: {0: 0})
     relative_tolerance: float = 1e-7
     absolute_tolerance: float = 0.0
 
