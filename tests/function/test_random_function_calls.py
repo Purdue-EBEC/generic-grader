@@ -77,7 +77,7 @@ passing_cases = [
             random_func_calls=["sub.func1"],
             expected_perms={("sub.func1",)},
         ),
-        "file_text": ("def func1():\n" "    pass\n" "def main():\n" "   func1()\n"),
+        "file_text": ("def func1():\n    pass\ndef main():\n   func1()\n"),
     },
     {  # Check that it works as expected with two functions
         "options": Options(

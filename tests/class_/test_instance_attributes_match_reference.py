@@ -88,8 +88,7 @@ cases = [
             obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
+            "Check that `Dummy` instance attribute names and types match the reference."
         ),
     },
     {  # Passing case with multiple classes defined
@@ -103,8 +102,7 @@ cases = [
             obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
+            "Check that `Dummy` instance attribute names and types match the reference."
         ),
     },
     {  # Correct method and wrong attribute in submission
@@ -118,8 +116,7 @@ cases = [
             obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
+            "Check that `Dummy` instance attribute names and types match the reference."
         ),
         "message": "Instances of the `Dummy` class have incorrect attributes.",
     },
@@ -134,8 +131,7 @@ cases = [
             obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
+            "Check that `Dummy` instance attribute names and types match the reference."
         ),
         "message": "Instances of the `Dummy` class have incorrect attributes.",
     },
@@ -150,8 +146,7 @@ cases = [
             obj_name="Dummy",
         ),
         "doc_func_test_string": (
-            "Check that `Dummy` instance attribute names and types"
-            " match the reference."
+            "Check that `Dummy` instance attribute names and types match the reference."
         ),
         "message": "Instances of the `Dummy` class have incorrect attributes.",
     },

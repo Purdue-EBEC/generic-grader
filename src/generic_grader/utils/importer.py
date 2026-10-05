@@ -51,8 +51,7 @@ class Importer:
         filename = Path(frame.filename).name
         if line:
             return (
-                f"The error occurred in `{filename}` on line {frame.lineno}: "
-                f"`{line}`."
+                f"The error occurred in `{filename}` on line {frame.lineno}: `{line}`."
             )
         return f"The error occurred in `{filename}` on line {frame.lineno}."
 

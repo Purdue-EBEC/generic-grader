@@ -79,8 +79,8 @@ class __User__:
         if lines:
             string = (
                 "\n\nline |Input/Output Log:\n"
-                + f'{70*"-"}\n'
-                + "".join([f"{n+1:4d} |{line}" for n, line in enumerate(lines)])
+                + f"{70 * '-'}\n"
+                + "".join([f"{n + 1:4d} |{line}" for n, line in enumerate(lines)])
             )
         else:
             string = ""

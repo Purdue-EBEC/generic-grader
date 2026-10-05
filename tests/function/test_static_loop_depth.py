@@ -49,10 +49,10 @@ def test_static_loop_depth_has_test_method(built_instance):
 cases = [
     {  # Equal to required depth with default depth
         "submission": (
-            "def main():\n" "    for i in range(1):\n" "       print('exact depth')"
+            "def main():\n    for i in range(1):\n       print('exact depth')"
         ),
         "reference": (
-            "def main():\n" "    for i in range(1):\n" "       print(f'exact depth')"
+            "def main():\n    for i in range(1):\n       print(f'exact depth')"
         ),
         "result": "pass",
         "score": 1,
@@ -104,7 +104,7 @@ cases = [
             "           print('more than required depth')"
         ),
         "reference": (
-            "def main():\n" "    for i in range(1):\n" "       print(f'exact depth')"
+            "def main():\n    for i in range(1):\n       print(f'exact depth')"
         ),
         "result": "pass",
         "score": 1,
@@ -121,9 +121,9 @@ cases = [
         ),
     },
     {  # Less than required depth
-        "submission": ("def main():\n" "    pass"),
+        "submission": ("def main():\n    pass"),
         "reference": (
-            "def main():\n" "    for i in range(1):\n" "       print(f'exact depth')"
+            "def main():\n    for i in range(1):\n       print(f'exact depth')"
         ),
         "result": AssertionError,
         "score": 0,
