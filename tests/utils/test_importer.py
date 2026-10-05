@@ -3,7 +3,12 @@ from types import FunctionType
 
 import pytest
 
-from generic_grader.utils.exceptions import ExitError, QuitError, UserTimeoutError
+from generic_grader.utils.exceptions import (
+    DisallowedFunctionCallError,
+    ExitError,
+    QuitError,
+    UserTimeoutError,
+)
 from generic_grader.utils.importer import Importer
 from generic_grader.utils.options import Options
 
@@ -239,3 +244,57 @@ def test_import_location_hint_falls_back_when_source_line_unavailable(monkeypatc
 
     hint = Importer._import_location_hint(ModuleNotFoundError("x"))
     assert hint == "The error occurred in `student.py` on line 7."
+
+
+def test_import_grader_internal_fault_reports_autograder_bug(
+    fix_syspath, monkeypatch, caplog
+):
+    """A security block tripped by library code is reported as a grader bug.
+
+    Regression for issue #198: a `DisallowedFunctionCallError` raised from
+    trusted library code (e.g. matplotlib's font-cache cleanup) must not be
+    shown to the student as their own mistake.
+    """
+    from generic_grader.utils import attribution as attribution_mod
+
+    target = fix_syspath / "lockfile"
+    target.write_text("")
+    fake_file = fix_syspath / "fake_module.py"
+    fake_file.write_text(f"import os\nos.unlink({str(target)!r})\nfake_obj = 1\n")
+
+    # Pretend the module is installed library code.
+    monkeypatch.setattr(attribution_mod, "_LIBRARY_DIRS", (str(fix_syspath),))
+
+    test = FakeTest()
+    with caplog.at_level("ERROR", logger="generic_grader.attribution"):
+        with pytest.raises(AssertionError) as exc_info:
+            Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
+
+    # The instructor-facing log keeps the diagnostics the student message omits.
+    (record,) = caplog.records
+    assert record.exc_info[0] is DisallowedFunctionCallError
+
+    message = str(exc_info.value)
+    assert "bug in the autograder" in " ".join(message.split())
+    assert "instructor" in message
+    # The misleading course hint must not be shown for a grader fault.
+    assert "covered in the course" not in message
+    flat = " ".join(message.split())
+    assert "DisallowedFunctionCallError" in flat
+    assert "fake_module.py" in flat
+
+
+def test_import_student_violation_reports_student_error(fix_syspath):
+    """A security block tripped by student code keeps its student message."""
+    target = fix_syspath / "victim"
+    target.write_text("")
+    fake_file = fix_syspath / "fake_module.py"
+    fake_file.write_text(f"import os\nos.unlink({str(target)!r})\nfake_obj = 1\n")
+
+    test = FakeTest()
+    with pytest.raises(DisallowedFunctionCallError) as exc_info:
+        Importer.import_obj(test, "fake_module", Options(obj_name="fake_obj"))
+
+    message = str(exc_info.value)
+    assert "not allowed in this course" in message
+    assert "bug in the autograder" not in message
