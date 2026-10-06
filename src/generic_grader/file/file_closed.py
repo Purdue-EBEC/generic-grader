@@ -59,11 +59,16 @@ def build(the_options):
             """
             o = options
 
-            # Build a list of unclosed files (ResourceWarnings).
-            unclosed_files = []
-            for warning in self.warning_list:
-                if issubclass(warning.category, ResourceWarning):
-                    unclosed_files.append(f"`{warning.source.name}`")
+            # Build a list of unclosed files (ResourceWarnings). Sort the
+            # names so the message is deterministic: the order in which
+            # ResourceWarnings are emitted follows garbage-collection order,
+            # which varies across Python versions (e.g. 3.14).
+            unclosed_names = sorted(
+                warning.source.name
+                for warning in self.warning_list
+                if issubclass(warning.category, ResourceWarning)
+            )
+            unclosed_files = [f"`{name}`" for name in unclosed_names]
 
             file_list_str = "file " if len(unclosed_files) == 1 else "files "
             file_list_str += oxford_list(unclosed_files)
