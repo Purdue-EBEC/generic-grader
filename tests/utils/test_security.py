@@ -7,7 +7,12 @@ integration introduced for issue #98 (defense-in-depth Layer 1).
 import builtins
 import importlib
 import os
+import subprocess
+import sys
+import threading
+from contextlib import ExitStack
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -265,6 +270,319 @@ def test_dangerous_attr_blocks_resource_setrlimit():
 
 
 # ---------------------------------------------------------------------------
+# Trusted library operations during a student import (issue #197)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def fake_library(tmp_path, monkeypatch):
+    """Return a function that installs a trusted fake library module.
+
+    The module is written to a directory that is added to `sys.path` and to
+    the trusted directories, so importing it behaves like importing an
+    installed third-party package.
+    """
+    from generic_grader.utils import patches as patches_mod
+
+    site = tmp_path / "site"
+    site.mkdir()
+    monkeypatch.syspath_prepend(str(site))
+    monkeypatch.setattr(
+        patches_mod,
+        "_TRUSTED_IMPORT_DIRS",
+        (*patches_mod._TRUSTED_IMPORT_DIRS, os.path.realpath(site)),
+    )
+
+    def install(name, source):
+        (site / f"{name}.py").write_text(source)
+        # Drop the module on exit so each test imports it fresh.
+        monkeypatch.delitem(sys.modules, name, raising=False)
+
+    return install
+
+
+def _student_run(tmp_path, source):
+    """Run `source` as if it were a student module."""
+    code = compile(source, str(tmp_path / "student.py"), "exec")
+    exec(code, {})  # noqa: S102 - exec is the point: forge the caller frame
+
+
+def test_dangerous_attr_patches_built_while_active_keep_real_original():
+    """Patches built under active patches must delegate to the real function."""
+    real_unlink = os.unlink
+    with ExitStack() as stack:
+        for p in make_dangerous_attr_patches():
+            stack.enter_context(patch(*p["args"], **p["kwargs"]))
+        nested = {p["args"][0]: p["args"][1] for p in make_dangerous_attr_patches()}
+
+    assert nested["os.unlink"]._grader_original is real_unlink
+
+
+def test_dangerous_attr_allows_os_unlink_during_library_import(tmp_path, fake_library):
+    """A library removing a file while a student imports it is allowed."""
+    victim = tmp_path / "lockfile"
+    victim.write_text("")
+    fake_library("lib_unlink", f"import os\nos.unlink({str(victim)!r})\n")
+
+    with custom_stack(Options()):
+        _student_run(tmp_path, "import lib_unlink\n")
+
+    assert not victim.exists()
+
+
+def test_dangerous_attr_allows_pathlib_unlink_during_library_import(
+    tmp_path, fake_library
+):
+    """Library -> pathlib -> os.unlink (the matplotlib chain) is allowed."""
+    victim = tmp_path / "lockfile"
+    victim.write_text("")
+    fake_library(
+        "lib_pathlib",
+        f"import pathlib\npathlib.Path({str(victim)!r}).unlink()\n",
+    )
+
+    with custom_stack(Options()):
+        _student_run(tmp_path, "import lib_pathlib\n")
+
+    assert not victim.exists()
+
+
+def test_dangerous_attr_allows_import_module_driven_library_unlink(
+    tmp_path, fake_library
+):
+    """`importlib.import_module` of a library is also an import."""
+    victim = tmp_path / "lockfile"
+    victim.write_text("")
+    fake_library("lib_dynamic", f"import os\nos.unlink({str(victim)!r})\n")
+
+    with custom_stack(Options()):
+        _student_run(
+            tmp_path, "import importlib\nimportlib.import_module('lib_dynamic')\n"
+        )
+
+    assert not victim.exists()
+
+
+def test_dangerous_attr_blocks_student_unlink_after_library_import(
+    tmp_path, fake_library
+):
+    """Importing a library does not unlock blocked calls for student code."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    fake_library("lib_quiet", "VALUE = 1\n")
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(
+            tmp_path,
+            f"import lib_quiet, os\nos.unlink({str(victim)!r})\n",
+        )
+
+    assert victim.exists()
+
+
+def test_dangerous_attr_blocks_student_pathlib_unlink(tmp_path):
+    """Student -> pathlib -> os.unlink stays blocked (no import involved)."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(
+            tmp_path,
+            f"import pathlib\npathlib.Path({str(victim)!r}).unlink()\n",
+        )
+
+    assert victim.exists()
+
+
+def test_dangerous_attr_blocks_student_helper_in_importlib_named_dir(tmp_path):
+    """A student file under a folder named `importlib` is not import machinery."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    helper = compile(
+        "import pathlib\n\n\ndef go(p):\n    pathlib.Path(p).unlink()\n",
+        str(tmp_path / "importlib" / "helper.py"),
+        "exec",
+    )
+    ns = {}
+    exec(helper, ns)  # noqa: S102 - exec is the point: forge the caller frame
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        ns["go"](str(victim))
+
+    assert victim.exists()
+
+
+def test_import_blocklist_blocks_student_helper_in_importlib_named_dir(tmp_path):
+    """A student callback under `importlib/` must not borrow its trusted caller."""
+    from generic_grader.utils import patches as patches_mod
+
+    trusted = compile(
+        "def call(f):\n    f()\n",
+        os.path.join(patches_mod._TRUSTED_IMPORT_DIRS[0], "fake_trusted_lib.py"),
+        "exec",
+    )
+    helper = compile(
+        "def go():\n    __import__('subprocess')\n",
+        str(tmp_path / "importlib" / "helper.py"),
+        "exec",
+    )
+    trusted_ns, helper_ns = {}, {}
+    exec(trusted, trusted_ns)  # noqa: S102 - exec is the point: forge the caller frame
+    exec(helper, helper_ns)  # noqa: S102 - exec is the point: forge the caller frame
+
+    with custom_stack(Options()), pytest.raises(DisallowedImportError):
+        trusted_ns["call"](helper_ns["go"])
+
+
+def test_dangerous_attr_blocks_callable_passed_to_library(tmp_path, fake_library):
+    """A blocked callable handed to library code outside an import is blocked."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    fake_library("lib_apply", "def apply(f, p):\n    f(p)\n")
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(
+            tmp_path,
+            f"import lib_apply, os\nlib_apply.apply(os.unlink, {str(victim)!r})\n",
+        )
+
+    assert victim.exists()
+
+
+def test_dangerous_attr_blocks_callable_invoked_by_library_during_import(
+    tmp_path, fake_library, monkeypatch
+):
+    """A student-planted callback fired by a library at import time is blocked.
+
+    The library never mentions `unlink`, so it is not the one choosing to
+    call it; the student supplied the callable.
+    """
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    monkeypatch.setattr(builtins, "CB", None, raising=False)
+    fake_library("lib_callback", f"import builtins\nbuiltins.CB({str(victim)!r})\n")
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(
+            tmp_path,
+            "import builtins, os\nbuiltins.CB = os.unlink\nimport lib_callback\n",
+        )
+
+    assert victim.exists()
+
+
+def test_dangerous_attr_blocks_library_thread_with_no_student_frame(
+    tmp_path, fake_library, monkeypatch
+):
+    """A library function run as a thread target has no student frame vouching for it."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    fake_library(
+        "lib_thread",
+        "import os\n\n\ndef run(p, go):\n    go.wait()\n    os.unlink(p)\n",
+    )
+    lib_thread = importlib.import_module("lib_thread")
+    errors = []
+    monkeypatch.setattr(threading, "excepthook", lambda args: errors.append(args))
+    go = threading.Event()
+
+    # Start the thread first so coverage's trace hook is not installed under
+    # the patches (sys.settrace is blocked inside the stack).
+    thread = threading.Thread(target=lib_thread.run, args=(victim, go))
+    thread.start()
+    with custom_stack(Options()):
+        go.set()
+        thread.join()
+
+    assert [e.exc_type for e in errors] == [DisallowedFunctionCallError]
+    assert victim.exists()
+
+
+@pytest.mark.parametrize(
+    "call",
+    [
+        "import signal\nsignal.signal(signal.SIGALRM, signal.SIG_DFL)\n",
+        "import signal\nsignal.alarm(0)\n",
+        "import resource\nresource.setrlimit(resource.RLIMIT_CPU, (1, 1))\n",
+        "import sys\nsys.settrace(None)\n",
+    ],
+)
+def test_dangerous_attr_never_trusts_limit_escapes(tmp_path, fake_library, call):
+    """Attributes that guard the grader's own limits stay blocked for libraries."""
+    fake_library("lib_escape", call)
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(tmp_path, "import lib_escape\n")
+
+
+def test_dangerous_attr_missing_attribute_still_raises(
+    tmp_path, fake_library, monkeypatch
+):
+    """An attribute absent on this platform has no original to delegate to."""
+    from generic_grader.utils import patches as patches_mod
+
+    monkeypatch.setattr(
+        patches_mod,
+        "_DANGEROUS_ATTRS",
+        (*patches_mod._DANGEROUS_ATTRS, "os.no_such_fn"),
+    )
+    fake_library("lib_missing", "import os\nos.no_such_fn()\n")
+
+    with custom_stack(Options()), pytest.raises(DisallowedFunctionCallError):
+        _student_run(tmp_path, "import lib_missing\n")
+
+
+def test_dangerous_attr_unresolvable_frame_path_is_not_trusted(
+    tmp_path, fake_library, monkeypatch
+):
+    """A frame whose path cannot be resolved is treated as student code."""
+    from generic_grader.utils import patches as patches_mod
+
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    fake_library("lib_realpath", f"import os\nos.unlink({str(victim)!r})\n")
+
+    def boom(_):
+        raise OSError("forced")
+
+    with custom_stack(Options()):
+        monkeypatch.setattr(patches_mod.os.path, "realpath", boom)
+        with pytest.raises(DisallowedFunctionCallError):
+            _student_run(tmp_path, "import lib_realpath\n")
+
+    assert victim.exists()
+
+
+def test_cold_matplotlib_font_cache_import_is_allowed(tmp_path):
+    """Regression for #197: a cold matplotlib font cache must not abort the import."""
+    script = (
+        "from generic_grader.utils.options import Options\n"
+        "from generic_grader.utils.patches import custom_stack\n"
+        # Building a cold font cache can exceed the default 1 s time limit.
+        "with custom_stack(Options(time_limit=60)):\n"
+        "    import matplotlib.pyplot\n"
+        "print('OK')\n"
+    )
+    env = {
+        **os.environ,
+        "MPLCONFIGDIR": str(tmp_path / "mpl_cold_cache"),
+        "MPLBACKEND": "Agg",
+    }
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "OK" in result.stdout
+
+
+# ---------------------------------------------------------------------------
 # Sandboxed open()
 # ---------------------------------------------------------------------------
 
@@ -479,7 +797,7 @@ def test_caller_is_trusted_handles_top_of_stack(monkeypatch):
             self.f_code = type(
                 "C",
                 (),
-                {"co_filename": "/usr/lib/python/importlib/_bootstrap.py"},
+                {"co_filename": patches_mod._IMPORTLIB_DIR + "_bootstrap.py"},
             )()
 
     def boom(depth):

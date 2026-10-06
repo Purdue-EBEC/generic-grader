@@ -112,6 +112,20 @@ _DANGEROUS_ATTRS = (
     "sys.setprofile",
 )
 
+# Attributes that protect the grader's own limits and patches.  No caller,
+# trusted or not, may use these while the security patches are active.
+_NEVER_TRUST_ATTRS = frozenset(
+    {
+        "signal.signal",
+        "signal.alarm",
+        "signal.setitimer",
+        "resource.setrlimit",
+        "resource.prlimit",
+        "sys.settrace",
+        "sys.setprofile",
+    }
+)
+
 
 # Paths the sandboxed open() refuses by default.  These cover the most
 # common exfiltration / grade-tampering targets on Gradescope.
@@ -166,15 +180,20 @@ def _compute_trusted_import_dirs():
 
 _TRUSTED_IMPORT_DIRS = _compute_trusted_import_dirs()
 
-# Substrings used by `_caller_is_trusted` to skip over the import machinery,
-# the mock-patch shim, and our own wrapper module when walking the stack.
-# Precomputed at module load so each import-check call is cheap and isn't
-# affected by tests monkeypatching `os.path.realpath`.
+# Substrings used by `_caller_is_trusted` to skip over the mock-patch shim
+# and our own wrapper module (import machinery is skipped separately via
+# `_is_import_machinery`) when walking the stack.  Precomputed at module
+# load so each import-check call is cheap and isn't affected by tests
+# monkeypatching `os.path.realpath`.
 _CALLER_SKIP_SUBSTRINGS = (
-    os.sep + "importlib" + os.sep,
     os.sep + "unittest" + os.sep + "mock.py",
     os.path.realpath(__file__),
 )
+
+# The stdlib `importlib` package directory, exactly as it appears in
+# `co_filename`.  Matching the full directory (not a substring) stops student
+# files under a folder named `importlib` from posing as import machinery.
+_IMPORTLIB_DIR = os.path.dirname(importlib.__file__) + os.sep
 
 
 def _caller_is_trusted():
@@ -196,14 +215,76 @@ def _caller_is_trusted():
             return False  # Reached the top without finding a real caller.
         depth += 1
         filename = frame.f_code.co_filename
-        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
+        if _is_import_machinery(filename) or any(
+            s in filename for s in _CALLER_SKIP_SUBSTRINGS
+        ):
             continue
         # First non-skipped frame: classify it.
+        return _in_trusted_dirs(filename)
+
+
+def _in_trusted_dirs(filename):
+    """Return True if `filename` lives in a trusted directory."""
+    try:
+        real = os.path.realpath(filename)
+    except (OSError, ValueError):
+        return False
+    return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
+
+
+def _library_import_is_calling(attr):
+    """Return True if a library, run by a student `import`, is calling `attr`.
+
+    A blocked call is allowed only when all of the following hold:
+
+    * the immediate caller is trusted code whose bytecode mentions the name
+      `attr` (a heuristic: the library appears to call it itself rather than
+      being handed the callable; it matches the bare attribute name only);
+    * every frame up to the first student frame is trusted or import
+      machinery; and
+    * the frame directly beneath that student frame is import machinery, so
+      the library is running because the student imported it.
+
+    A student calling a stdlib wrapper such as `Path.unlink`, passing a
+    blocked callable to a library, or starting a thread has no such import
+    frame and stays blocked.
+
+    Known limitation: a library imported lazily from inside a function the
+    student called (rather than directly by the student's `import`) has a
+    trusted frame beneath the student frame, so its import-time calls stay
+    blocked.
+
+    Frames are classified by `co_filename`, which student code can forge with
+    `compile()`; like `_caller_is_trusted`, this guards against accidents and
+    casual misuse, not a determined adversary.
+    """
+    previous = None  # "trusted" or "import": kind of the frame below this one.
+    depth = 1  # sys._getframe(0) is this function.
+    while True:
         try:
-            real = os.path.realpath(filename)
-        except (OSError, ValueError):
+            frame = sys._getframe(depth)
+        except ValueError:
+            return False  # No student frame vouches for the call.
+        depth += 1
+        code = frame.f_code
+        filename = code.co_filename
+        if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
+            continue
+        if _is_import_machinery(filename):
+            kind = "import"
+        elif filename.startswith("<frozen") or _in_trusted_dirs(filename):
+            kind = "trusted"
+        else:
+            return previous == "import"
+        # Innermost frame: the library itself must be the one naming `attr`.
+        if previous is None and (kind != "trusted" or attr not in code.co_names):
             return False
-        return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
+        previous = kind
+
+
+def _is_import_machinery(filename):
+    """Return True for the frozen or stdlib `importlib` frames."""
+    return filename.startswith(("<frozen importlib.", _IMPORTLIB_DIR))
 
 
 def make_import_blocklist_patches(extra_blocked=()):
@@ -246,14 +327,28 @@ def make_dangerous_attr_patches():
     """Patch dangerous attributes on otherwise-allowed modules so calls raise
     `DisallowedFunctionCallError`.
 
+    Calls made by a trusted library while the student imports it (see
+    `_library_import_is_calling`) are delegated to the real function, since
+    libraries such as matplotlib delete their own lock files at import.
+    Attributes in `_NEVER_TRUST_ATTRS` always raise.
+
     `create=True` keeps the patch usable on attributes that may not exist on
     all platforms (e.g. `os.fork` is POSIX-only).
     """
 
     def make(target):
+        module_name, attr = target.rsplit(".", 1)
+        original = getattr(importlib.import_module(module_name), attr, None)
+        # Unwrap if the patches are already active so we never delegate to a wrapper.
+        original = getattr(original, "_grader_original", original)
+        trustable = original is not None and target not in _NEVER_TRUST_ATTRS
+
         def blocked(*args, **kwargs):
+            if trustable and _library_import_is_calling(attr):
+                return original(*args, **kwargs)
             raise DisallowedFunctionCallError(target)
 
+        blocked._grader_original = original
         return {"args": (target, blocked), "kwargs": {"create": True}}
 
     return [make(t) for t in _DANGEROUS_ATTRS]
