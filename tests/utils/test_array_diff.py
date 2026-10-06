@@ -63,6 +63,31 @@ def test_array_diff_details_propagates(monkeypatch):
         array_diff_details(a, b)
 
 
+def test_array_diff_details_uses_tolerances():
+    """Differences below np.isclose defaults but above the given tolerance are reported."""
+    a = np.array([0.5, 0.25, 0.125], dtype=np.float32)
+    b = (a + np.float32(5.96e-08)).astype(np.float32)
+
+    # Loose np.isclose defaults (rtol=1e-5, atol=1e-8) consider these equal.
+    assert "no differing indices found" in array_diff_details(
+        a, b, rtol=1e-5, atol=1e-8
+    )
+
+    # With the tighter tolerances used by array_compare, the difference is reported.
+    text = array_diff_details(a, b, rtol=1e-07, atol=0.0)
+    assert "no differing indices found" not in text
+    assert "at (0,)" in text
+
+
+def test_array_diff_details_respects_atol():
+    """A difference within atol is not reported when atol is supplied."""
+    a = np.array([0.0, 0.0, 0.0])
+    b = np.array([0.0, 1e-9, 0.0])
+
+    text = array_diff_details(a, b, rtol=0.0, atol=1e-8)
+    assert "no differing indices found" in text
+
+
 # Test cases for array_compare function.
 
 
@@ -211,6 +236,39 @@ def test_array_compare_tolerance_outside_atol():
     equal, details = array_compare(a, b, rtol=0.0, atol=1e-8)
     assert not equal
     assert "at (1,)" in details
+
+
+def test_array_compare_failure_reports_differing_indices():
+    """A failing comparison must not report 'no differing indices found'.
+
+    Regression test for issue #207: array_compare decides equality with the
+    caller's tolerances, but array_diff_details used np.isclose defaults, so a
+    failure could be reported with the self-contradictory message
+    'Details: no differing indices found'.
+    """
+    a = np.array([0.5, 0.25, 0.125], dtype=np.float32)
+    b = (a + np.float32(5.96e-08)).astype(np.float32)
+
+    equal, details = array_compare(a, b)
+    assert not equal
+    assert "no differing indices found" not in details
+    assert "at (0,)" in details
+
+
+def test_array_compare_passes_tolerances_to_details():
+    """array_compare forwards its rtol/atol to array_diff_details."""
+    a = np.array([0.0, 0.0, 0.0])
+    b = np.array([0.0, 1e-6, 0.0])
+
+    # Outside atol -> failure, and the differing index is reported.
+    equal, details = array_compare(a, b, rtol=0.0, atol=1e-8)
+    assert not equal
+    assert "at (1,)" in details
+
+    # Within atol -> equal, so no details are produced.
+    equal, details = array_compare(a, b, rtol=0.0, atol=1e-5)
+    assert equal
+    assert details == ""
 
 
 def test_array_compare_2d_arrays():
