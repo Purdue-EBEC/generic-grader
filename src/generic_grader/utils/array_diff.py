@@ -2,9 +2,16 @@
 
 import numpy as np
 
+DEFAULT_RTOL = 1e-07
+DEFAULT_ATOL = 0.0
+
 
 def array_diff_details(
-    actual, expected, rtol: float = 1e-07, atol: float = 0.0, max_samples: int = 5
+    actual,
+    expected,
+    rtol: float = DEFAULT_RTOL,
+    atol: float = DEFAULT_ATOL,
+    max_samples: int = 5,
 ) -> str:
     """Return a short text describing differences between two numpy arrays.
 
@@ -48,7 +55,11 @@ def array_diff_details(
 
 
 def array_compare(
-    actual, expected, rtol: float = 1e-07, atol: float = 0.0, max_samples: int = 5
+    actual,
+    expected,
+    rtol: float = DEFAULT_RTOL,
+    atol: float = DEFAULT_ATOL,
+    max_samples: int = 5,
 ):
     """Compare two numpy arrays and return (equal, details).
 
