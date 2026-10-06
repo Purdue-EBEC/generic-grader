@@ -2,12 +2,26 @@
 
 import numpy as np
 
+DEFAULT_RTOL = 1e-07
+DEFAULT_ATOL = 0.0
 
-def array_diff_details(actual, expected, max_samples: int = 5) -> str:
-    """Return a short text describing differences between two numpy arrays."""
+
+def array_diff_details(
+    actual,
+    expected,
+    rtol: float = DEFAULT_RTOL,
+    atol: float = DEFAULT_ATOL,
+    max_samples: int = 5,
+) -> str:
+    """Return a short text describing differences between two numpy arrays.
+
+    ``rtol`` and ``atol`` must match the tolerances used to decide equality
+    (see :func:`array_compare`) so the reported differences are consistent with
+    that decision.
+    """
 
     if np.issubdtype(expected.dtype, np.floating):
-        diff_mask = ~np.isclose(actual, expected)
+        diff_mask = ~np.isclose(actual, expected, rtol=rtol, atol=atol)
     else:
         # Use elementwise inequality; for structured arrays this can raise
         diff_mask = actual != expected
@@ -32,13 +46,20 @@ def array_diff_details(actual, expected, max_samples: int = 5) -> str:
                 act_val = "<out-of-bounds>"
             details.append(f"at {idx_t}: expected={exp_val!r}, actual={act_val!r}")
     else:
-        details.append("no differing indices found")
+        details.append(
+            "no differing indices found within the reporting tolerance"
+            f" (rtol={rtol!r}, atol={atol!r})"
+        )
 
     return "\nDetails: " + "\n".join(details)
 
 
 def array_compare(
-    actual, expected, rtol: float = 1e-07, atol: float = 0.0, max_samples: int = 5
+    actual,
+    expected,
+    rtol: float = DEFAULT_RTOL,
+    atol: float = DEFAULT_ATOL,
+    max_samples: int = 5,
 ):
     """Compare two numpy arrays and return (equal, details).
 
@@ -81,4 +102,6 @@ def array_compare(
     if equal:
         return True, ""
 
-    return False, array_diff_details(actual, expected, max_samples=max_samples)
+    return False, array_diff_details(
+        actual, expected, rtol=rtol, atol=atol, max_samples=max_samples
+    )
