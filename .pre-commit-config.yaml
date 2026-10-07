@@ -23,3 +23,7 @@ repos:
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
+  - repo: https://github.com/commitizen-tools/commitizen
+    rev: v4.19.1
+    hooks:
+      - id: commitizen
