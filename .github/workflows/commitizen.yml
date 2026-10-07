@@ -1,0 +1,26 @@
+name: Check Commit Convention
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pr-title:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12.8"
+      - name: Install commitizen
+        # Keep this pin in sync with the dev extra in pyproject.toml and the
+        # pre-commit hook rev in .pre-commit-config.yaml.
+        run: pip install commitizen==4.19.1
+      - name: Check PR title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: cz check --message "$PR_TITLE"
