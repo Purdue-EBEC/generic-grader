@@ -4,7 +4,7 @@
 
 **Goal:** Adopt commitizen so every `generic-grader` release bumps the version and updates a generated `CHANGELOG.md` in one command, with conventional-commit enforcement.
 
-**Architecture:** commitizen (`cz`) becomes the release tool. `[tool.commitizen]` in `pyproject.toml` configures the `uv` version provider (updates `pyproject.toml` + `uv.lock`), `v$version` tags, annotated tags, and `major_version_zero`. `make bump` wraps `cz bump --changelog`. A hand-curated `0.2.10` section seeds `CHANGELOG.md`; cz auto-generates from `0.2.11` onward. Enforcement is a CI job checking the PR title plus a local `commit-msg` pre-commit hook.
+**Architecture:** commitizen (`cz`) becomes the release tool. `[tool.commitizen]` in `pyproject.toml` configures the `uv` version provider (updates `pyproject.toml` + `uv.lock`), `v$version` tags, annotated tags, and `major_version_zero`. `make bump` wraps `cz bump --changelog`. A hand-curated `0.2.10` section seeds `CHANGELOG.md`; cz auto-generates from `0.2.11` onward. Enforcement is a local `commit-msg` pre-commit hook plus a CI job checking the PR title as a backstop.
 
 **Tech Stack:** Python 3.11+, uv, commitizen 4.19.1, pre-commit, GitHub Actions.
 
@@ -59,7 +59,7 @@ annotated_tag = true
 major_version_zero = true
 changelog_incremental = true
 changelog_start_rev = "v0.2.10"
-bump_message = "Bump version to $new_version"
+bump_message = "bump: version $current_version → $new_version"
 ```
 
 Do **not** add a `name` key. It is only used by the `commitizen` version
@@ -78,8 +78,10 @@ Expected: prints `0.2.9` (the current `project.version`).
 
 - [ ] **Step 5: Verify the version provider is wired up**
 
-Run: `uv run cz info`
-Expected: output includes `version_provider: uv` and `tag_format: v$version`.
+Run: `uv run cz bump --dry-run`
+Expected: output includes `tag to create: v0.2.9` (proves `version_provider`
+and `tag_format` are read). Note: `cz info` in commitizen 4.19.1 prints only
+commit-format help, not config, so it is not a useful check here.
 
 - [ ] **Step 6: Commit**
 
@@ -325,9 +327,11 @@ Releases are versioned and documented with
 [commitizen](https://commitizen-tools.github.io/commitizen/). Commit messages
 and pull request titles must follow the
 [Conventional Commits](https://www.conventionalcommits.org/) format
-(`feat:`, `fix:`, `docs:`, `build:`, `ci:`, `chore:`, ...). Because pull
-requests are squash-merged, the **PR title** is what appears in the changelog;
-a CI job checks it.
+(`feat:`, `fix:`, `docs:`, `build:`, `ci:`, `chore:`, ...). Pull requests are
+rebase-merged, so every commit lands on `main` individually and the **commit
+messages** are what appear in the changelog. Keep PR history clean and
+conventional; the local `commit-msg` hook enforces this, and a CI job that
+checks the PR title is a backstop.
 
 To cut a release:
 
@@ -378,8 +382,9 @@ Expected: output shows `bump: version 0.2.9 → 0.2.10` and `tag to create: v0.2
 - [ ] **Step 3: Perform the bump (no changelog generation)**
 
 Run: `uv run cz bump 0.2.10 --allow-no-commit --yes`
-Expected: version files updated, commit `Bump version to 0.2.10` created, tag
-`v0.2.10` created. No new changelog section is generated (the curated one stays).
+Expected: version files updated, commit `bump: version 0.2.9 → 0.2.10` created,
+tag `v0.2.10` created. No new changelog section is generated (the curated one
+stays).
 
 - [ ] **Step 4: Verify all three files changed and the tag exists**
 
@@ -417,6 +422,11 @@ Expected: `main` and `v0.2.10` pushed.
 
 Run: `make publish`
 Expected: `dist/` built, package uploaded, tags pushed.
+
+> **Merge-strategy note.** Pull requests are rebase-merged, so the `bump:`
+> commit and the `v0.2.10` tag created in Step 3 land on `main` intact — no tag
+> re-creation is needed. (A squash merge would orphan the tag and require
+> re-creating it on `main` before `make publish`.)
 
 ---
 
