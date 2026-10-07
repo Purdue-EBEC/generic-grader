@@ -38,7 +38,7 @@ classifiers = [
 "Bug Tracker" = "https://github.com/Purdue-EBEC/generic-grader/issues"
 
 [project.optional-dependencies]
-dev = ["build", "coverage", "pytest", "pytest-cov", "pre-commit>=3,<5", "twine"]
+dev = ["build", "commitizen==4.19.1", "coverage", "pytest", "pytest-cov", "pre-commit>=3,<5", "twine"]
 
 [tool.hatch.build]
 exclude = ["docs/", "htmlcov/", "tests/"]
@@ -48,3 +48,15 @@ exclude = ["docs/", "htmlcov/", "tests/"]
 minversion = "6.0"
 addopts = "-ra --quiet --cov=generic_grader --cov=tests --cov-report=term-missing --cov-report=xml --cov-report=html"
 testpaths = ["tests"]
+
+[tool.commitizen]
+version_provider = "uv"
+tag_format = "v$version"
+annotated_tag = true
+major_version_zero = true
+changelog_incremental = true
+changelog_start_rev = "v0.2.10"
+bump_message = "bump: version $current_version → $new_version"
+# The stray uppercase `V0.1.21` tag predates the `v$version` convention; ignore
+# it so cz does not warn on every changelog run.
+ignored_tag_formats = ["V$version"]
