@@ -35,20 +35,18 @@ Two motivations, weighted equally:
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Changelog form | Auto-generated from commits | Repo already has clean PR titles; avoids hand-maintenance drift |
+| Changelog form | Auto-generated from commits | Repo already has clean commit messages; avoids hand-maintenance drift |
 | Generator | commitizen (`cz`) | Python tool, installs via `uv` as a dev dependency; `cz bump` replaces `make bump` |
 | Commit convention | Conventional commits, going forward | Enables grouping into Added/Fixed/Changed sections |
-| Enforcement | PR-title CI check **and** local `commit-msg` hook | Squash merges mean PR titles drive the changelog; the local hook helps direct committers |
+| Enforcement | Local `commit-msg` hook **and** PR-title CI check | Rebase merges mean commit messages drive the changelog; the local hook enforces them, the CI check is a backstop |
 | First entry | Hand-curate `0.2.10` | The 13 commits since `v0.2.9` are non-conventional, so cz would emit an empty section |
 
-## Key constraint: squash merges
+## Key constraint: rebase merges
 
-History shows PRs are squash-merged: commit subjects on `main` are PR titles
-with `(#NNN)` appended, e.g. `Thread rtol/atol through array_diff_details (#207)
-(#209)`. The changelog is therefore driven by **PR titles**, not individual
-local commits. A local `commit-msg` hook alone cannot govern what lands on
-`main`; a CI check against the PR title is what actually enforces the
-convention.
+Pull requests are rebase-merged, so every commit in a PR lands on `main`
+individually. The changelog is therefore driven by the **commit messages**, not
+the PR title. The local `commit-msg` hook is the primary enforcement point; a
+CI check against the PR title is a backstop.
 
 ## Components
 
@@ -64,7 +62,7 @@ annotated_tag = true             # matches existing annotated tags
 major_version_zero = true        # 0.x: breaking changes bump MINOR, not MAJOR
 changelog_incremental = true     # append, do not regenerate the whole file
 changelog_start_rev = "v0.2.10"  # cz generates from 0.2.11 onward
-bump_message = "Bump version to $new_version"   # matches existing commit style
+bump_message = "bump: version $current_version → $new_version"   # conventional, passes the commit-msg hook
 ```
 
 Do **not** set `name`. It is only needed by the `commitizen` version provider;
@@ -150,7 +148,7 @@ commit / PR titles, run `make bump`, review, run `make publish`.
 ## Data flow
 
 ```
-conventional PR title  ──►  squash-merge to main
+conventional commits  ──►  rebase-merge to main
                                    │
                                    ▼
                           make bump  (uv run cz bump)
