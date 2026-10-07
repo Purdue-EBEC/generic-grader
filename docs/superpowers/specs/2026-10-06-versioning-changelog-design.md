@@ -58,16 +58,26 @@ Add `commitizen` to the `dev` optional-dependencies and add configuration:
 
 ```toml
 [tool.commitizen]
-name = "generic-grader"
 version_provider = "uv"          # updates pyproject.toml AND uv.lock
 tag_format = "v$version"         # matches existing v0.2.9 tags
 annotated_tag = true             # matches existing annotated tags
 major_version_zero = true        # 0.x: breaking changes bump MINOR, not MAJOR
-update_changelog_on_bump = true  # cz bump writes CHANGELOG.md
 changelog_incremental = true     # append, do not regenerate the whole file
 changelog_start_rev = "v0.2.10"  # cz generates from 0.2.11 onward
 bump_message = "Bump version to $new_version"   # matches existing commit style
 ```
+
+Do **not** set `name`. It is only needed by the `commitizen` version provider;
+with `version_provider = "uv"` it makes cz try to locate an installed package
+and fail with "The committer has not been found in the system." (verified
+against commitizen 4.19.1).
+
+Changelog generation is requested by the `Makefile` target (`cz bump
+--changelog`) rather than by `update_changelog_on_bump = true`. Reason: the
+0.2.10 section is hand-curated, and `update_changelog_on_bump` would make the
+0.2.10 bump emit an empty auto-generated section that duplicates it. Keeping the
+flag out of the config lets the one-time 0.2.10 bump run without changelog
+generation while every later `make bump` still generates one.
 
 Notes:
 
@@ -96,14 +106,19 @@ Dependency bumps and lint chores are omitted from the curated entry.
 
 ### `Makefile`
 
-`bump` becomes a thin wrapper:
+`bump` becomes a thin wrapper that also generates the changelog:
 
 ```makefile
 bump:
-	uv run cz bump
+	uv run cz bump --changelog
 ```
 
 `publish` is unchanged (`build` + `uv publish` + `git push --follow-tags`).
+
+The one-time 0.2.10 release is run directly as `uv run cz bump 0.2.10
+--allow-no-commit` (no `--changelog`), because the 0.2.10 section is
+hand-curated and the commits since `v0.2.9` are non-conventional (so cz cannot
+detect an increment on its own).
 
 ### `.pre-commit-config.yaml`
 
@@ -177,6 +192,6 @@ conventional PR title  ──►  squash-merge to main
 1. Add config + dev dependency; `uv sync`.
 2. Add `CHANGELOG.md` with the curated `0.2.10` section.
 3. Update `Makefile`, `.pre-commit-config.yaml`, CI, and README.
-4. Run `make bump` to produce `0.2.10` (version + tag; changelog already
-   present).
+4. Run `uv run cz bump 0.2.10 --allow-no-commit` to produce `0.2.10` (version +
+   tag; changelog already present).
 5. Review, then `make publish`.
