@@ -10,3 +10,11 @@ updates:
       python-requirements:
         patterns:
           - "*"
+    # Dependabot's default commit messages ("Bump urllib3 from 2.7.0 to
+    # 2.8.0") are not conventional commits, so prefix them to satisfy the
+    # conventional-commit check. The prefix does not add these commits to the
+    # changelog: commitizen's default change_type_map only covers feat, fix,
+    # refactor, and perf.
+    commit-message:
+      prefix: "build"
+      prefix-development: "build"
