@@ -10,6 +10,9 @@ __pycache__/
 *.swo
 tmp/
 
+# git worktrees
+.worktrees/
+
 # distribution / packaging
 dist/
 
