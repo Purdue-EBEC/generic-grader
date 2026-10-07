@@ -158,10 +158,12 @@ logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdou
    uv sync --extra dev
    ```
 
-7. Install the pre-commit hooks.
+7. Install the pre-commit hooks. The `commit-msg` hook type is what enforces
+   conventional commit messages locally, so install it explicitly.
 
    ``` bash
    pre-commit install
+   pre-commit install --hook-type commit-msg
    ```
 
 8. Run the tests.
@@ -177,3 +179,35 @@ logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdou
    ``` bash
    deactivate
    ```
+
+## Releasing
+
+Releases are versioned and documented with
+[commitizen](https://commitizen-tools.github.io/commitizen/). Commit messages
+and pull request titles must follow the
+[Conventional Commits](https://www.conventionalcommits.org/) format
+(`feat:`, `fix:`, `docs:`, `build:`, `ci:`, `chore:`, ...). Pull requests are
+rebase-merged, so every commit lands on `main` individually and the **commit
+messages** are what appear in the changelog. Keep PR history clean and
+conventional; the local `commit-msg` hook enforces this, and a CI job that
+checks the PR title is a backstop.
+
+To cut a release:
+
+1. Make sure `main` is up to date and the working tree is clean.
+2. Run `make bump`. This bumps the version in `pyproject.toml` and `uv.lock`,
+   prepends a new section to `CHANGELOG.md`, commits, and creates an annotated
+   `vX.Y.Z` tag.
+3. Review the commit and changelog with `git log -1` and `git show`.
+4. Run `make publish` to build, upload to PyPI, and push the tag.
+
+By default commitizen only bumps for `feat`, `fix`, `perf`, and `refactor`
+commits. If the commits since the last release are only `docs`, `build`, or
+`chore`, `cz bump` fails with `NO_COMMITS_TO_BUMP`; force a patch bump with
+`uv run cz bump --increment PATCH --changelog` (or add `--allow-no-commit` to
+bump even when no eligible commits are found). If the bump commit is rejected
+by the local `commit-msg` hook (for example because a pre-commit hook
+auto-fixed a file), re-run with `uv run cz bump --retry`.
+
+While the project is at `0.x`, breaking changes bump the minor version (for
+example `0.2.10` to `0.3.0`) rather than the major version.
