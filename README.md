@@ -162,10 +162,25 @@ These test types work with `language="octave"` today:
   fresh Octave subprocesses and asserts the produced files differ.
 * `file.file_is_identical` — byte-for-byte comparison; strict about
   trailing whitespace and line endings.
+* `function.function_return_values_match_reference` — compares the
+  value(s) returned by the student's Octave function against the
+  reference's.  Return values are captured via a JSON sidecar
+  written by `jsonencode` inside the Octave subprocess and decoded
+  on the Python side; scalars round-trip as `int`/`float`, row/col
+  vectors as `numpy.ndarray`, and multi-return `[a, b] = f(x)` as
+  Python tuples.
+* `function.function_random_return_length` — asserts `len(f(...))`
+  falls in an expected set of lengths.  Works for Octave functions
+  that return sized objects (row vectors, matrices); bare scalars
+  correctly trigger the standard “did not return a value that has
+  a length” hint.
+* `function.random_func_return_range` — collects the set of scalar
+  return values across repeated calls and asserts it matches an
+  `expected_set`.  Octave scalars come back as Python `float`, so
+  `expected_set` values should be floats too.
 
-Follow-on releases will add support for function return-value tests
-(`function.function_return_values_match_reference` and friends), plot
-tests (`image.plot_prop_matches_reference`), and a language guard for
+Follow-on releases will add plot tests
+(`image.plot_prop_matches_reference`) and a language guard for
 the AST/inspect-based tests (`style.*`, `class_.*`, and
 `function.static_loop_depth`) that fundamentally can't run against
 `.m` files.
