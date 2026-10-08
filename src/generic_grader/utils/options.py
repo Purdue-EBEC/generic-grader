@@ -17,6 +17,11 @@ def options_to_params(options):
 class Options:
     # Base
     weight: int | float = 0
+    # Language backend used to run ref_module / sub_module.  See
+    # generic_grader.runtimes for the list of supported runtimes.  The
+    # default preserves the legacy in-process Python behavior; set to
+    # "octave" to run GNU Octave (.m) submissions.
+    language: str = "python"
     init: Callable | None = None
     ref_module: str = "tests.reference"
     sub_module: str = ""
@@ -136,4 +141,15 @@ class Options:
         if self.mode not in ["exactly", "less than", "more than", "approximately"]:
             raise ValueError(
                 "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'."
+            )
+        # Deferred import to avoid a circular dependency (runtimes.python
+        # imports Options for typing convenience).  Runtimes register
+        # themselves at import time, so this import also populates the
+        # registry consulted by RUNTIMES.get().
+        from generic_grader.runtimes import RUNTIMES
+
+        if self.language not in RUNTIMES:
+            supported = ", ".join(sorted(RUNTIMES))
+            raise ValueError(
+                f"`language` must be one of: {supported}. Got {self.language!r}."
             )
