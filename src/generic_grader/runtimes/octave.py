@@ -255,6 +255,99 @@ def _decode_returned_values(payload):
 
 
 # ---------------------------------------------------------------------------
+# Plot artifact capture
+# ---------------------------------------------------------------------------
+def _build_plot_capture_snippet(plot_sidecar_path: str) -> str:
+    """Return an Octave snippet that serialises every open figure.
+
+    The snippet walks every open figure and each of its non-legend
+    axes, then writes a JSON payload of the shape::
+
+        {
+          "figures": [
+            {
+              "axes": [
+                {
+                  "title": ..., "xlabel": ..., "ylabel": ...,
+                  "xlim": [xmin, xmax], "ylim": [ymin, ymax],
+                  "xticklabels": [...], "yticklabels": [...],
+                  "lines": [{"xdata": [...], "ydata": [...],
+                             "color": [r, g, b]}, ...]
+                },
+                ...
+              ]
+            },
+            ...
+          ]
+        }
+
+    Legend axes (``tag == 'legend'``) are skipped so
+    :func:`utils.octave_plot.get_property` sees only the drawing axes.
+    Errors inside the snippet are swallowed (the outer ``try/catch``
+    still exits 0) so a broken student figure can't wipe out an
+    otherwise-passing return-value check.
+    """
+    escaped = plot_sidecar_path.replace("'", "''")
+    return dedent(
+        f"""\
+        try
+                gg_plot_payload__ = struct();
+                gg_plot_figs__ = findall(0, 'Type', 'figure');
+                gg_plot_figs__ = sort(gg_plot_figs__);
+                gg_plot_figures_cell__ = {{}};
+                for gg_plot_fi__ = 1:length(gg_plot_figs__)
+                  gg_plot_fig__ = gg_plot_figs__(gg_plot_fi__);
+                  gg_plot_axes__ = findall(gg_plot_fig__, 'Type', 'axes');
+                  gg_plot_axes_cell__ = {{}};
+                  for gg_plot_ai__ = 1:length(gg_plot_axes__)
+                    gg_plot_ax__ = gg_plot_axes__(gg_plot_ai__);
+                    if strcmp(get(gg_plot_ax__, 'tag'), 'legend')
+                      continue;
+                    endif
+                    gg_plot_ax_payload__ = struct();
+                    gg_plot_ax_payload__.title = get(get(gg_plot_ax__, 'title'), 'string');
+                    gg_plot_ax_payload__.xlabel = get(get(gg_plot_ax__, 'xlabel'), 'string');
+                    gg_plot_ax_payload__.ylabel = get(get(gg_plot_ax__, 'ylabel'), 'string');
+                    gg_plot_ax_payload__.xlim = get(gg_plot_ax__, 'xlim');
+                    gg_plot_ax_payload__.ylim = get(gg_plot_ax__, 'ylim');
+                    gg_plot_xtl__ = get(gg_plot_ax__, 'xticklabel');
+                    if ischar(gg_plot_xtl__)
+                      gg_plot_xtl__ = cellstr(gg_plot_xtl__);
+                    endif
+                    gg_plot_ytl__ = get(gg_plot_ax__, 'yticklabel');
+                    if ischar(gg_plot_ytl__)
+                      gg_plot_ytl__ = cellstr(gg_plot_ytl__);
+                    endif
+                    gg_plot_ax_payload__.xticklabels = gg_plot_xtl__;
+                    gg_plot_ax_payload__.yticklabels = gg_plot_ytl__;
+                    gg_plot_lines__ = findobj(gg_plot_ax__, 'Type', 'line');
+                    gg_plot_lines_cell__ = {{}};
+                    for gg_plot_li__ = 1:length(gg_plot_lines__)
+                      gg_plot_ln__ = struct();
+                      gg_plot_ln__.xdata = get(gg_plot_lines__(gg_plot_li__), 'xdata');
+                      gg_plot_ln__.ydata = get(gg_plot_lines__(gg_plot_li__), 'ydata');
+                      gg_plot_c__ = get(gg_plot_lines__(gg_plot_li__), 'color');
+                      gg_plot_ln__.color = gg_plot_c__(:)';
+                      gg_plot_lines_cell__{{end+1}} = gg_plot_ln__;
+                    endfor
+                    gg_plot_ax_payload__.lines = gg_plot_lines_cell__;
+                    gg_plot_axes_cell__{{end+1}} = gg_plot_ax_payload__;
+                  endfor
+                  gg_plot_fig_payload__ = struct('axes', {{gg_plot_axes_cell__}});
+                  gg_plot_figures_cell__{{end+1}} = gg_plot_fig_payload__;
+                endfor
+                gg_plot_payload__.figures = gg_plot_figures_cell__;
+                gg_plot_fid__ = fopen('{escaped}', 'w');
+                fprintf(gg_plot_fid__, '%s', jsonencode(gg_plot_payload__));
+                fclose(gg_plot_fid__);
+              catch
+                % Plot capture is best-effort — swallow so a broken
+                % figure doesn't fail an otherwise-passing test.
+              end_try_catch"""
+    )
+
+
+# ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
 class OctaveRuntime:
@@ -341,6 +434,14 @@ class OctaveRuntime:
         is_script = not options.args and not options.kwargs
         sidecar_path: str | None = None
         isolated_dir: str | None = None
+        # Always allocate a plot sidecar; the harness inside the child
+        # writes it after the student code runs so that plot tests can
+        # compare properties without matplotlib.  ``run`` cleans it up
+        # in the ``finally`` below, whether or not any figures existed.
+        fd, plot_sidecar_path = tempfile.mkstemp(
+            prefix="gg_octave_plot_", suffix=".json"
+        )
+        os.close(fd)
         if not is_script:
             # ``delete=False`` because Octave, not Python, writes the
             # file — we open, close, and hand the path across the
@@ -367,7 +468,9 @@ class OctaveRuntime:
             script_dir = isolated_dir
             stem = options.obj_name
 
-        eval_expr = self._build_eval_expression(options, stem, sidecar_path)
+        eval_expr = self._build_eval_expression(
+            options, stem, sidecar_path, plot_sidecar_path
+        )
         argv = [
             executable,
             "--no-gui",
@@ -434,15 +537,23 @@ class OctaveRuntime:
                 )
 
             returned = self._read_sidecar(sidecar_path)
-            return RuntimeResult(returned_values=returned)
+            plot_artifact = self._read_plot_sidecar(plot_sidecar_path)
+            artifacts: dict = {}
+            if plot_artifact is not None:
+                artifacts["plot"] = plot_artifact
+            return RuntimeResult(returned_values=returned, artifacts=artifacts)
         finally:
-            # Always try to clean up the sidecar — including on early
+            # Always try to clean up the sidecars — including on early
             # exceptions above.  Ignore "already gone" races.
             if sidecar_path is not None:
                 try:
                     os.unlink(sidecar_path)
                 except FileNotFoundError:  # pragma: no cover — race
                     pass
+            try:
+                os.unlink(plot_sidecar_path)
+            except FileNotFoundError:  # pragma: no cover — race
+                pass
             if isolated_dir is not None:
                 shutil.rmtree(isolated_dir, ignore_errors=True)
 
@@ -451,7 +562,10 @@ class OctaveRuntime:
     # ------------------------------------------------------------------
     @staticmethod
     def _build_eval_expression(
-        options: Options, stem: str, sidecar_path: str | None = None
+        options: Options,
+        stem: str,
+        sidecar_path: str | None = None,
+        plot_sidecar_path: str | None = None,
     ) -> str:
         """Construct the ``--eval`` argument for the Octave subprocess.
 
@@ -522,11 +636,30 @@ class OctaveRuntime:
                     f"jsonencode(gg_ret__));\n"
                     f"              fclose(gg_fid__);"
                 )
+        # When a plot sidecar is requested (production ``run`` always
+        # requests one), we force the ``gnuplot`` toolkit and hidden
+        # figures so tests never require an X server, and we emit a
+        # capture harness after the student body that writes the JSON
+        # payload consumed by :func:`_read_plot_sidecar`.  The header
+        # runs unconditionally — even student code that never touches
+        # plots is safe because setting a default toolkit is a no-op
+        # when no figure is created.
+        header = ""
+        capture = ""
+        if plot_sidecar_path is not None:
+            header = (
+                "graphics_toolkit('gnuplot');\n"
+                "              set(0, 'DefaultFigureVisible', 'off');\n"
+                "              "
+            )
+            capture = "\n              " + _build_plot_capture_snippet(
+                plot_sidecar_path
+            )
         return dedent(
             f"""\
             try
               addpath(pwd);
-              {body}
+              {header}{body}{capture}
             catch err
               fprintf(stderr, '%s\\n', err.message);
               exit(1);
@@ -534,6 +667,29 @@ class OctaveRuntime:
             exit(0);
             """
         )
+
+    @staticmethod
+    def _read_plot_sidecar(plot_sidecar_path: str):
+        """Read the JSON sidecar the plot-capture harness wrote.
+
+        Returns the parsed dictionary payload on success — shaped like
+        ``{"figures": [{"axes": [{...}, ...]}, ...]}`` — or ``None`` when
+        the file is missing, empty, or unparseable.  Silence on decode
+        failure is deliberate: plot capture is best-effort, and a
+        malformed payload should degrade to a clear "no plot artifact"
+        message from the test rather than blowing up the run.
+        """
+        try:
+            with open(plot_sidecar_path, encoding="utf-8") as handle:
+                text = handle.read()
+        except FileNotFoundError:
+            return None
+        if not text.strip():
+            return None
+        try:
+            return json.loads(text)
+        except (ValueError, json.JSONDecodeError):  # pragma: no cover — defensive
+            return None
 
     @staticmethod
     def _read_sidecar(sidecar_path: str | None):

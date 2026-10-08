@@ -41,6 +41,7 @@ from generic_grader.runtimes.octave import (
     OctaveRuntime,
     OctaveRuntimeError,
     OctaveTimeoutError,
+    _build_plot_capture_snippet,
     _decode_json_value,
     _decode_returned_values,
     _format_args,
@@ -277,6 +278,110 @@ class TestBuildEvalExpression:
         )
         assert "jsonencode" not in expr
         assert "nargout" not in expr
+
+    def test_plot_sidecar_injects_capture_and_toolkit(self):
+        """When a plot sidecar path is supplied we prepend the
+        headless-friendly ``graphics_toolkit`` header and append the
+        capture snippet — both are gated on the presence of the path,
+        so callers that don't need plot artifacts (older internal use)
+        stay minimal."""
+        expr = OctaveRuntime._build_eval_expression(
+            self._opts(obj_name="main"),
+            stem="main",
+            plot_sidecar_path="/tmp/gg_plot.json",
+        )
+        assert "graphics_toolkit('gnuplot')" in expr
+        assert "DefaultFigureVisible" in expr
+        assert "gg_plot_payload__" in expr
+        assert "'/tmp/gg_plot.json'" in expr
+
+    def test_plot_sidecar_off_by_default(self):
+        """Without a plot sidecar path the toolkit header and capture
+        snippet are suppressed — protecting the older callers /
+        internal-use expressions that only want the return-value
+        harness."""
+        expr = OctaveRuntime._build_eval_expression(
+            self._opts(obj_name="main"),
+            stem="main",
+        )
+        assert "graphics_toolkit" not in expr
+        assert "gg_plot_payload__" not in expr
+
+    def test_plot_sidecar_path_with_single_quote_is_escaped(self):
+        """Same doubled-quote escape rule the return-value sidecar
+        uses — a path containing a single quote still parses inside
+        the injected fopen call."""
+        expr = OctaveRuntime._build_eval_expression(
+            self._opts(obj_name="main"),
+            stem="main",
+            plot_sidecar_path="/weird/it's/plot.json",
+        )
+        assert "'/weird/it''s/plot.json'" in expr
+
+
+# ---------------------------------------------------------------------------
+# _build_plot_capture_snippet
+# ---------------------------------------------------------------------------
+class TestBuildPlotCaptureSnippet:
+    """Focused checks on the plot-capture Octave snippet.
+
+    We don't try to fully mock Octave semantics here — the
+    live-Octave integration tests below (and the plot-test end-to-end
+    module in ``tests/image/``) do that.  These unit tests just
+    confirm the snippet's shape so a regression in the string
+    template is caught before it reaches an Octave subprocess.
+    """
+
+    def test_snippet_writes_to_provided_path(self):
+        snippet = _build_plot_capture_snippet("/tmp/plot.json")
+        assert "'/tmp/plot.json'" in snippet
+        assert "jsonencode(gg_plot_payload__)" in snippet
+
+    def test_snippet_skips_legend_axes(self):
+        """Legend axes carry ``tag == 'legend'`` in Octave; the snippet
+        must skip them so the primary drawing axes are the ones
+        captured."""
+        snippet = _build_plot_capture_snippet("/tmp/plot.json")
+        assert "strcmp(get(gg_plot_ax__, 'tag'), 'legend')" in snippet
+
+    def test_snippet_gathers_line_arrays(self):
+        snippet = _build_plot_capture_snippet("/tmp/plot.json")
+        assert "findobj(gg_plot_ax__, 'Type', 'line')" in snippet
+        assert "get(gg_plot_lines__(gg_plot_li__), 'xdata')" in snippet
+        assert "get(gg_plot_lines__(gg_plot_li__), 'ydata')" in snippet
+        assert "get(gg_plot_lines__(gg_plot_li__), 'color')" in snippet
+
+    def test_snippet_wraps_capture_in_try_catch(self):
+        """A malformed figure must not fail an otherwise-passing run;
+        the snippet's own ``try/catch`` swallows errors so the outer
+        wrapper stays authoritative."""
+        snippet = _build_plot_capture_snippet("/tmp/plot.json")
+        assert snippet.strip().startswith("try")
+        assert "end_try_catch" in snippet
+
+
+# ---------------------------------------------------------------------------
+# _read_plot_sidecar
+# ---------------------------------------------------------------------------
+class TestReadPlotSidecar:
+    def test_missing_file_returns_none(self, tmp_path):
+        assert OctaveRuntime._read_plot_sidecar(str(tmp_path / "nope.json")) is None
+
+    def test_empty_file_returns_none(self, tmp_path):
+        p = tmp_path / "empty.json"
+        p.write_text("")
+        assert OctaveRuntime._read_plot_sidecar(str(p)) is None
+
+    def test_whitespace_only_returns_none(self, tmp_path):
+        p = tmp_path / "ws.json"
+        p.write_text("   \n\t  ")
+        assert OctaveRuntime._read_plot_sidecar(str(p)) is None
+
+    def test_valid_json_returns_decoded_payload(self, tmp_path):
+        p = tmp_path / "good.json"
+        p.write_text('{"figures": [{"axes": []}]}')
+        payload = OctaveRuntime._read_plot_sidecar(str(p))
+        assert payload == {"figures": [{"axes": []}]}
 
 
 # ---------------------------------------------------------------------------

@@ -178,12 +178,22 @@ These test types work with `language="octave"` today:
   return values across repeated calls and asserts it matches an
   `expected_set`.  Octave scalars come back as Python `float`, so
   `expected_set` values should be floats too.
+* `image.plot_prop_matches_reference` — compares plot properties
+  between the student's and reference's figures for the following
+  `prop` values: `title`, `x label`, `y label`, `x limits`,
+  `y limits`, `x tick labels`, `y tick labels`, `number of lines`,
+  `line colors`, `x data`, `y data`, and `xy data`.  The runtime
+  forces `graphics_toolkit('gnuplot')` and hidden figures inside the
+  child so grader hosts don't need an X server, and it captures a
+  JSON sidecar of every open figure's properties after each run.
+  Line colours are decoded to matplotlib named colours (or an RGBA
+  tuple fallback) so pass/fail comparisons match the Python path.
+  Bar-chart, pie-chart, grid-line, and spine properties are not
+  supported yet and stay Python-only.
 
-Follow-on releases will add plot tests
-(`image.plot_prop_matches_reference`) and a language guard for
-the AST/inspect-based tests (`style.*`, `class_.*`, and
-`function.static_loop_depth`) that fundamentally can't run against
-`.m` files.
+Follow-on releases will add a language guard for the AST/inspect-based
+tests (`style.*`, `class_.*`, and `function.static_loop_depth`) that
+fundamentally can't run against `.m` files.
 
 ### Sandbox
 
