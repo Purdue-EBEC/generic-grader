@@ -137,6 +137,39 @@ Supported argument types in this release are `bool`, `int`, `float`,
 and `str`.  Cell arrays, structs, and numpy arrays are planned for
 follow-on releases.
 
+### Supported test types
+
+These test types work with `language="octave"` today:
+
+* `file.file_presence` — language-agnostic filename check.
+* `output.output_lines_match_reference` — diffs the tee'd I/O log
+  produced by the Octave subprocess against the reference's log.
+* `output.output_values_match_reference` — extracts numeric values
+  from the log with the same regex used for Python; works with
+  `%d`, `%f`, and `%e` conversions in `fprintf`.
+* `output.output_lines_are_random` — runs the submission twice and
+  demands the logs differ.  Octave's `randi`/`rand` reseed at
+  interpreter startup so the subprocess-per-call model gives fresh
+  randomness without any extra setup.
+* `file.file_lines_match_reference` — diffs student-produced and
+  reference-produced files line-by-line.  The `@reference_test`
+  decorator handles renaming produced files to `sub_<name>` /
+  `ref_<name>` between runs.
+* `file.file_lines_span_range` — set-equality check on the lines
+  written to a file.
+* `file.file_has_n_lines` — line-count comparison.
+* `file.file_lines_are_random` — runs the submission twice via two
+  fresh Octave subprocesses and asserts the produced files differ.
+* `file.file_is_identical` — byte-for-byte comparison; strict about
+  trailing whitespace and line endings.
+
+Follow-on releases will add support for function return-value tests
+(`function.function_return_values_match_reference` and friends), plot
+tests (`image.plot_prop_matches_reference`), and a language guard for
+the AST/inspect-based tests (`style.*`, `class_.*`, and
+`function.static_loop_depth`) that fundamentally can't run against
+`.m` files.
+
 ### Sandbox
 
 The security sandbox is deliberately language-independent — the same
