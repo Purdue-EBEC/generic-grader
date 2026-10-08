@@ -7,6 +7,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import get_tokens
 
@@ -32,6 +33,8 @@ def build(the_options):
         @weighted
         def test_program_length(self, options):
             """Check if the program is bigger than expected."""
+
+            require_python_language(self, options, "style.program_length")
 
             submission_file = options.sub_module.replace(".", os.path.sep) + ".py"
             actual = len(get_tokens(self, submission_file))

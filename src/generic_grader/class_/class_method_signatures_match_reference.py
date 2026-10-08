@@ -9,6 +9,7 @@ from parameterized import parameterized
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.importer import Importer
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 
 
@@ -40,6 +41,10 @@ def build(the_options):
             """Check that the signatures of methods defined in a class match
             those defined in the reference.
             """
+
+            require_python_language(
+                self, options, "class_.class_method_signatures_match_reference"
+            )
 
             o = options
 

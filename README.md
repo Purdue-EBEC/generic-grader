@@ -191,9 +191,30 @@ These test types work with `language="octave"` today:
   Bar-chart, pie-chart, grid-line, and spine properties are not
   supported yet and stay Python-only.
 
-Follow-on releases will add a language guard for the AST/inspect-based
-tests (`style.*`, `class_.*`, and `function.static_loop_depth`) that
-fundamentally can't run against `.m` files.
+### Python-only test types
+
+The following test types have no Octave analogue — they rely on
+CPython-specific machinery (`ast`, `inspect`, `sys.settrace`,
+`ResourceWarning`, `pytesseract`, `PIL`) that cannot be reproduced
+against a `.m` file.  Setting `language="octave"` on any of them fails
+the individual test with a clear message rather than a cryptic
+traceback:
+
+* `style.comments`, `style.docstring`, `style.program_length`
+* `class_.class_is_defined`, `class_.class_attributes_match_reference`,
+  `class_.class_method_signatures_match_reference`,
+  `class_.instance_attributes_match_reference`
+* `function.function_not_defined`, `function.random_function_calls`,
+  `function.static_loop_depth`
+* `file.file_closed`
+* `image.ocr_words_match_reference`, `image.pixel_overlap`
+
+A related guard inside `image.plot_prop_matches_reference` refuses
+Octave-unsupported `prop` values (`number of bars`, `bar widths`,
+`x time data`, `wedge labels`, `wedge colors`, `wedge angles`,
+`grid lines`, `legend`, `spine visibility`, `position of each spine`)
+before any Octave subprocess is spawned; the failure message lists
+every supported prop so the grader can pick a viable one.
 
 ### Sandbox
 
