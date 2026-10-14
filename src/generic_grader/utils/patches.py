@@ -243,7 +243,10 @@ def _library_import_is_calling(attr):
     * every frame up to the first student frame is trusted or import
       machinery; and
     * the frame directly beneath that student frame is import machinery, so
-      the library is running because the student imported it.
+      the library is running because the student imported it.  Alternatively,
+      the walk reaches `custom_stack` setup with an import frame on the way and
+      no student frame, so the grader's own `patch()` target resolution
+      (e.g. `matplotlib.pyplot.show`) imported the library.
 
     A student calling a stdlib wrapper such as `Path.unlink`, passing a
     blocked callable to a library, or starting a thread has no such import
@@ -259,6 +262,7 @@ def _library_import_is_calling(attr):
     casual misuse, not a determined adversary.
     """
     previous = None  # "trusted" or "import": kind of the frame below this one.
+    seen_import = False
     depth = 1  # sys._getframe(0) is this function.
     while True:
         try:
@@ -268,10 +272,13 @@ def _library_import_is_calling(attr):
         depth += 1
         code = frame.f_code
         filename = code.co_filename
+        if seen_import and code is custom_stack.__wrapped__.__code__:
+            return True  # Grader's patch setup imported it; no student frame inside.
         if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
             continue
         if _is_import_machinery(filename):
             kind = "import"
+            seen_import = True
         elif filename.startswith("<frozen") or _in_trusted_dirs(filename):
             kind = "trusted"
         else:

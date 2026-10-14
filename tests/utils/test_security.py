@@ -582,6 +582,55 @@ def test_cold_matplotlib_font_cache_import_is_allowed(tmp_path):
     assert "OK" in result.stdout
 
 
+def test_dangerous_attr_allows_library_imported_by_patch_target_resolution(
+    tmp_path, fake_library
+):
+    """A library imported by `patch()` target resolution may remove its lock file."""
+    victim = tmp_path / "lockfile"
+    victim.write_text("")
+    fake_library(
+        "lib_target",
+        f"import pathlib\npathlib.Path({str(victim)!r}).unlink()\n\n"
+        "def show():\n    pass\n",
+    )
+
+    with custom_stack(Options(patches=[{"args": ("lib_target.show", lambda: None)}])):
+        pass
+
+    assert not victim.exists()
+
+
+def test_cold_matplotlib_font_cache_with_pyplot_patches_is_allowed(tmp_path):
+    """Regression: a cold font cache must not abort `make_pyplot_noop_patches`."""
+    script = (
+        "from generic_grader.utils.options import Options\n"
+        "from generic_grader.utils.patches import (\n"
+        "    custom_stack, make_pyplot_noop_patches,\n"
+        ")\n"
+        "o = Options(patches=make_pyplot_noop_patches([]), time_limit=60)\n"
+        "with custom_stack(o):\n"
+        "    pass\n"
+        "print('OK')\n"
+    )
+    env = {
+        **os.environ,
+        "MPLCONFIGDIR": str(tmp_path / "mpl_cold_cache"),
+        "MPLBACKEND": "Agg",
+    }
+
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "OK" in result.stdout
+
+
 # ---------------------------------------------------------------------------
 # Sandboxed open()
 # ---------------------------------------------------------------------------
