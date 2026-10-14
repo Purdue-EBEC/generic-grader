@@ -600,6 +600,26 @@ def test_dangerous_attr_allows_library_imported_by_patch_target_resolution(
     assert not victim.exists()
 
 
+def test_dangerous_attr_blocks_student_module_imported_as_patch_target(
+    tmp_path, monkeypatch
+):
+    """A student module resolved as a patch target stays blocked."""
+    victim = tmp_path / "victim"
+    victim.write_text("")
+    (tmp_path / "student_target.py").write_text(
+        f"import pathlib\npathlib.Path({str(victim)!r}).unlink()\n\n"
+        "def show():\n    pass\n"
+    )
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.delitem(sys.modules, "student_target", raising=False)
+
+    o = Options(patches=[{"args": ("student_target.show", lambda: None)}])
+    with pytest.raises(DisallowedFunctionCallError), custom_stack(o):
+        pass
+
+    assert victim.exists()
+
+
 def test_cold_matplotlib_font_cache_with_pyplot_patches_is_allowed(tmp_path):
     """Regression: a cold font cache must not abort `make_pyplot_noop_patches`."""
     script = (

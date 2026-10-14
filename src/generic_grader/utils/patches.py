@@ -272,8 +272,8 @@ def _library_import_is_calling(attr):
         depth += 1
         code = frame.f_code
         filename = code.co_filename
-        if seen_import and code is custom_stack.__wrapped__.__code__:
-            return True  # Grader's patch setup imported it; no student frame inside.
+        if seen_import and code is _CUSTOM_STACK_CODE:
+            return True  # Patch-target import; no student frame.
         if any(s in filename for s in _CALLER_SKIP_SUBSTRINGS):
             continue
         if _is_import_machinery(filename):
@@ -536,3 +536,7 @@ def custom_stack(o: Options):
             )
 
         yield
+
+
+# Used by `_library_import_is_calling` to recognise `custom_stack` setup frames.
+_CUSTOM_STACK_CODE = custom_stack.__wrapped__.__code__
