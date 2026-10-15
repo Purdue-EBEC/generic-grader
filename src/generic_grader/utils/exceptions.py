@@ -138,8 +138,11 @@ class LogLimitExceededError(_GraderError):
 
 
 class UserTimeoutError(_GraderError):
-    """Custom Exception to raise when submitted code doesn't return within one
-    second.
+    """Custom Exception to raise when submitted code exceeds its time limit.
+
+    The limit depends on the phase: importing a module uses
+    `Options.import_time_limit`, and calling the submitted code uses
+    `Options.time_limit`.
     """
 
     def _build_msg(self, hint=None):

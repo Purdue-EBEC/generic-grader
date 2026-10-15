@@ -14,10 +14,8 @@ def time_limit(seconds):
     """
 
     def handler(signum, frame):
-        raise UserTimeoutError(
-            f"The time limit for this test is {seconds}"
-            + ((seconds == 1 and " second.") or " seconds.")
-        )
+        unit = "second" if seconds == 1 else "seconds"
+        raise UserTimeoutError(f"The time limit is {seconds} {unit}.")
 
     signal.signal(signal.SIGALRM, handler)
 

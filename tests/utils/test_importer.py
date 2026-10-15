@@ -151,8 +151,10 @@ def test_import_time_limit(fix_syspath, options, times_out):
     o = Options(obj_name="fake_func", **options)
 
     if times_out:
-        with pytest.raises(UserTimeoutError):
+        with pytest.raises(UserTimeoutError) as exc_info:
             Importer.import_obj(FakeTest(), "fake_module", o)
+        # The message must quote the import budget, not the call limit.
+        assert f"time limit is {o.import_time_limit} second" in str(exc_info.value)
     else:
         assert callable(Importer.import_obj(FakeTest(), "fake_module", o))
 
