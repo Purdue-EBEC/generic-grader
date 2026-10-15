@@ -12,7 +12,7 @@ import numbers
 import numpy as np
 
 from generic_grader.utils.array_diff import DEFAULT_ATOL, DEFAULT_RTOL, array_compare
-from generic_grader.utils.safe_equal import safe_repr
+from generic_grader.utils.safe_equal import make_diff, safe_repr
 
 ROOT = "top level"
 
@@ -69,9 +69,12 @@ class _Comparison:
         elif isinstance(expected, dict):
             self._walk_dict(actual, expected, path)
         elif not _safe_eq(actual, expected):
-            self.fail(
-                path, f"expected={safe_repr(expected)}, actual={safe_repr(actual)}"
-            )
+            text = f"expected={safe_repr(expected)}, actual={safe_repr(actual)}"
+            if isinstance(actual, str) and isinstance(expected, str):
+                diff = make_diff(actual, expected)
+                if diff:
+                    text += "\n" + diff.rstrip("\n")
+            self.fail(path, text)
 
     def _types_match(self, actual, expected):
         if not self.strict_types and _is_real(actual) and _is_real(expected):
