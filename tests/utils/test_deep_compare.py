@@ -267,3 +267,26 @@ def test_non_str_mismatch_has_no_diff_section():
     assert not any(
         line.lstrip().startswith(("- ", "+ ")) for line in details.splitlines()
     )
+
+
+def test_huge_int_vs_float_does_not_raise_overflow_error():
+    equal, _details = deep_compare(10**400, 1.0, strict_types=False)
+    assert equal is False
+
+
+def test_5000_digit_int_mismatch_reports_without_repr_error():
+    equal, details = deep_compare(10**5000, 10**5000 + 1)
+    assert not equal
+    assert "expected=" in details
+    assert "actual=" in details
+
+
+def test_object_with_raising_class_property_is_type_mismatch():
+    class NoClass:
+        @property
+        def __class__(self):
+            raise RuntimeError("no class for you")
+
+    equal, details = deep_compare(NoClass(), 1.0)
+    assert equal is False
+    assert "expected type float" in details

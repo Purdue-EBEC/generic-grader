@@ -87,6 +87,7 @@ def build(the_options):
                 expected,
                 rtol=o.relative_tolerance,
                 atol=o.absolute_tolerance,
+                strict_types=True,
             )
             if not equal:
                 raise AssertionError(details + value_msg)
