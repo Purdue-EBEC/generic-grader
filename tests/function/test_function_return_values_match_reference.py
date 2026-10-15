@@ -429,6 +429,142 @@ cases.append(
 )
 
 
+# Cases: collections containing floats or numpy arrays (ported from the
+# better_collection_comparisons branch, plus the reported Gradescope failure).
+
+_NP = "import numpy as np\n"
+_DOC = (
+    "Check that the value(s) returned from your `submission.test_function`"
+    " function when called as `test_function()` match the reference value(s)."
+)
+
+
+def _collection_case(
+    sub_return, ref_return, result="pass", message="", imports="", **kw
+):
+    """Build a case whose functions return the given expressions."""
+    case = {
+        "submission": f"{imports}def test_function():\n    return {sub_return}",
+        "reference": f"{imports}def test_function():\n    return {ref_return}",
+        "result": result,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            **kw,
+        ),
+        "doc_func_test_string": _DOC,
+    }
+    if result != "pass":
+        case["message"] = message
+    return case
+
+
+_VALUE_MSG = "Double check the value(s) returned"
+
+cases.extend(
+    [
+        _collection_case(  # Reported failure: tuple of floats 1e-14 apart
+            "(31.999999999999996, 91.84322033898306, 236.0)",
+            "(32.00000000000001, 91.84322033898306, 236.0)",
+        ),
+        _collection_case(  # Tuple of equal numpy arrays
+            "(np.array([1,2,3]), np.array([4,5,6]))",
+            "(np.array([1,2,3]), np.array([4,5,6]))",
+            imports=_NP,
+        ),
+        _collection_case(  # Tuple of arrays, first differs
+            "(np.array([1,2,4]), np.array([4,5,6]))",
+            "(np.array([1,2,3]), np.array([4,5,6]))",
+            AssertionError,
+            "at [0]:",
+            imports=_NP,
+        ),
+        _collection_case(  # List of equal numpy arrays
+            "[np.array([1,2,3]), np.array([4,5,6])]",
+            "[np.array([1,2,3]), np.array([4,5,6])]",
+            imports=_NP,
+        ),
+        _collection_case(  # Mixed types
+            "[1, 2.5, np.array([1,2,3]), 'hello']",
+            "[1, 2.5, np.array([1,2,3]), 'hello']",
+            imports=_NP,
+        ),
+        _collection_case(  # List of nearly equal floats
+            "[1.0, 2.0000000001, 3.0]", "[1.0, 2.0, 3.0]"
+        ),
+        _collection_case(  # Dict of equal arrays
+            "{'a': np.array([1,2,3]), 'b': np.array([4,5,6])}",
+            "{'a': np.array([1,2,3]), 'b': np.array([4,5,6])}",
+            imports=_NP,
+        ),
+        _collection_case(  # Dict of arrays, one differs
+            "{'a': np.array([1,2,4]), 'b': np.array([4,5,6])}",
+            "{'a': np.array([1,2,3]), 'b': np.array([4,5,6])}",
+            AssertionError,
+            "at ['a']:",
+            imports=_NP,
+        ),
+        _collection_case(  # Nested lists of equal arrays
+            "[[1, 2], [np.array([1,2,3]), np.array([4,5,6])]]",
+            "[[1, 2], [np.array([1,2,3]), np.array([4,5,6])]]",
+            imports=_NP,
+        ),
+        _collection_case(  # Nested lists, nested array differs
+            "[[1, 2], [np.array([1,2,4]), np.array([4,5,6])]]",
+            "[[1, 2], [np.array([1,2,3]), np.array([4,5,6])]]",
+            AssertionError,
+            "at [1][0]:",
+            imports=_NP,
+        ),
+        _collection_case(  # Tuple of nearly equal floats
+            "(1.0, 2.0000000001, 3.0)", "(1.0, 2.0, 3.0)"
+        ),
+        _collection_case(  # Dict of nearly equal floats
+            "{'a': 1.0, 'b': 2.0000000001, 'c': 3.0}", "{'a': 1.0, 'b': 2.0, 'c': 3.0}"
+        ),
+        _collection_case(  # Float outside tolerance inside a tuple
+            "(1.0, 2.1)", "(1.0, 2.0)", AssertionError, _VALUE_MSG
+        ),
+        _collection_case(  # Tight rtol rejects a nested float
+            "(3.00000001,)",
+            "(3.0,)",
+            AssertionError,
+            "difference)",
+            relative_tolerance=1e-10,
+        ),
+        _collection_case(  # Nested int where float expected
+            "[1]", "[1.0]", AssertionError, "expected type float, got int"
+        ),
+        _collection_case(  # Tuple where list expected
+            "[(1, 2)]", "[[1, 2]]", AssertionError, "expected type list, got tuple"
+        ),
+    ]
+)
+
+cases.extend(
+    [
+        _collection_case(  # Self-containing list equals an equal one
+            "(lambda a: (a.append(a), a)[1])([1])",
+            "(lambda a: (a.append(a), a)[1])([1])",
+        ),
+        _collection_case(  # Self-containing list vs different self-containing list
+            "(lambda a: (a.append(a), a)[1])([1])",
+            "(lambda a: (a.append(a), a)[1])([2])",
+            AssertionError,
+            "at [0]:",
+        ),
+        _collection_case(  # Self-containing dict vs different self-containing dict
+            "(lambda d: (d.update(me=d), d)[1])({'x': 1})",
+            "(lambda d: (d.update(me=d), d)[1])({'x': 2})",
+            AssertionError,
+            "at ['x']:",
+        ),
+    ]
+)
+
+
 @pytest.fixture(params=cases)
 def case_test_method(request, fix_syspath):
     """Arrange submission directory, and parameterized test function."""
