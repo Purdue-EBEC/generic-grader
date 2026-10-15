@@ -11,6 +11,7 @@ from rapidfuzz.distance.Levenshtein import normalized_similarity
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.math_utils import calc_log_limit
+from generic_grader.utils.octave_plot import SUPPORTED_PROPS as OCTAVE_SUPPORTED_PROPS
 from generic_grader.utils.octave_plot import get_property as get_property_octave
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.plot import get_property
@@ -50,13 +51,6 @@ def build(the_options):
 
             o = options
 
-            # Run an optional initialization function.
-            if o.init:
-                o.init(self, o)
-
-            # Create the reference user.
-            self.ref_user = RefUser(self, o)
-
             # Language dispatch: the Python runtime reads matplotlib's
             # live global state via :func:`plot.get_property`; the
             # Octave runtime captures a JSON sidecar per call and we
@@ -66,6 +60,31 @@ def build(the_options):
             # means the parameterization, weighting, and message
             # formatting stay identical across languages.
             is_octave = o.language == "octave"
+
+            # When ``language="octave"``, refuse props that have no
+            # capture path in :mod:`generic_grader.utils.octave_plot`
+            # BEFORE any Octave subprocess is spawned — otherwise the
+            # runtime would pay for a reference and student run only to
+            # raise ``ValueError`` afterwards.  This must happen before
+            # ``RefUser`` is constructed because
+            # ``__User__.__init__`` resolves the reference module,
+            # which fails on hosts without the ``.m`` file even before
+            # the test body notices the unsupported prop.
+            if is_octave and o.prop not in OCTAVE_SUPPORTED_PROPS:
+                supported = ", ".join(sorted(OCTAVE_SUPPORTED_PROPS))
+                self.fail(
+                    f"The `image.plot_prop_matches_reference` test type "
+                    f"does not support prop={o.prop!r} when "
+                    f'language="octave". Supported Octave props are: '
+                    f"{supported}."
+                )
+
+            # Run an optional initialization function.
+            if o.init:
+                o.init(self, o)
+
+            # Create the reference user.
+            self.ref_user = RefUser(self, o)
 
             # Run the reference code and extract the expected property.
             self.ref_user.call_obj()
