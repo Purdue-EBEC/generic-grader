@@ -148,9 +148,10 @@ def test_stack_exit():
 def test_stack_timelimit():
     """Test that the custom stack properly patches time limit."""
     o = Options(time_limit=1)
-    with custom_stack(o), pytest.raises(UserTimeoutError):
+    with custom_stack(o), pytest.raises(UserTimeoutError) as exc_info:
         while True:
             time.sleep(1)
+    assert "time limit is 1 second" in str(exc_info.value)
 
 
 def test_stack_memorylimit():
