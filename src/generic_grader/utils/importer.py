@@ -70,6 +70,7 @@ class Importer:
                 o,
                 patches=(o.patches or [])
                 + [{"args": ["builtins.input", cls.raise_input_error]}],
+                time_limit=o.import_time_limit,
             )
             # Override input() to raise an exception if it gets called.
             with custom_stack(stack_o):

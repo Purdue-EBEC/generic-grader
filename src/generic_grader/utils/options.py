@@ -42,7 +42,13 @@ class Options:
     log_limit: int = 0
     fixed_time: bool | datetime.datetime | str = False
     debug: bool = False
+    # Seconds allowed for calling the submitted function or program.  Imports
+    # are not counted against it; see `import_time_limit`.
     time_limit: int = 1
+    # Seconds allowed for importing a module (reference or submission).  Kept
+    # separate so one-time library cold starts (e.g. matplotlib can take several
+    # seconds in a fresh container) do not eat into `time_limit`.
+    import_time_limit: int = 10
     memory_limit_GB: float = 1.4
     # Set to True to disable the in-process security patches (import
     # blocklist, dangerous-attr blocks, sandboxed open).  Only do this for
