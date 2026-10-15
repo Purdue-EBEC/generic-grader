@@ -76,6 +76,7 @@ class Options:
 
     # Stats
     expected_distribution: dict = Factory(lambda: {0: 0})
+    # Tolerances (return values, output values, plot properties, statistics)
     relative_tolerance: float = 1e-7
     absolute_tolerance: float = 0.0
 
