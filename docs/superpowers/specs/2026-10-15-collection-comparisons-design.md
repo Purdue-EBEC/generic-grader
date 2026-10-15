@@ -19,9 +19,12 @@ tolerance to top-level `np.ndarray` and `np.floating` values (`rtol`/`atol` via
 Everything else, including tuples, lists and dicts of floats or arrays, falls
 through to `safe_assert_equal`, which is an exact `==`.
 
-Other graders compare with exact `==` in the same way:
-`instance_attributes_match_reference`, `output_values_match_reference` and
-`plot_prop_matches_reference`.
+Two other graders compare values with exact `==` in the same way:
+`output_values_match_reference` (lists of floats parsed from output text) and
+`plot_prop_matches_reference` (e.g. axis limits, bar widths, wedge angles).
+`instance_attributes_match_reference` and `class_attributes_match_reference`
+compare only attribute names and type names, never values, so they are not
+affected.
 
 An earlier attempt (`better_collection_comparisons`, Feb 2026, one WIP commit)
 added 11 failing test cases and an analysis document but no implementation. That
@@ -47,8 +50,8 @@ cases are ported.
 
 | Decision | Choice |
 |---|---|
-| Scope | All exact-`==` graders (return values, attributes, output values, plot props) |
-| Float tolerance | Unified: every float uses `np.isclose` with `Options.relative_tolerance` and `Options.absolute_tolerance`; bare-`float` `assertAlmostEqual` is retired |
+| Scope | All graders that compare values with exact `==` (return values, output values, plot props) |
+| Float tolerance | Unified: every float uses `abs(actual - expected) <= atol + rtol * abs(expected)` (the `np.isclose` rule) with `Options.relative_tolerance` and `Options.absolute_tolerance`; bare-`float` `assertAlmostEqual` is retired |
 | Nested type checking | Strict at every level for return values and attributes; numeric-by-value for values parsed from output text (`3` equals `3.0`) |
 | Approach | New recursive `deep_compare` returning `(equal, details)`, extending the existing `array_compare` contract |
 
@@ -81,21 +84,25 @@ to match `array_compare`, so callers append their hint message unchanged.
 | `expected` | Behavior |
 |---|---|
 | `np.ndarray` | Delegate to `array_compare` (dtype, shape, `rtol`/`atol`) |
-| `float`, `np.floating` | `np.isclose(actual, expected, rtol, atol, equal_nan=True)` |
+| real numbers (`numbers.Real`, not `bool`) | Both integral: exact `==`. Otherwise the tolerance rule above, computed in pure Python (fast for large lists); NaN equals NaN |
 | `list`, `tuple` | Same length, then compare element by element in order |
 | `dict` | Same key set (order ignored), then compare values per key |
 | `set`, `frozenset` | Exact `==` |
 | anything else | `==`, guarded: an exception or non-bool result counts as a failure |
 
-Student values can be arbitrary objects, so every access to `actual` (`type`,
-`len`, indexing, `==`) is wrapped and a raised exception is reported as a
-mismatch, as `array_compare` already does.
+Student values can be arbitrary objects, so the `isinstance` check and the
+generic `==` are guarded and a raised exception is reported as a mismatch.
+Exceptions raised by numpy inside `array_compare` still propagate, as they do
+today (`array_compare` documents this and a test covers it). Container
+walking uses the builtin `len`/iteration protocol of `list`, `tuple` and `dict`.
 
 ### Type checking
 
 Before dispatching, with `strict_types=True`, require
 `isinstance(actual, type(expected))`. A mismatch (tuple vs list, `int` vs
-`float`, `np.float64` vs `float`) fails with a type message and the path.
+`float`, `float` where `np.float64` is expected) fails with a type message and
+the path. As with the existing top-level check, a subclass of the expected type
+passes (`np.float64` where `float` is expected).
 
 With `strict_types=False` (used by `output_values_match_reference` and
 `plot_prop_matches_reference`), real numbers compare by value, so `3` matches
@@ -125,9 +132,8 @@ ordinary structural mismatch, and `repr` of cyclic values is safe (`[...]`,
 | Grader | Change |
 |---|---|
 | `function_return_values_match_reference` | Replace the ndarray / `np.floating` / `float` / `safe_assert_equal` branching with `deep_compare(..., strict_types=True)`; keep the top-level `assertIsInstance` type hint |
-| `instance_attributes_match_reference` | `deep_compare(..., strict_types=True)` per attribute |
-| `output_values_match_reference` | `deep_compare(..., strict_types=False)` |
-| `plot_prop_matches_reference` | `deep_compare(..., strict_types=False)`; existing `assertAlmostEqual(error, 0, delta=0.01)` path unchanged |
+| `output_values_match_reference` | `deep_compare(..., strict_types=False)`; parsed values are always `float`, so this mainly adds tolerance |
+| `plot_prop_matches_reference` | `deep_compare(..., strict_types=False)` for the final `else` branch; the `xy data` RMS check and the string-similarity check are unchanged |
 
 Each grader raises `AssertionError(details + hint_message)` as it does today.
 `safe_assert_equal` stays for the graders that compare plain text or counts.
@@ -135,6 +141,9 @@ Each grader raises `AssertionError(details + hint_message)` as it does today.
 ### Behavior changes
 
 - Bare-`float` comparison switches from 7 decimal places to `rtol`/`atol`.
+- Output values now match within `rtol`/`atol`. With the default `rtol=1e-7`,
+  two parsed values above about 1e7 can differ by 1 and still match; graders
+  that need exactness can tighten `relative_tolerance`.
 - Nested elements are type-checked strictly for return values and attributes, so
   `[1]` no longer matches `[1.0]` there.
 - Tuples, lists and dicts of floats now pass within tolerance.
@@ -157,8 +166,8 @@ Tests use pytest and follow the layout of the existing per-grader test files.
   structure (must fail), plus a student cycle against a finite reference. All
   must terminate without `RecursionError`.
 - Path reporting: assert the failure message contains the expected path.
-- Unit tests for `deep_compare` in `tests/utils/`, plus grader-level cases in
-  each affected grader's test file.
+- Unit tests for `deep_compare` in `tests/utils/test_deep_compare.py`, plus
+  grader-level cases in each affected grader's test file.
 
 ## Process
 
