@@ -2,15 +2,13 @@
 
 import unittest
 
-import numpy as np
 from parameterized import parameterized
 
-from generic_grader.utils.array_diff import array_compare
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.deep_compare import deep_compare
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
-from generic_grader.utils.safe_equal import safe_assert_equal
 
 
 def doc_func(func, num, param):
@@ -84,32 +82,14 @@ def build(the_options):
 
             self.assertIsInstance(actual, expected_type, msg=type_msg)
 
-            if isinstance(expected, np.ndarray):
-                equal, details = array_compare(
-                    actual,
-                    expected,
-                    rtol=o.relative_tolerance,
-                    atol=o.absolute_tolerance,
-                )
-                if not equal:
-                    raise AssertionError(details + value_msg)
-            elif isinstance(expected, np.floating):
-                if not np.isclose(
-                    actual,
-                    expected,
-                    rtol=o.relative_tolerance,
-                    atol=o.absolute_tolerance,
-                ):
-                    delta = expected * o.relative_tolerance + o.absolute_tolerance
-                    diff = abs(actual - expected)
-                    detail = f"{actual!r} != {expected!r} within {delta!r} ({diff!r} difference)"
-                    raise AssertionError(detail + value_msg)
-
-            else:
-                if isinstance(expected, float):
-                    self.assertAlmostEqual(actual, expected, msg=value_msg)
-                else:
-                    safe_assert_equal(self, actual, expected, msg=value_msg)
+            equal, details = deep_compare(
+                actual,
+                expected,
+                rtol=o.relative_tolerance,
+                atol=o.absolute_tolerance,
+            )
+            if not equal:
+                raise AssertionError(details + value_msg)
 
             self.set_score(self, o.weight)  # Full credit
 
