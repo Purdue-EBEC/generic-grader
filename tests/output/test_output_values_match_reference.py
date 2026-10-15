@@ -224,6 +224,45 @@ cases = [
     },
 ]
 
+cases.append(
+    {  # Printed values within tolerance of the reference
+        "submission": "def main():\n    print('1.00000000001, 2')",
+        "reference": "def main():\n    print('1.0, 2')",
+        "result": "pass",
+        "score": 1,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+        ),
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
+    }
+)
+cases.append(
+    {  # Tight tolerance rejects the same values
+        "submission": "def main():\n    print('1.00000000001, 2')",
+        "reference": "def main():\n    print('1.0, 2')",
+        "result": AssertionError,
+        "score": 0,
+        "options": Options(
+            obj_name="main",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            relative_tolerance=1e-14,
+        ),
+        "message": "Your output values did not match the expected values.",
+        "doc_func_test_string": (
+            "Check that the values on output line 1 from your `main` function"
+            " when called as `main()` match the reference values."
+        ),
+    }
+)
+
 
 @pytest.fixture(params=cases)
 def case_test_method(request, fix_syspath):

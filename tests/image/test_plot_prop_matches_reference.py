@@ -67,6 +67,10 @@ plot_two_text = (
     "    ax.set_ylabel('y-axis-2')\n"
 )
 
+plot_limits_text = plot_one_text + "    ax.set_xlim(0, 10)\n"
+plot_limits_close_text = plot_one_text + "    ax.set_xlim(0, 10.000000001)\n"
+plot_limits_far_text = plot_one_text + "    ax.set_xlim(0, 11)\n"
+
 passing_cases = [
     {  # Plot matches reference str with ratio
         "submission": plot_one_text,
@@ -85,6 +89,13 @@ passing_cases = [
         "reference": plot_one_text,
         "options": Options(
             prop="xy data", weight=1, ref_module="ref", sub_module="sub"
+        ),
+    },
+    {  # Tuple of axis limits within tolerance
+        "submission": plot_limits_close_text,
+        "reference": plot_limits_text,
+        "options": Options(
+            prop="x limits", weight=1, ref_module="ref", sub_module="sub"
         ),
     },
 ]
@@ -135,6 +146,14 @@ failing_cases = [
             prop="xy data", weight=1, ref_module="ref", sub_module="sub"
         ),
         "msg": "Double check the xy data\n  in the plot produced by your `main` function when called as\n  `main()`.",
+    },
+    {  # Tuple of axis limits outside tolerance
+        "submission": plot_limits_far_text,
+        "reference": plot_limits_text,
+        "options": Options(
+            prop="x limits", weight=1, ref_module="ref", sub_module="sub"
+        ),
+        "msg": "Double check the x\n  limits in the plot produced by your `main` function when called as\n  `main()`.",
     },
 ]
 
