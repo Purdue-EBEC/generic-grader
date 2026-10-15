@@ -39,6 +39,7 @@ class _Comparison:
         self.strict_types = strict_types
         self.max_samples = max_samples
         self.failures = []
+        self.in_progress = set()  # (id(actual), id(expected)) pairs being walked
 
     def fail(self, path, text):
         self.failures.append(f"at {path or ROOT}: {text}")
@@ -99,13 +100,23 @@ class _Comparison:
             )
 
     def _walk_sequence(self, actual, expected, path):
+        key = (id(actual), id(expected))
+        if key in self.in_progress:
+            return  # Cycle: assume equal; any real difference is found elsewhere.
         if len(actual) != len(expected):
             self.fail(path, f"expected length {len(expected)}, got {len(actual)}")
             return
-        for i, (a, e) in enumerate(zip(actual, expected)):
-            self.walk(a, e, f"{path}[{i}]")
+        self.in_progress.add(key)
+        try:
+            for i, (a, e) in enumerate(zip(actual, expected)):
+                self.walk(a, e, f"{path}[{i}]")
+        finally:
+            self.in_progress.discard(key)
 
     def _walk_dict(self, actual, expected, path):
+        key = (id(actual), id(expected))
+        if key in self.in_progress:
+            return  # Cycle: assume equal; any real difference is found elsewhere.
         missing = [k for k in expected if k not in actual]
         extra = [k for k in actual if k not in expected]
         if missing or extra:
@@ -114,8 +125,12 @@ class _Comparison:
                 f"missing keys {safe_repr(missing)}, extra keys {safe_repr(extra)}",
             )
             return
-        for key, e in expected.items():
-            self.walk(actual[key], e, f"{path}[{safe_repr(key)}]")
+        self.in_progress.add(key)
+        try:
+            for name, e in expected.items():
+                self.walk(actual[name], e, f"{path}[{safe_repr(name)}]")
+        finally:
+            self.in_progress.discard(key)
 
 
 def deep_compare(

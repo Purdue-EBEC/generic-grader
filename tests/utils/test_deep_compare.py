@@ -158,3 +158,66 @@ def test_object_whose_equality_raises_is_a_mismatch():
     equal, details = deep_compare([Boom()], [Boom()])
     assert not equal
     assert "at [0]:" in details
+
+
+def make_self_list(first=1):
+    value = [first]
+    value.append(value)
+    return value
+
+
+def make_self_dict(first=1):
+    value = {"x": first}
+    value["self"] = value
+    return value
+
+
+def test_equal_self_containing_lists_pass():
+    assert deep_compare(make_self_list(), make_self_list()) == (True, "")
+
+
+def test_different_self_containing_lists_fail():
+    equal, details = deep_compare(make_self_list(1), make_self_list(2))
+    assert not equal
+    assert "at [0]:" in details
+
+
+def test_equal_self_containing_dicts_pass():
+    assert deep_compare(make_self_dict(), make_self_dict()) == (True, "")
+
+
+def test_different_self_containing_dicts_fail():
+    equal, details = deep_compare(make_self_dict(1.0), make_self_dict(2.0))
+    assert not equal
+    assert "at ['x']:" in details
+
+
+def test_self_containing_student_list_against_finite_reference_fails():
+    equal, _details = deep_compare(make_self_list(), [1, [1, []]])
+    assert not equal
+
+
+def test_finite_student_list_against_self_containing_reference_fails():
+    equal, _details = deep_compare([1, [1, []]], make_self_list())
+    assert not equal
+
+
+def test_mutually_recursive_structures_terminate():
+    a, b = [], []
+    a.append(b)
+    b.append(a)
+    c, d = [], []
+    c.append(d)
+    d.append(c)
+    assert deep_compare(a, c) == (True, "")
+
+
+def test_shared_non_cyclic_substructure_is_compared_each_time():
+    shared_actual = [1.0]
+    shared_expected = [2.0]
+    equal, details = deep_compare(
+        [shared_actual, shared_actual], [shared_expected, shared_expected]
+    )
+    assert not equal
+    assert "at [0][0]:" in details
+    assert "at [1][0]:" in details
