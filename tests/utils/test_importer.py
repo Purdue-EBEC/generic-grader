@@ -103,6 +103,7 @@ error_cases = [
         "text": "import time\ntime.sleep(10)",
         "message": "",  # This is a UserTimeoutError, which is already tested in test_exceptions.py
         "object": "fake_func",
+        "options": {"import_time_limit": 1},
     },
 ]
 
@@ -115,8 +116,9 @@ def test_error_exception(fix_syspath, case):
     fake_file.write_text(case["text"])
 
     test = FakeTest()
+    options = Options(obj_name=case["object"], **case.get("options", {}))
     with pytest.raises(case["error"]):
-        Importer.import_obj(test, case["module"], Options(obj_name=case["object"]))
+        Importer.import_obj(test, case["module"], options)
 
 
 @pytest.mark.parametrize("case", error_cases)
@@ -125,10 +127,34 @@ def test_error_message(fix_syspath, case):
     fake_file = fix_syspath / (case["module"] + ".py")
     fake_file.write_text(case["text"])
     test = FakeTest()
+    options = Options(obj_name=case["object"], **case.get("options", {}))
     #  Since we already check Exception type, we can use a generic Exception here
     with pytest.raises(Exception) as exc_info:
-        Importer.import_obj(test, case["module"], Options(obj_name=case["object"]))
+        Importer.import_obj(test, case["module"], options)
     assert case["message"] in str(exc_info.value)
+
+
+SLOW_IMPORT = "import time\ntime.sleep(1.2)\nfake_func = lambda: None"
+
+
+@pytest.mark.parametrize(
+    ("options", "times_out"),
+    [
+        ({}, False),  # Import gets its own, longer default limit.
+        ({"import_time_limit": 1}, True),
+        ({"time_limit": 3, "import_time_limit": 1}, True),  # time_limit is not used.
+    ],
+)
+def test_import_time_limit(fix_syspath, options, times_out):
+    """Imports are limited by `import_time_limit`, not the 1s call limit."""
+    (fix_syspath / "fake_module.py").write_text(SLOW_IMPORT)
+    o = Options(obj_name="fake_func", **options)
+
+    if times_out:
+        with pytest.raises(UserTimeoutError):
+            Importer.import_obj(FakeTest(), "fake_module", o)
+    else:
+        assert callable(Importer.import_obj(FakeTest(), "fake_module", o))
 
 
 missing_dependency_cases = [
