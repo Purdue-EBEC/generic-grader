@@ -221,3 +221,49 @@ def test_shared_non_cyclic_substructure_is_compared_each_time():
     assert not equal
     assert "at [0][0]:" in details
     assert "at [1][0]:" in details
+
+
+def test_short_string_mismatch_includes_diff_marker():
+    equal, details = deep_compare("abc", "abd")
+    assert not equal
+    assert "expected='abd'" in details
+    assert "actual='abc'" in details
+    diff_lines = [
+        line for line in details.splitlines() if line.lstrip().startswith(("- ", "+ "))
+    ]
+    assert diff_lines
+    assert any("abc" in line for line in diff_lines)
+    assert any("abd" in line for line in diff_lines)
+
+
+def test_multiline_string_mismatch_shows_differing_line_from_both_sides():
+    actual_lines = [f"line {i} value {i * 7}" for i in range(1, 13)]
+    expected_lines = list(actual_lines)
+    expected_lines[5] = "line 6 value 67"  # actual has "line 6 value 42"
+    actual = "\n".join(actual_lines) + "\n"
+    expected = "\n".join(expected_lines) + "\n"
+    assert len(actual) + len(expected) > 350
+
+    equal, details = deep_compare(actual, expected)
+    assert not equal
+    assert "- line 6 value 42" in details
+    assert "+ line 6 value 67" in details
+
+
+def test_very_long_string_mismatch_reports_without_diff():
+    actual = "x" * 1500 + "a" + "y" * 1500
+    expected = "x" * 1500 + "b" + "y" * 1500
+    equal, details = deep_compare(actual, expected)
+    assert not equal
+    assert "expected=" in details
+    assert "actual=" in details
+    assert "- " not in details.split("actual=", 1)[1]
+
+
+def test_non_str_mismatch_has_no_diff_section():
+    equal, details = deep_compare(b"abc", b"abd")
+    assert not equal
+    assert "expected=b'abd', actual=b'abc'" in details
+    assert not any(
+        line.lstrip().startswith(("- ", "+ ")) for line in details.splitlines()
+    )
