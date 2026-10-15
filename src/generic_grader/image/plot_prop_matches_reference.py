@@ -9,11 +9,11 @@ from parameterized import parameterized
 from rapidfuzz.distance.Levenshtein import normalized_similarity
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.deep_compare import deep_compare
 from generic_grader.utils.docs import get_wrapper, make_call_str
 from generic_grader.utils.math_utils import calc_log_limit
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.plot import get_property
-from generic_grader.utils.safe_equal import safe_assert_equal
 from generic_grader.utils.user import RefUser, SubUser
 
 
@@ -102,7 +102,15 @@ def build(the_options):
                 ratio = normalized_similarity(actual, expected)
                 self.assertGreaterEqual(ratio, o.ratio, msg=message)
             else:
-                safe_assert_equal(self, actual, expected, msg=message)
+                equal, details = deep_compare(
+                    actual,
+                    expected,
+                    rtol=o.relative_tolerance,
+                    atol=o.absolute_tolerance,
+                    strict_types=False,
+                )
+                if not equal:
+                    raise AssertionError(details + message)
 
             self.set_score(self, o.weight)
 
