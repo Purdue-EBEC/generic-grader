@@ -73,6 +73,11 @@ class __User__:
         self.runtime = get_runtime(options.language)()
         self.obj = self.runtime.resolve(test, self.options, self.module)
         self.returned_values = None
+        # Runtime-supplied side artifacts (e.g. captured plot properties
+        # from the Octave runtime).  Populated in ``call_obj`` when a
+        # ``run`` produces them; kept empty for the Python runtime,
+        # which reads matplotlib global state directly.
+        self.artifacts: dict = {}
 
         self.patches = [
             {"args": ["sys.stdout", self.log]},
@@ -267,6 +272,7 @@ class __User__:
             stack_o = evolve(o, patches=self.patches)
             result = self.runtime.run(stack_o, self.obj, self.log, self.entries)
             self.returned_values = result.returned_values
+            self.artifacts = result.artifacts
         except OctaveTimeoutError as e:
             # Language-independent timeout: surface a TimeoutError so
             # existing test-plumbing that keys off exception types
