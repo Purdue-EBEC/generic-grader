@@ -17,6 +17,15 @@ from generic_grader.utils.safe_equal import make_diff, safe_repr
 ROOT = "top level"
 
 
+def _num_repr(value):
+    """``safe_repr`` that also survives ints beyond repr's 4300-digit limit."""
+    try:
+        return safe_repr(value)
+    except ValueError:
+        # repr() refuses ints over sys.int_max_str_digits; describe instead.
+        return f"<{type(value).__name__} with {value.bit_length()} bits>"
+
+
 def _is_real(value):
     """Return True for real numbers, excluding bool."""
     return isinstance(value, numbers.Real) and not isinstance(value, bool)
@@ -89,12 +98,24 @@ class _Comparison:
             expected, numbers.Integral
         ):
             if actual != expected:
-                self.fail(path, f"expected={expected!r}, actual={actual!r}")
+                self.fail(
+                    path,
+                    f"expected={_num_repr(expected)}, actual={_num_repr(actual)}",
+                )
             return
-        if actual == expected or (math.isnan(actual) and math.isnan(expected)):
+        # NaN test on the raw values; must not convert to float (huge ints
+        # would raise OverflowError in math.isnan).
+        if actual == expected or (actual != actual and expected != expected):  # noqa: PLR0124
             return
-        delta = self.atol + self.rtol * abs(expected)
-        diff = abs(actual - expected)
+        try:
+            delta = self.atol + self.rtol * abs(expected)
+            diff = abs(actual - expected)
+        except OverflowError:
+            self.fail(
+                path,
+                f"expected={_num_repr(expected)}, actual={_num_repr(actual)}",
+            )
+            return
         infinite = math.isinf(actual) or math.isinf(expected)
         if infinite or not diff <= delta:  # a NaN diff also fails
             self.fail(
