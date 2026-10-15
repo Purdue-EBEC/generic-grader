@@ -34,6 +34,11 @@ _safe_repr.maxtuple = 20
 _safe_repr.maxset = 20
 
 
+def safe_repr(value):
+    """Return a truncated ``repr`` of *value* that is safe for large data."""
+    return _safe_repr.repr(value)
+
+
 def safe_assert_equal(test_case, actual, expected, msg=""):
     """Assert *actual* == *expected* without risking an O(n²) hang.
 
