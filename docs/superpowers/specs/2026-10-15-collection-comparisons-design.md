@@ -88,7 +88,7 @@ to match `array_compare`, so callers append their hint message unchanged.
 | `list`, `tuple` | Same length, then compare element by element in order |
 | `dict` | Same key set (order ignored), then compare values per key |
 | `set`, `frozenset` | Exact `==` |
-| anything else | `==`, guarded: an exception or non-bool result counts as a failure |
+| anything else | `bool(actual == expected)`, guarded: a raising or ambiguous `==` counts as a failure |
 
 Student values can be arbitrary objects, so the `isinstance` check and the
 generic `==` are guarded and a raised exception is reported as a mismatch.
