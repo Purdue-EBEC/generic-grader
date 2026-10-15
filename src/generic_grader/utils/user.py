@@ -1,11 +1,16 @@
 """Provide a mock user for code under test."""
 
 import re
-from copy import deepcopy
 from io import StringIO
 
 from attrs import evolve
 
+from generic_grader.runtimes import get_runtime
+from generic_grader.runtimes.octave import (
+    OctaveNotInstalledError,
+    OctaveRuntimeError,
+    OctaveTimeoutError,
+)
 from generic_grader.utils.attribution import report_grader_fault
 from generic_grader.utils.docs import get_wrapper, make_call_str, ordinalize
 from generic_grader.utils.exceptions import (
@@ -16,9 +21,7 @@ from generic_grader.utils.exceptions import (
     handle_error,
     safe_exception_type,
 )
-from generic_grader.utils.importer import Importer
 from generic_grader.utils.options import Options
-from generic_grader.utils.patches import custom_stack
 
 
 class __User__:
@@ -61,8 +64,14 @@ class __User__:
         # adding one at each user entry.
         self.interactions = [self.log.tell()]
 
-        # Import the test modules obj_name object.
-        self.obj = Importer.import_obj(test, self.module, self.options)
+        # Pick the language runtime.  For the historical default
+        # (``language="python"``) this preserves the exact
+        # ``Importer.import_obj`` + ``custom_stack`` behavior; Octave
+        # (and any future language) plugs in via the same seam without
+        # touching the tests below that consume ``self.log``,
+        # ``self.returned_values``, etc.
+        self.runtime = get_runtime(options.language)()
+        self.obj = self.runtime.resolve(test, self.options, self.module)
         self.returned_values = None
 
         self.patches = [
@@ -248,10 +257,32 @@ class __User__:
             + ((o.entries) and f" with entries {o.entries}." or ".")
         )
         try:
+            # For the Python runtime, self.patches contains the
+            # sys.stdout / builtins.input redirection that the runtime
+            # applies inside custom_stack.  For non-Python runtimes
+            # the runtime consumes ``self.entries`` directly (e.g.
+            # Octave pipes them to the child's stdin) and writes
+            # captured output straight into ``self.log`` — the
+            # patches list is only meaningful in-process.
             stack_o = evolve(o, patches=self.patches)
-            with custom_stack(stack_o):
-                # Call the attached object with copies of r args and kwargs.
-                self.returned_values = self.obj(*deepcopy(o.args), **deepcopy(o.kwargs))
+            result = self.runtime.run(stack_o, self.obj, self.log, self.entries)
+            self.returned_values = result.returned_values
+        except OctaveTimeoutError as e:
+            # Language-independent timeout: surface a TimeoutError so
+            # existing test-plumbing that keys off exception types
+            # continues to work.
+            self.test.failureException = TimeoutError
+            msg = error_msg + "\n\nHint:\n" + self.wrapper.fill(str(e))
+        except OctaveRuntimeError as e:
+            # Show Octave's own error text as the hint — it already
+            # points at the offending line inside the .m file.
+            self.test.failureException = RuntimeError
+            hint = e.stderr.strip() or str(e)
+            msg = error_msg + "\n\nHint:\n" + self.wrapper.fill(hint)
+        except OctaveNotInstalledError as e:
+            # Grader-configuration failure, not a student mistake.
+            self.test.failureException = RuntimeError
+            msg = "\n" + self.wrapper.fill(str(e))
         # Broad catch is deliberate: student code can raise anything, and every
         # failure must be classified (student error vs. grader fault).
         except Exception as e:  # noqa: BLE001
