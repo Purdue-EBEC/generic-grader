@@ -8,6 +8,7 @@ from parameterized import parameterized
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.importer import Importer
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 
 
@@ -38,6 +39,8 @@ def build(the_options):
         @weighted
         def test_class_is_defined(self, options):
             """Check that sub_module defines the class."""
+
+            require_python_language(self, options, "class_.class_is_defined")
 
             o = options
 

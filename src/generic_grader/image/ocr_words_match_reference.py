@@ -10,6 +10,7 @@ from rapidfuzz.distance.Levenshtein import normalized_similarity
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 
 
@@ -39,6 +40,8 @@ def build(options):
             """Check if the OCR characters from the student's submission match the
             reference solution.
             """
+
+            require_python_language(self, options, "image.ocr_words_match_reference")
 
             o = options
             expected_words = o.expected_words
