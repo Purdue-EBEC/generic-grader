@@ -290,3 +290,99 @@ def test_object_with_raising_class_property_is_type_mismatch():
     equal, details = deep_compare(NoClass(), 1.0)
     assert equal is False
     assert "expected type float" in details
+
+
+def _expected_fn():
+    return 1
+
+
+def _actual_fn():
+    return 1
+
+
+class _ExpectedClass:
+    pass
+
+
+class _ActualClass:
+    pass
+
+
+def test_identical_callable_passes():
+    assert deep_compare(len, len) == (True, "")
+    assert deep_compare(_expected_fn, _expected_fn) == (True, "")
+    assert deep_compare(_ExpectedClass, _ExpectedClass) == (True, "")
+
+
+def test_distinct_functions_report_autograder_misconfiguration():
+    equal, details = deep_compare(_actual_fn, _expected_fn)
+    assert not equal
+    assert "callables cannot be compared by value" in details
+    assert "bug in the autograder" in details
+    assert "_expected_fn" in details
+    assert "_actual_fn" in details
+    assert "0x" not in details
+
+
+def test_distinct_classes_report_autograder_misconfiguration():
+    equal, details = deep_compare(_ActualClass, _ExpectedClass)
+    assert not equal
+    assert "callables cannot be compared by value" in details
+    assert "_ExpectedClass" in details
+    assert "class_" in details
+
+
+def test_distinct_builtins_methods_and_partials_report_misconfiguration():
+    import functools
+
+    pairs = (
+        (abs, len),
+        ([].append, [].append),
+        (functools.partial(len), functools.partial(len)),
+    )
+    for actual, expected in pairs:
+        equal, details = deep_compare(actual, expected)
+        assert not equal
+        assert "callables cannot be compared by value" in details
+
+
+def test_callable_inside_collection_reports_path():
+    equal, details = deep_compare({"f": [_actual_fn]}, {"f": [_expected_fn]})
+    assert not equal
+    assert "at ['f'][0]:" in details
+    assert "callables cannot be compared by value" in details
+
+
+def test_callable_vs_non_callable_is_a_type_mismatch():
+    equal, details = deep_compare(1, _expected_fn)
+    assert not equal
+    assert "expected type function, got int" in details
+
+
+def test_instance_with_call_method_still_uses_equality():
+    class Callable:
+        def __call__(self):
+            return 1
+
+        def __eq__(self, other):
+            return isinstance(other, Callable)
+
+    assert deep_compare(Callable(), Callable())[0]
+
+
+def test_callable_name_survives_hostile_attributes():
+    class Weird(type):
+        def __getattribute__(cls, name):
+            if name in ("__qualname__", "__module__"):
+                raise RuntimeError("no name")
+            return super().__getattribute__(name)
+
+    class A(metaclass=Weird):
+        pass
+
+    class B(metaclass=Weird):
+        pass
+
+    equal, details = deep_compare(A, B)
+    assert not equal
+    assert "callables cannot be compared by value" in details

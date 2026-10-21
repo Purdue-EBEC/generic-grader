@@ -3,11 +3,15 @@
 ``deep_compare`` walks two values together.  Floats compare within
 ``atol + rtol * abs(expected)`` (the ``np.isclose`` rule), numpy arrays are
 delegated to :func:`array_compare`, lists/tuples compare element by element,
-dicts compare by key, and everything else falls back to ``==``.
+dicts compare by key, and everything else falls back to ``==``.  Functions,
+methods and classes cannot be compared by value, so unless both sides are the
+same object they are reported as an autograder misconfiguration.
 """
 
+import functools
 import math
 import numbers
+import types
 
 import numpy as np
 
@@ -15,6 +19,22 @@ from generic_grader.utils.array_diff import DEFAULT_ATOL, DEFAULT_RTOL, array_co
 from generic_grader.utils.safe_equal import make_diff, safe_repr
 
 ROOT = "top level"
+
+_CALLABLE_TYPES = (
+    types.FunctionType,
+    types.BuiltinFunctionType,
+    types.MethodType,
+    functools.partial,
+    type,
+)
+
+
+def _callable_name(value):
+    """Return ``module.qualname`` for *value*, or its repr if that fails."""
+    try:
+        return f"{value.__module__}.{value.__qualname__}"
+    except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
+        return safe_repr(value)
 
 
 def _num_repr(value):
@@ -77,6 +97,17 @@ class _Comparison:
             self._walk_sequence(actual, expected, path)
         elif isinstance(expected, dict):
             self._walk_dict(actual, expected, path)
+        elif isinstance(expected, _CALLABLE_TYPES):
+            if actual is not expected:
+                self.fail(
+                    path,
+                    "callables cannot be compared by value"
+                    f" (expected {_callable_name(expected)},"
+                    f" actual {_callable_name(actual)})."
+                    "  This is a bug in the autograder; please notify your"
+                    " instructor.  Test authors: compare the results of calling"
+                    " them instead, or use the class_* graders for classes.",
+                )
         elif not _safe_eq(actual, expected):
             text = f"expected={safe_repr(expected)}, actual={safe_repr(actual)}"
             if isinstance(actual, str) and isinstance(expected, str):
