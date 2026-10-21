@@ -75,6 +75,79 @@ import sys
 logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdout__))
 ```
 
+## Grading Octave / MATLAB code
+
+`generic-grader` can also run tests against GNU&nbsp;Octave scripts and
+function files (with the same syntax MATLAB uses).  The runtime is
+selected per-test via `Options.language`:
+
+``` python
+from parameterized import param
+from generic_grader.output import output_lines_match_reference
+from generic_grader.utils.options import Options
+
+test_01_HelloWorld = output_lines_match_reference.build(
+    [
+        param(
+            Options(
+                language="octave",
+                sub_module="hello_world",       # → hello_world.m in the CWD
+                ref_module="ref_hello_world",   # → ref_hello_world.m (reference)
+                obj_name="hello_world",
+                weight=1,
+            ),
+        ),
+    ]
+)
+```
+
+### Prerequisites
+
+* GNU&nbsp;Octave must be installed on the grader host and reachable on
+  `PATH`.  On Debian / Ubuntu:
+
+  ``` bash
+  sudo apt install octave
+  ```
+
+  You can override the executable with the `OCTAVE_EXECUTABLE`
+  environment variable if it lives outside the default location.
+
+* The runtime is POSIX-only — the language-independent sandbox uses
+  `preexec_fn` to apply `RLIMIT_AS`, `RLIMIT_CPU`, `RLIMIT_FSIZE`, and
+  `RLIMIT_NOFILE` to the Octave child, which requires Linux or macOS.
+
+### Script vs. function mode
+
+The Octave runtime picks between two dispatch shapes based on whether
+the test passes `args`/`kwargs`:
+
+* **Script mode** — no `args`, no `kwargs`.  The `.m` file is run
+  top-to-bottom.  The reference and student files may live under
+  different stems (e.g. `main.m` and `ref_main.m`); each side runs
+  its own file.
+* **Function mode** — any `args` or `kwargs` supplied.  The runtime
+  calls `<obj_name>(<args>)`, so the file must define a function with
+  that name (either as the top-of-file function of `<stem>.m` or as
+  a subfunction inside it).  Positional arguments are serialized as
+  Octave scalars; keyword arguments become trailing `('key', value)`
+  pairs — the same convention functions like `plot` already use.
+
+Supported argument types in this release are `bool`, `int`, `float`,
+and `str`.  Cell arrays, structs, and numpy arrays are planned for
+follow-on releases.
+
+### Sandbox
+
+The security sandbox is deliberately language-independent — the same
+resource limits apply to Python and Octave runs.  For Octave that
+means a fresh subprocess per call with a scrubbed environment
+(only `PATH`, `HOME`, `LANG`, `LC_ALL`, and `TMPDIR` are forwarded),
+`OCTAVE_HISTFILE=/dev/null`, and the resource limits above.  Wall-clock
+enforcement uses `subprocess.communicate(timeout=...)`; the whole
+process group is killed on timeout so runaway `.m` files can't leave
+grandchildren behind.
+
 
 ## Contributing
 
