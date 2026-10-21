@@ -7,7 +7,11 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import make_call_str
-from generic_grader.utils.language_guard import require_python_language
+from generic_grader.utils.language import LANGUAGE_EXTENSIONS, resolve_language
+from generic_grader.utils.octave_static import (
+    LoopDepthTracker as OctaveLoopDepthTracker,
+)
+from generic_grader.utils.octave_static import read_source
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.static import LoopDepthTracker
 
@@ -37,17 +41,21 @@ def build(the_options):
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
         def test_static_loop_depth(self, options):
-            require_python_language(self, options, "function.static_loop_depth")
-
             o = options
+            language = resolve_language(o)
+            extension = LANGUAGE_EXTENSIONS[language]
 
             """Check that loop depth meets requirements."""
 
-            with open(o.sub_module + ".py") as fo:
-                self.tree = ast.parse(fo.read())
-
-            self.depth_tracker = LoopDepthTracker()
-            self.depth_tracker.visit(self.tree)
+            if language == "octave":
+                source = read_source(self, o.sub_module + extension)
+                self.depth_tracker = OctaveLoopDepthTracker()
+                self.depth_tracker.visit_source(source)
+            else:
+                with open(o.sub_module + extension) as fo:
+                    self.tree = ast.parse(fo.read())
+                self.depth_tracker = LoopDepthTracker()
+                self.depth_tracker.visit(self.tree)
 
             actual = self.depth_tracker.max_depth
             expected = o.expected_minimum_depth
