@@ -1,5 +1,5 @@
 bump:
-	uv run cz bump --changelog
+	uv run --extra dev cz bump --changelog
 	@echo "Version bumped, changelog updated, committed, and tagged."
 	@echo "Review with 'git log -1' then run 'make publish'."
 

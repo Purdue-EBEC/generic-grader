@@ -9,6 +9,24 @@ while commitizen-generated sections use its type names
 (`Feat`/`Fix`/`Refactor`/`Perf`). Version headings use the `v`-prefixed tag
 form (`## v0.2.10`) to match commitizen's generated sections.
 
+## v0.3.0 (2026-10-21)
+
+### Feat
+
+- report callable comparison as an autograder misconfiguration
+- apply float tolerance to output values and plot properties
+- compare returned collections with float tolerance
+- add tolerance-aware recursive deep_compare utility
+
+### Fix
+
+- harden deep_compare number and type-mismatch paths
+- restore string diff in deep_compare failure details
+- terminate deep_compare on self-referential lists and dicts
+- drop "for this test" from the time limit message
+- give imports their own time limit
+- allow library cleanup during grader patch-target imports
+
 ## v0.2.10 (2026-10-06)
 
 ### Added
