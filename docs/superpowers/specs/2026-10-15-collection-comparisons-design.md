@@ -88,6 +88,7 @@ to match `array_compare`, so callers append their hint message unchanged.
 | `list`, `tuple` | Same length, then compare element by element in order |
 | `dict` | Same key set (order ignored), then compare values per key |
 | `set`, `frozenset` | Exact `==` |
+| function, builtin, method, `functools.partial`, class | Identity only. Any other pair fails with a message that names both callables and says this is an autograder misconfiguration (comparing callables requires calling them, which `deep_compare` never does) |
 | anything else | `bool(actual == expected)`, guarded: a raising or ambiguous `==` counts as a failure |
 
 Student values can be arbitrary objects, so the `isinstance` check and the
