@@ -5,9 +5,12 @@ Status: Approved (pending spec review)
 
 ## Problem
 
-Issue #217: `Options(absolute_tolerance=2.0)` on a
+Issue #217: `Options(absolute_tolerance=...)` on a
 `function_return_values_match_reference` test whose cases are uint8 images
-still fails on a one-gray-level difference:
+still fails on a one-gray-level difference. The issue quotes a repro with
+`absolute_tolerance=2.0`; the real GTSRB `gaussian_filter` config sets
+`absolute_tolerance=1.0` (diff of 1 passes at atol=1 since
+`1 <= 1 + 1e-7 * 255`; diff of 2 fails).
 
 ```text
 Details: at top level: at (3, 3): expected=np.uint8(255), actual=np.uint8(254)
@@ -129,9 +132,11 @@ Fraction fallback instead of reporting a mismatch.
 
 ## Testing
 
-- Issue repro: uint8 arrays and `np.uint8` scalars with `atol=2.0` —
-  difference of 1 passes, difference of 3 fails; details consistent with
-  the decision (issue #207).
+- Issue repro: uint8 arrays and `np.uint8` scalars with `atol=1.0` (the
+  real `gaussian_filter` config) — difference of 1 passes, difference of
+  2 fails; details consistent with the decision (issue #207). Also
+  `atol=2.0` (the issue's quoted repro): difference of 1 passes,
+  difference of 3 fails.
 - Default band: int array values at 10^7 with difference 1 pass at
   defaults; small ints still exact.
 - Exact short-circuit: int64 `2**62 + 1` vs `2**62` with `rtol=0,
