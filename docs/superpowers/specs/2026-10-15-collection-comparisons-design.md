@@ -84,7 +84,7 @@ to match `array_compare`, so callers append their hint message unchanged.
 | `expected` | Behavior |
 |---|---|
 | `np.ndarray` | Delegate to `array_compare` (dtype, shape, `rtol`/`atol`) |
-| real numbers (`numbers.Real`, not `bool`) | Both integral: exact `==`. Otherwise the tolerance rule above, computed in pure Python (fast for large lists); NaN equals NaN |
+| real numbers (`numbers.Real`, not `bool`) | The tolerance rule above, computed in pure Python (fast for large lists); integers use the same rule since #217 (exact `Fraction` arithmetic beyond float range); NaN equals NaN |
 | `list`, `tuple` | Same length, then compare element by element in order |
 | `dict` | Same key set (order ignored), then compare values per key |
 | `set`, `frozenset` | Exact `==` |
