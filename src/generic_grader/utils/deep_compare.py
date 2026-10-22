@@ -43,21 +43,32 @@ def _callable_name(value):
 
 def _num_repr(value):
     """``safe_repr`` that also survives values repr() refuses to render."""
+    if isinstance(value, Fraction):
+        # reprlib's repr_instance swallows repr() errors for Fraction and
+        # returns a memory address, so handle Fractions first.
+        if value.denominator != 1:
+            return f"<Fraction with {value.numerator.bit_length()} bits>"
+        # Whole numbers render as their numerator; repr_int still raises
+        # ValueError above sys.int_max_str_digits (caught below).
+        value = value.numerator
     try:
         return safe_repr(value)
     except ValueError:
-        # repr() refuses ints over sys.int_max_str_digits and Fractions
-        # built from them; describe the magnitude instead.
-        magnitude = getattr(value, "numerator", value)
-        try:
-            return f"<{type(value).__name__} with {magnitude.bit_length()} bits>"
-        except (AttributeError, ValueError):
-            return f"<{type(value).__name__}>"
+        # repr() refuses ints over sys.int_max_str_digits; describe the
+        # magnitude instead.
+        return f"<{type(value).__name__} with {value.bit_length()} bits>"
 
 
 def _is_real(value):
-    """Return True for real numbers, excluding bool."""
-    return isinstance(value, numbers.Real) and not isinstance(value, bool)
+    """Return True for real numbers, excluding bool and timedelta64.
+
+    ``np.timedelta64`` subclasses ``np.signedinteger`` and registers as
+    ``numbers.Real``, but ``operator.index`` rejects it; excluding it
+    keeps timedeltas on the guarded ``==`` path (exact comparison).
+    """
+    if isinstance(value, (bool, np.timedelta64)):
+        return False
+    return isinstance(value, numbers.Real)
 
 
 def _safe_eq(actual, expected):
@@ -149,19 +160,10 @@ class _Comparison:
             return False
 
     def _walk_number(self, actual, expected, path):
-        # numpy integer scalars wrap on subtraction (np.uint8(254) -
-        # np.uint8(255) == 255); Python int arithmetic is exact.
-        actual_i = (
-            operator.index(actual) if isinstance(actual, numbers.Integral) else actual
-        )
-        expected_i = (
-            operator.index(expected)
-            if isinstance(expected, numbers.Integral)
-            else expected
-        )
-
         # NaN test on the raw values; must not convert to float (huge ints
         # would raise OverflowError in math.isnan).  NaN equals NaN.
+        # Equality returns before any normalization, so already-equal
+        # values never pay for operator.index below.
         if actual == expected or (actual != actual and expected != expected):  # noqa: PLR0124
             return
         if actual != actual or expected != expected:  # noqa: PLR0124
@@ -180,6 +182,17 @@ class _Comparison:
                 f"{_num_repr(actual)} != {_num_repr(expected)} (infinite value)",
             )
             return
+
+        # numpy integer scalars wrap on subtraction (np.uint8(254) -
+        # np.uint8(255) == 255); Python int arithmetic is exact.
+        actual_i = (
+            operator.index(actual) if isinstance(actual, numbers.Integral) else actual
+        )
+        expected_i = (
+            operator.index(expected)
+            if isinstance(expected, numbers.Integral)
+            else expected
+        )
 
         try:
             delta = self.atol + self.rtol * abs(expected_i)

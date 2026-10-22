@@ -125,10 +125,14 @@ Fraction fallback instead of reporting a mismatch.
 - `10**5000` vs `10**5000 + 1` flips to pass (within the 10^4993 band).
   Its repr-safety purpose is preserved by comparing `10**5000` vs
   `2 * 10**5000`, which fails beyond the band.
-- int64 values above 2^53 with atol-only tolerance are approximate in the
-  array path (float64 ulp about 2048 against a default band of at least
-  9e11 — negligible; exact needs are covered by the `rtol=atol=0`
-  short-circuit).
+- int64 values above 2^53 are approximate in the array path (float64
+  promotion; ulp about 2048 near 2^63). The divergence from the exact
+  scalar path exists only for non-zero tolerances too small to matter
+  (e.g. `rtol=0, atol=0.5` at `2**62`, where rounding can absorb a
+  difference of 1); at defaults the band is about 9e8 at 2^53 and at
+  least 9e11 near 2^63 — far above the ulp, so the approximation is
+  negligible. Exact needs are covered by the `rtol=atol=0`
+  short-circuit.
 
 ## Testing
 

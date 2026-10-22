@@ -289,6 +289,45 @@ def test_array_compare_non_numeric_dtypes_stay_exact():
     assert not array_compare(da, db, atol=2.0)[0]
 
 
+def test_array_compare_timedelta_arrays_stay_exact():
+    # np.timedelta64 subclasses signedinteger, so the old issubdtype
+    # guard sent it to np.allclose, which raises UFuncTypeError
+    # (float64 + m8[s]).  dtype kind "m" must compare exactly.
+    a = np.array([1, 2], dtype="m8[s]")
+    b = np.array([1, 2], dtype="m8[s]")
+    c = np.array([1, 3], dtype="m8[s]")
+    assert array_compare(a, b)[0]  # default tolerances
+    assert not array_compare(a, c)[0]
+    assert array_compare(a, b, atol=2.0)[0]
+    assert not array_compare(a, c, atol=2.0)[0]
+
+
+def test_array_compare_structured_and_object_dtypes_stay_exact_at_atol():
+    # Only real numeric kinds (f/i/u) ever apply tolerance: a 0.5
+    # difference inside atol=2.0 must still fail for structured and
+    # object dtypes.
+    sa = np.array([(1.0,), (2.0,)], dtype=[("a", "f8")])
+    sb = np.array([(1.0,), (2.5,)], dtype=[("a", "f8")])
+    sc = np.array([(1.0,), (2.0,)], dtype=[("a", "f8")])
+    assert array_compare(sa, sc, atol=2.0)[0]
+    assert not array_compare(sa, sb, atol=2.0)[0]
+    oa = np.array([1, 2], dtype=object)
+    ob = np.array([1, 3], dtype=object)
+    oc = np.array([1, 2], dtype=object)
+    assert array_compare(oa, oc, atol=2.0)[0]
+    assert not array_compare(oa, ob, atol=2.0)[0]
+
+
+def test_array_compare_equal_integer_arrays_skip_allclose(monkeypatch):
+    # Exact equality implies within tolerance, so equal integer arrays
+    # must return before np.allclose allocates its float64 temporaries.
+    a = np.full((4, 4), 254, dtype=np.uint8)
+    b = np.full((4, 4), 254, dtype=np.uint8)
+    monkeypatch.setattr(np, *make_mock_function_raise_error("allclose", RuntimeError))
+    equal, _ = array_compare(a, b, rtol=1e-7, atol=1.0)
+    assert equal
+
+
 def test_array_diff_details_uint8_consistent_with_compare():
     # Issue #207: a failing comparison must report differing indices.
     a = np.full((2, 2), 253, dtype=np.uint8)

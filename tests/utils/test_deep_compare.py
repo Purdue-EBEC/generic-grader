@@ -183,6 +183,20 @@ def test_bool_is_not_a_real_number():
     assert deep_compare(True, True)[0]
 
 
+def test_timedelta64_scalars_compare_exactly():
+    # np.timedelta64 subclasses signedinteger and registers as
+    # numbers.Real, but operator.index rejects it; timedeltas must take
+    # the guarded == path and compare exactly, as before #217.
+    assert deep_compare(np.timedelta64(1, "s"), np.timedelta64(1, "s"))[0]
+    assert deep_compare(
+        np.timedelta64(1, "s"), np.timedelta64(1, "s"), strict_types=False
+    )[0]
+    equal, _details = deep_compare(
+        np.timedelta64(1, "s"), np.timedelta64(2, "s"), strict_types=False
+    )
+    assert equal is False
+
+
 def test_max_samples_limits_reported_failures():
     equal, details = deep_compare(
         list(range(10)), [x + 100 for x in range(10)], max_samples=3
@@ -315,6 +329,13 @@ def test_huge_int_vs_float_does_not_raise_overflow_error():
     assert equal is False
 
 
+def test_inf_against_huge_int_fails_without_raising():
+    # The inf guard runs before the arithmetic that would overflow.
+    for actual, expected in ((float("inf"), 10**400), (10**400, float("inf"))):
+        equal, _details = deep_compare(actual, expected, strict_types=False)
+        assert equal is False
+
+
 def test_5000_digit_int_mismatch_reports_without_repr_error():
     # 10**5000 vs 10**5000 + 1 is within the default band now; compare a
     # mismatch beyond the band so the failure path still renders
@@ -325,6 +346,10 @@ def test_5000_digit_int_mismatch_reports_without_repr_error():
     # _num_repr without raising ValueError from repr().
     assert "!=" in details
     assert "difference)" in details
+    # Magnitude is described, never reprlib's memory-address fallback
+    # and never the printed digits.
+    assert "0x" not in details
+    assert "bits>" in details
 
 
 def test_object_with_raising_class_property_is_type_mismatch():
