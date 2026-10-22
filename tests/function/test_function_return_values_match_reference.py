@@ -301,6 +301,65 @@ cases.append(
     }
 )
 
+# Case: absolute_tolerance applies to uint8 image arrays (issue #217)
+cases.append(
+    {
+        "submission": (
+            "import numpy as np\n"
+            "def test_function():\n"
+            "    return np.full((4, 4), 254, dtype=np.uint8)"
+        ),
+        "reference": (
+            "import numpy as np\n"
+            "def test_function():\n"
+            "    return np.full((4, 4), 255, dtype=np.uint8)"
+        ),
+        "result": "pass",
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            absolute_tolerance=1.0,
+        ),
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
+# Case: uint8 difference beyond absolute_tolerance still fails (issue #217)
+cases.append(
+    {
+        "submission": (
+            "import numpy as np\n"
+            "def test_function():\n"
+            "    return np.full((4, 4), 253, dtype=np.uint8)"
+        ),
+        "reference": (
+            "import numpy as np\n"
+            "def test_function():\n"
+            "    return np.full((4, 4), 255, dtype=np.uint8)"
+        ),
+        "result": AssertionError,
+        "options": Options(
+            obj_name="test_function",
+            sub_module="submission",
+            ref_module="reference",
+            weight=1,
+            absolute_tolerance=1.0,
+        ),
+        "message": "Double check the value(s) returned",
+        "doc_func_test_string": (
+            """Check that the value(s) returned from your"""
+            """ `submission.test_function` function when called as"""
+            """ `test_function()` match the reference value(s)."""
+        ),
+    }
+)
+
 # Case: equal np.float64 scalars should pass
 cases.append(
     {
