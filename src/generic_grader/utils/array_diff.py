@@ -6,6 +6,29 @@ DEFAULT_RTOL = 1e-07
 DEFAULT_ATOL = 0.0
 
 
+def _tolerance_applies(dtype, rtol: float, atol: float) -> bool:
+    """Whether ``rtol``/``atol`` should decide equality for arrays of *dtype*.
+
+    Dispatch on ``dtype.kind``: floating (``"f"``) always compares with
+    ``np.isclose``/``np.allclose``; integer (``"i"``/``"u"``) compares with
+    tolerance only when a tolerance is set.  Integer arrays at exact
+    settings (``rtol == 0 and atol == 0``) keep the exact
+    ``np.array_equal`` path: ``allclose`` promotes to float64, which would
+    call ``2**62 + 1`` equal to ``2**62``.  Every other kind — bool
+    (``"b"``), datetime (``"M"``), timedelta (``"m"``), structured
+    (``"V"``), object (``"O"``) — compares exactly.  ``kind`` rather than
+    ``np.issubdtype`` is required because ``np.timedelta64`` subclasses
+    ``np.signedinteger``: the old integer check sent ``m8`` arrays to
+    ``np.allclose``, which raises ``UFuncTypeError`` (float64 + m8[s]).
+    """
+    kind = np.dtype(dtype).kind
+    if kind == "f":
+        return True
+    if kind in ("i", "u"):
+        return rtol != 0 or atol != 0
+    return False
+
+
 def array_diff_details(
     actual,
     expected,
@@ -20,7 +43,7 @@ def array_diff_details(
     that decision.
     """
 
-    if np.issubdtype(expected.dtype, np.floating):
+    if _tolerance_applies(expected.dtype, rtol, atol):
         diff_mask = ~np.isclose(actual, expected, rtol=rtol, atol=atol)
     else:
         # Use elementwise inequality; for structured arrays this can raise
@@ -63,7 +86,10 @@ def array_compare(
 ):
     """Compare two numpy arrays and return (equal, details).
 
-    If a numpy comparison function raises, the exception is propagated.
+    Integer and floating arrays compare within ``rtol``/``atol``; integer
+    arrays at ``rtol == atol == 0`` and all non-numeric dtypes compare
+    exactly.  If a numpy comparison function raises, the exception is
+    propagated.
     """
     # Check np.array dtype attributes.
     expected_dtype = getattr(expected, "dtype", None)
@@ -94,7 +120,12 @@ def array_compare(
         return False, details
 
     # Compare the values of the arrays.
-    if np.issubdtype(expected.dtype, np.floating):
+    if _tolerance_applies(expected.dtype, rtol, atol):
+        # For integer dtypes exact equality implies within tolerance, so
+        # try np.array_equal first: the common equal case returns without
+        # np.allclose allocating its float64 temporaries.
+        if expected.dtype.kind in ("i", "u") and np.array_equal(actual, expected):
+            return True, ""
         equal = np.allclose(actual, expected, rtol=rtol, atol=atol)
     else:
         equal = np.array_equal(actual, expected)

@@ -1,9 +1,11 @@
 """Tolerance-aware recursive comparison of returned values.
 
-``deep_compare`` walks two values together.  Floats compare within
-``atol + rtol * abs(expected)`` (the ``np.isclose`` rule), numpy arrays are
-delegated to :func:`array_compare`, lists/tuples compare element by element,
-dicts compare by key, and everything else falls back to ``==``.  Functions,
+``deep_compare`` walks two values together.  Numbers (floats and ints)
+compare within ``atol + rtol * abs(expected)`` (the ``np.isclose`` rule);
+magnitudes beyond float range use exact ``fractions.Fraction`` arithmetic
+so the same rule holds at every size.  numpy arrays are delegated to
+:func:`array_compare`, lists/tuples compare element by element, dicts
+compare by key, and everything else falls back to ``==``.  Functions,
 methods and classes cannot be compared by value, so unless both sides are the
 same object they are reported as an autograder misconfiguration.
 """
@@ -11,7 +13,9 @@ same object they are reported as an autograder misconfiguration.
 import functools
 import math
 import numbers
+import operator
 import types
+from fractions import Fraction
 
 import numpy as np
 
@@ -38,17 +42,33 @@ def _callable_name(value):
 
 
 def _num_repr(value):
-    """``safe_repr`` that also survives ints beyond repr's 4300-digit limit."""
+    """``safe_repr`` that also survives values repr() refuses to render."""
+    if isinstance(value, Fraction):
+        # reprlib's repr_instance swallows repr() errors for Fraction and
+        # returns a memory address, so handle Fractions first.
+        if value.denominator != 1:
+            return f"<Fraction with {value.numerator.bit_length()} bits>"
+        # Whole numbers render as their numerator; repr_int still raises
+        # ValueError above sys.int_max_str_digits (caught below).
+        value = value.numerator
     try:
         return safe_repr(value)
     except ValueError:
-        # repr() refuses ints over sys.int_max_str_digits; describe instead.
+        # repr() refuses ints over sys.int_max_str_digits; describe the
+        # magnitude instead.
         return f"<{type(value).__name__} with {value.bit_length()} bits>"
 
 
 def _is_real(value):
-    """Return True for real numbers, excluding bool."""
-    return isinstance(value, numbers.Real) and not isinstance(value, bool)
+    """Return True for real numbers, excluding bool and timedelta64.
+
+    ``np.timedelta64`` subclasses ``np.signedinteger`` and registers as
+    ``numbers.Real``, but ``operator.index`` rejects it; excluding it
+    keeps timedeltas on the guarded ``==`` path (exact comparison).
+    """
+    if isinstance(value, (bool, np.timedelta64)):
+        return False
+    return isinstance(value, numbers.Real)
 
 
 def _safe_eq(actual, expected):
@@ -57,6 +77,21 @@ def _safe_eq(actual, expected):
         return bool(actual == expected)
     except Exception:  # noqa: BLE001 - submitted objects can be arbitrary
         return False
+
+
+def _is_inf(value):
+    """True for +/-infinity; integers are never infinite (and math.isinf
+    raises OverflowError on ints beyond float range)."""
+    if isinstance(value, numbers.Integral):
+        return False
+    return math.isinf(value)
+
+
+def _as_fraction(value):
+    """Exact ``Fraction`` for *value*; ints skip the float conversion."""
+    if isinstance(value, numbers.Integral):
+        return Fraction(operator.index(value))
+    return Fraction(float(value))
 
 
 class _Comparison:
@@ -125,33 +160,55 @@ class _Comparison:
             return False
 
     def _walk_number(self, actual, expected, path):
-        if isinstance(actual, numbers.Integral) and isinstance(
-            expected, numbers.Integral
-        ):
-            if actual != expected:
-                self.fail(
-                    path,
-                    f"expected={_num_repr(expected)}, actual={_num_repr(actual)}",
-                )
-            return
         # NaN test on the raw values; must not convert to float (huge ints
-        # would raise OverflowError in math.isnan).
+        # would raise OverflowError in math.isnan).  NaN equals NaN.
+        # Equality returns before any normalization, so already-equal
+        # values never pay for operator.index below.
         if actual == expected or (actual != actual and expected != expected):  # noqa: PLR0124
             return
-        try:
-            delta = self.atol + self.rtol * abs(expected)
-            diff = abs(actual - expected)
-        except OverflowError:
+        if actual != actual or expected != expected:  # noqa: PLR0124
+            # One-sided NaN is never within tolerance; fail before the
+            # arithmetic below (Fraction(nan) would raise ValueError).
             self.fail(
                 path,
                 f"expected={_num_repr(expected)}, actual={_num_repr(actual)}",
             )
             return
-        infinite = math.isinf(actual) or math.isinf(expected)
-        if infinite or not diff <= delta:  # a NaN diff also fails
+        if _is_inf(actual) or _is_inf(expected):
+            # Equal infinities returned above; check before the arithmetic
+            # (a huge int against inf overflows).
             self.fail(
                 path,
-                f"{actual!r} != {expected!r} within {delta!r} ({diff!r} difference)",
+                f"{_num_repr(actual)} != {_num_repr(expected)} (infinite value)",
+            )
+            return
+
+        # numpy integer scalars wrap on subtraction (np.uint8(254) -
+        # np.uint8(255) == 255); Python int arithmetic is exact.
+        actual_i = (
+            operator.index(actual) if isinstance(actual, numbers.Integral) else actual
+        )
+        expected_i = (
+            operator.index(expected)
+            if isinstance(expected, numbers.Integral)
+            else expected
+        )
+
+        try:
+            delta = self.atol + self.rtol * abs(expected_i)
+            diff = abs(actual_i - expected_i)
+        except OverflowError:
+            # Magnitudes beyond float range: apply the same rule exactly.
+            delta = _as_fraction(self.atol) + _as_fraction(self.rtol) * _as_fraction(
+                abs(expected_i)
+            )
+            diff = abs(_as_fraction(actual_i) - _as_fraction(expected_i))
+
+        if not diff <= delta:
+            self.fail(
+                path,
+                f"{_num_repr(actual)} != {_num_repr(expected)}"
+                f" within {_num_repr(delta)} ({_num_repr(diff)} difference)",
             )
 
     def _walk_sequence(self, actual, expected, path):

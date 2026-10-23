@@ -191,7 +191,8 @@ def test_array_compare_propagates_allclose(monkeypatch):
 
 
 def test_array_compare_propagates_array_equal(monkeypatch):
-    """Test that array_compare propagates exceptions from np.array_equal for non-float arrays."""
+    """Propagates exceptions from np.array_equal on the exact path
+    (integer arrays at rtol == atol == 0)."""
     a = np.array([1, 2, 3])
     b = np.array([1, 2, 3])
 
@@ -201,7 +202,7 @@ def test_array_compare_propagates_array_equal(monkeypatch):
     )
 
     with pytest.raises(RuntimeError, match="Your program unexpectedly called"):
-        array_compare(a, b)
+        array_compare(a, b, rtol=0.0, atol=0.0)
 
 
 def test_array_compare_tolerance_within_rtol():
@@ -236,6 +237,104 @@ def test_array_compare_tolerance_outside_atol():
     equal, details = array_compare(a, b, rtol=0.0, atol=1e-8)
     assert not equal
     assert "at (1,)" in details
+
+
+def test_array_compare_uint8_within_atol():
+    """Issue #217: integer arrays honor absolute_tolerance (atol=1.0 is
+    the real gaussian_filter config)."""
+    a = np.full((4, 4), 254, dtype=np.uint8)
+    b = np.full((4, 4), 255, dtype=np.uint8)
+    equal, _ = array_compare(a, b, rtol=1e-7, atol=1.0)
+    assert equal
+
+
+def test_array_compare_uint8_outside_atol():
+    a = np.full((4, 4), 253, dtype=np.uint8)
+    b = np.full((4, 4), 255, dtype=np.uint8)
+    equal, details = array_compare(a, b, rtol=1e-7, atol=1.0)
+    assert not equal
+    assert "at (0, 0)" in details
+
+
+def test_array_compare_uint8_issue_repro_atol_2():
+    # The issue's quoted repro: atol=2.0, diff 1 passes, diff 3 fails.
+    b = np.full((4, 4), 255, dtype=np.uint8)
+    assert array_compare(np.full((4, 4), 254, np.uint8), b, atol=2.0)[0]
+    assert not array_compare(np.full((4, 4), 252, np.uint8), b, atol=2.0)[0]
+
+
+def test_array_compare_int_default_band_reaches_one_at_1e7():
+    a = np.array([10_000_001], dtype=np.int64)
+    b = np.array([10_000_000], dtype=np.int64)
+    assert array_compare(a, b)[0]
+    assert not array_compare(a + 1, b)[0]
+
+
+def test_array_compare_exact_settings_avoid_float64_promotion():
+    # rtol=atol=0 must use np.array_equal: allclose promotes to float64
+    # and would call 2**62 + 1 equal to 2**62.
+    a = np.array([2**62 + 1], dtype=np.int64)
+    b = np.array([2**62], dtype=np.int64)
+    equal, details = array_compare(a, b, rtol=0.0, atol=0.0)
+    assert not equal
+    assert "at (0,)" in details
+
+
+def test_array_compare_non_numeric_dtypes_stay_exact():
+    a = np.array([True, False])
+    b = np.array([True, True])
+    assert not array_compare(a, b, atol=2.0)[0]
+    da = np.array(["2020-01-01", "2020-01-02"], dtype="datetime64[D]")
+    db = np.array(["2020-01-01", "2020-01-03"], dtype="datetime64[D]")
+    assert not array_compare(da, db, atol=2.0)[0]
+
+
+def test_array_compare_timedelta_arrays_stay_exact():
+    # np.timedelta64 subclasses signedinteger, so the old issubdtype
+    # guard sent it to np.allclose, which raises UFuncTypeError
+    # (float64 + m8[s]).  dtype kind "m" must compare exactly.
+    a = np.array([1, 2], dtype="m8[s]")
+    b = np.array([1, 2], dtype="m8[s]")
+    c = np.array([1, 3], dtype="m8[s]")
+    assert array_compare(a, b)[0]  # default tolerances
+    assert not array_compare(a, c)[0]
+    assert array_compare(a, b, atol=2.0)[0]
+    assert not array_compare(a, c, atol=2.0)[0]
+
+
+def test_array_compare_structured_and_object_dtypes_stay_exact_at_atol():
+    # Only real numeric kinds (f/i/u) ever apply tolerance: a 0.5
+    # difference inside atol=2.0 must still fail for structured and
+    # object dtypes.
+    sa = np.array([(1.0,), (2.0,)], dtype=[("a", "f8")])
+    sb = np.array([(1.0,), (2.5,)], dtype=[("a", "f8")])
+    sc = np.array([(1.0,), (2.0,)], dtype=[("a", "f8")])
+    assert array_compare(sa, sc, atol=2.0)[0]
+    assert not array_compare(sa, sb, atol=2.0)[0]
+    oa = np.array([1, 2], dtype=object)
+    ob = np.array([1, 3], dtype=object)
+    oc = np.array([1, 2], dtype=object)
+    assert array_compare(oa, oc, atol=2.0)[0]
+    assert not array_compare(oa, ob, atol=2.0)[0]
+
+
+def test_array_compare_equal_integer_arrays_skip_allclose(monkeypatch):
+    # Exact equality implies within tolerance, so equal integer arrays
+    # must return before np.allclose allocates its float64 temporaries.
+    a = np.full((4, 4), 254, dtype=np.uint8)
+    b = np.full((4, 4), 254, dtype=np.uint8)
+    monkeypatch.setattr(np, *make_mock_function_raise_error("allclose", RuntimeError))
+    equal, _ = array_compare(a, b, rtol=1e-7, atol=1.0)
+    assert equal
+
+
+def test_array_diff_details_uint8_consistent_with_compare():
+    # Issue #207: a failing comparison must report differing indices.
+    a = np.full((2, 2), 253, dtype=np.uint8)
+    b = np.full((2, 2), 255, dtype=np.uint8)
+    equal, details = array_compare(a, b, atol=1.0)
+    assert not equal
+    assert "at (0, 0)" in details
 
 
 def test_array_compare_failure_reports_differing_indices():
