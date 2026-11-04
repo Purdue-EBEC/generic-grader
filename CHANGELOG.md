@@ -9,6 +9,26 @@ while commitizen-generated sections use its type names
 (`Feat`/`Fix`/`Refactor`/`Perf`). Version headings use the `v`-prefixed tag
 form (`## v0.2.10`) to match commitizen's generated sections.
 
+## v0.4.0 (2026-11-04)
+
+### BREAKING CHANGE
+
+- integers now compare within the same rtol/atol band as floats.
+At the default rtol=1e-7, integer values >= 1e7 can differ by 1 and still pass;
+set rtol=0 and atol=0 on the Options for exact integer comparison. Options
+also raises ValueError for negative or non-finite tolerances.
+
+### Fix
+
+- apply tolerance rule to integers and compare ints against floats exactly (#217)
+  - Integer scalars, huge ints and integer arrays follow the same
+    `abs(actual - expected) <= atol + rtol * abs(expected)` rule as floats.
+  - Mixed int/float comparisons use an exact difference, so values beyond 2**53
+    no longer pass by rounding. `timedelta64` stays exact.
+  - `Options` rejects negative, infinite, and NaN `relative_tolerance` and
+    `absolute_tolerance`.
+  - Array failure details end with a single `(tolerance: ...)` line.
+
 ## v0.3.0 (2026-10-21)
 
 ### Feat
