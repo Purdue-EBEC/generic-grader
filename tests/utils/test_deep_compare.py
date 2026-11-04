@@ -1,3 +1,5 @@
+from fractions import Fraction
+
 import numpy as np
 import pytest
 
@@ -31,6 +33,41 @@ def test_tolerance_options_are_honoured():
     assert not deep_compare([3.00000001], [3.0], rtol=1e-10)[0]
 
 
+def test_uint8_scalars_honour_absolute_tolerance():
+    """Issue #217: integer scalars must apply atol (real config uses 1.0)."""
+    assert deep_compare(np.uint8(254), np.uint8(255), atol=1.0)[0]
+    assert not deep_compare(np.uint8(253), np.uint8(255), atol=1.0)[0]
+
+
+def test_python_ints_honour_absolute_tolerance():
+    assert deep_compare(254, 255, atol=1.0)[0]
+    assert not deep_compare(253, 255, atol=1.0)[0]
+
+
+def test_default_rtol_band_reaches_one_at_1e7():
+    # Uniform rule: delta = 1e-7 * 1e7 = 1.0, so diff 1 passes, diff 2 fails.
+    assert deep_compare(10_000_001, 10_000_000)[0]
+    assert not deep_compare(10_000_002, 10_000_000)[0]
+
+
+def test_huge_int_within_default_band_passes_via_fraction():
+    # Beyond float range the same rule is applied with Fraction arithmetic.
+    assert deep_compare(10**5000, 10**5000 + 1)[0]
+
+
+def test_huge_int_atol_applies_exactly_with_zero_rtol():
+    # 0.0 * 10**5000 overflows the float fast path; the Fraction fallback
+    # must still apply atol exactly.
+    assert deep_compare(10**5000, 10**5000 + 2, rtol=0.0, atol=2.0)[0]
+    assert not deep_compare(10**5000, 10**5000 + 3, rtol=0.0, atol=2.0)[0]
+
+
+def test_single_nan_against_huge_int_fails_without_raising():
+    # strict_types=False so dispatch reaches _walk_number (int vs float).
+    equal, _details = deep_compare(float("nan"), 10**400, strict_types=False)
+    assert equal is False
+
+
 def test_nan_equals_nan_and_inf_equals_inf():
     assert deep_compare((float("nan"), float("inf")), (float("nan"), float("inf")))[0]
     assert not deep_compare((float("nan"),), (1.0,))[0]
@@ -39,8 +76,14 @@ def test_nan_equals_nan_and_inf_equals_inf():
     assert not deep_compare((float("inf"),), (1.0,))[0]
 
 
-def test_integers_compare_exactly():
-    assert not deep_compare([1_000_000_001], [1_000_000_000])[0]
+def test_small_integers_compare_exactly_at_defaults():
+    # The default rtol band (1e-7 * value) stays below 1 under 1e7.
+    assert not deep_compare([1_000_000], [1_000_001])[0]
+
+
+def test_large_integers_compare_exactly_with_zero_tolerances():
+    # Exactness for large integers requires tightening the tolerances.
+    assert not deep_compare([1_000_000_001], [1_000_000_000], rtol=0.0, atol=0.0)[0]
 
 
 def test_nested_path_is_reported():
@@ -140,6 +183,20 @@ def test_relaxed_types_accept_int_for_float_but_not_container_swap():
 def test_bool_is_not_a_real_number():
     assert not deep_compare(1, True)[0]
     assert deep_compare(True, True)[0]
+
+
+def test_timedelta64_scalars_compare_exactly():
+    # np.timedelta64 subclasses signedinteger and registers as
+    # numbers.Real, but operator.index rejects it; timedeltas must take
+    # the guarded == path and compare exactly, as before #217.
+    assert deep_compare(np.timedelta64(1, "s"), np.timedelta64(1, "s"))[0]
+    assert deep_compare(
+        np.timedelta64(1, "s"), np.timedelta64(1, "s"), strict_types=False
+    )[0]
+    equal, _details = deep_compare(
+        np.timedelta64(1, "s"), np.timedelta64(2, "s"), strict_types=False
+    )
+    assert equal is False
 
 
 def test_max_samples_limits_reported_failures():
@@ -274,11 +331,80 @@ def test_huge_int_vs_float_does_not_raise_overflow_error():
     assert equal is False
 
 
-def test_5000_digit_int_mismatch_reports_without_repr_error():
-    equal, details = deep_compare(10**5000, 10**5000 + 1)
+def test_inf_against_huge_int_fails_without_raising():
+    # The inf guard runs before the arithmetic that would overflow.
+    for actual, expected in ((float("inf"), 10**400), (10**400, float("inf"))):
+        equal, _details = deep_compare(actual, expected, strict_types=False)
+        assert equal is False
+
+
+@pytest.mark.parametrize(
+    ("actual", "expected"),
+    [
+        (2**53 + 1, float(2**53)),
+        (float(2**53), 2**53 + 1),
+        (np.int64(2**62 + 1), np.float64(2**62)),
+        (np.uint64(2**64 - 1), float(2**64)),
+    ],
+    ids=["int-float", "float-int", "np.int64-np.float64", "np.uint64-float"],
+)
+def test_int_against_float_is_exact_beyond_2_53_at_zero_tolerance(actual, expected):
+    # int - float rounds the int to a float first, hiding a difference of 1.
+    equal, _details = deep_compare(
+        actual, expected, rtol=0.0, atol=0.0, strict_types=False
+    )
+    assert equal is False
+
+
+def test_int_against_float_beyond_2_53_honours_absolute_tolerance():
+    assert deep_compare(
+        2**53 + 1, float(2**53), rtol=0.0, atol=1.0, strict_types=False
+    )[0]
+    assert not deep_compare(
+        2**53 + 2, float(2**53), rtol=0.0, atol=1.0, strict_types=False
+    )[0]
+
+
+def test_int_equal_to_float_passes_at_zero_tolerance():
+    assert deep_compare(2**60, float(2**60), rtol=0.0, atol=0.0, strict_types=False)[0]
+
+
+@pytest.mark.parametrize(
+    ("actual", "expected"),
+    [
+        (np.float64(1e300), 10**400),
+        (10**400, np.float64(1e300)),
+        (np.float32(1.0), 10**400),
+    ],
+    ids=["np.float64-huge", "huge-np.float64", "np.float32-huge"],
+)
+def test_numpy_float_against_huge_int_fails_without_raising(actual, expected):
+    # numpy converts the int to float in ==, which overflows.
+    equal, _details = deep_compare(actual, expected, strict_types=False)
+    assert equal is False
+
+
+def test_mixed_int_float_failure_reports_readable_difference():
+    equal, details = deep_compare(1, 1.5, strict_types=False, rtol=0.0, atol=0.1)
     assert not equal
-    assert "expected=" in details
-    assert "actual=" in details
+    assert "(0.5 difference)" in details
+    assert "Fraction" not in details
+
+
+def test_5000_digit_int_mismatch_reports_without_repr_error():
+    # 10**5000 vs 10**5000 + 1 is within the default band now; compare a
+    # mismatch beyond the band so the failure path still renders
+    # 5000-digit values without raising ValueError from repr().
+    equal, details = deep_compare(10**5000, 2 * 10**5000)
+    assert not equal
+    # The unified failure message renders both 5000-digit values via
+    # _num_repr without raising ValueError from repr().
+    assert "!=" in details
+    assert "difference)" in details
+    # Magnitude is described, never reprlib's memory-address fallback
+    # and never the printed digits.
+    assert "0x" not in details
+    assert "bits>" in details
 
 
 def test_object_with_raising_class_property_is_type_mismatch():
@@ -386,3 +512,19 @@ def test_callable_name_survives_hostile_attributes():
     equal, details = deep_compare(A, B)
     assert not equal
     assert "callables cannot be compared by value" in details
+
+
+def test_mixed_rational_and_int_difference_is_exact():
+    # float(Fraction(1, 3)) is just below 1/3, so a float-converted
+    # difference would equal this atol and wrongly pass.
+    equal, _ = deep_compare(
+        Fraction(1, 3), 0, rtol=0.0, atol=float(Fraction(1, 3)), strict_types=False
+    )
+    assert not equal
+
+
+def test_fraction_beyond_float_range_does_not_raise_overflow_error():
+    huge = Fraction(10**400, 3)
+    assert deep_compare(huge, huge)[0]
+    assert not deep_compare(huge, huge + 1, rtol=0.0, atol=0.0)[0]
+    assert deep_compare(huge, huge + 1, rtol=0.0, atol=1.0)[0]
