@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: ${{ matrix.python }}
       - name: Install Dependencies
-        run: sudo apt install tesseract-ocr ghostscript xvfb
+        run: sudo apt-get update && sudo apt-get install -y tesseract-ocr ghostscript xvfb
       - name: Setup virtual frame buffer
         run: |
           Xvfb :1 &
