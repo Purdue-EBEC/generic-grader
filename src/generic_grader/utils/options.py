@@ -1,5 +1,6 @@
 import datetime
 import inspect
+import math
 from collections.abc import Callable
 
 from attrs import Factory, define
@@ -113,6 +114,12 @@ class Options:
                     f"`{attr}` must be of type "
                     + attr_type
                     + f"Got {type(getattr(self, attr))} instead."
+                )
+        for name in ["relative_tolerance", "absolute_tolerance"]:
+            value = getattr(self, name)
+            if not (math.isfinite(value) and value >= 0):
+                raise ValueError(
+                    f"`{name}` must be finite and non-negative. Got {value!r}."
                 )
         for name in ["filenames", "required_files", "ignored_files"]:
             attr = getattr(self, name)

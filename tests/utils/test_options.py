@@ -68,6 +68,31 @@ typecheck_options = [
         "error_type": ValueError,
         "error": "`mode` must be one of 'exactly', 'less than', 'more than', or 'approximately'.",
     },
+    {
+        "options": {"absolute_tolerance": -1.0},
+        "error_type": ValueError,
+        "error": "`absolute_tolerance` must be finite and non-negative. Got -1.0.",
+    },
+    {
+        "options": {"absolute_tolerance": float("nan")},
+        "error_type": ValueError,
+        "error": "`absolute_tolerance` must be finite and non-negative. Got nan.",
+    },
+    {
+        "options": {"absolute_tolerance": float("inf")},
+        "error_type": ValueError,
+        "error": "`absolute_tolerance` must be finite and non-negative. Got inf.",
+    },
+    {
+        "options": {"relative_tolerance": -1e-7},
+        "error_type": ValueError,
+        "error": "`relative_tolerance` must be finite and non-negative. Got -1e-07.",
+    },
+    {
+        "options": {"relative_tolerance": float("inf")},
+        "error_type": ValueError,
+        "error": "`relative_tolerance` must be finite and non-negative. Got inf.",
+    },
 ]
 
 

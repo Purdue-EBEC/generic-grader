@@ -43,8 +43,8 @@ layer.
 - No change to the `Options` tolerance defaults or option names.
 - No tolerance for non-numeric dtypes (bool, datetime, structured, object,
   complex) or for `set`/`frozenset`.
-- No `Fraction` arithmetic in numpy vectorized paths; arrays stay on
-  float64.
+- No `Fraction` arithmetic in numpy vectorized paths; float arrays stay
+  on float64 and integer arrays use exact uint64 arithmetic.
 
 ## Decisions
 
@@ -52,7 +52,7 @@ layer.
 |---|---|
 | Integer semantics | Uniform rule, no gating: the same `atol + rtol * abs(expected)` as floats (chosen over gated and atol-only variants) |
 | Huge ints (beyond float range) | Exact fallback via `fractions.Fraction`; an exact-comparison fallback would violate the rule (e.g. `10**5000` vs `10**5000 + 1` is within the default band) |
-| Integer arrays | `np.allclose`/`np.isclose`, with an exact `np.array_equal` short-circuit when `rtol == 0 and atol == 0` |
+| Integer arrays | Exact: difference in modular uint64 arithmetic against the floored tolerance (same rule as scalars at any 64-bit magnitude); `np.array_equal` short-circuit when equal, and exact `np.array_equal` only when `rtol == 0 and atol == 0` |
 | numpy integer scalars | Normalize with `operator.index` before arithmetic (uint8 wraparound) |
 | int against float | The difference is taken exactly (`Fraction`), and the `==` shortcut is skipped: `int - float` and numpy `int == float` round the int to float first, hiding differences beyond `2**53` |
 
@@ -94,16 +94,24 @@ Guards this forces:
 
 ### array_diff.py
 
-Both guards change from `np.floating` to `np.floating or np.integer`,
-selecting `np.allclose`/`np.isclose`. When `rtol == 0 and atol == 0` and
-the dtype is integer, short-circuit to `np.array_equal`: `allclose`
-promotes to float64, which calls `2**62 + 1` equal to `2**62` even at
-exact settings (verified on numpy 2.4.2). The predicate is shared by
-`array_compare` and `array_diff_details`, so the issue #207 "no differing
-indices" contradiction cannot reappear.
+Both guards dispatch on `dtype.kind`. Floats use `np.allclose`/`np.isclose`.
+Integers with a tolerance use `_int_not_close`: `isclose` promotes to
+float64, which would call `2**62 + 1` close to `2**62` even at `atol=0.5`
+(the scalar path correctly fails it). Instead the difference is taken in
+modular uint64 arithmetic (exact for any 64-bit integer, no wraparound
+because `max - min` is never negative) and compared against
+`floor(atol + rtol * abs(expected))`, which is equivalent because the
+difference is an integer. At `rtol == 0 and atol == 0` integers use
+`np.array_equal`. The mask is shared by `array_compare` and
+`array_diff_details`, so the issue #207 "no differing indices"
+contradiction cannot reappear. Failure details for float and integer
+arrays end with `(tolerance: rtol=..., atol=...)`, matching the scalar
+path (a visible change to float array failure output).
 
-There is no wraparound risk: `isclose` promotes to float64 before
-subtracting (verified: uint8 254 vs 255 with atol=2 returns True).
+`Options` rejects negative, infinite, and NaN `relative_tolerance` and
+`absolute_tolerance`: a negative tolerance has no meaning, and the array
+and scalar paths would disagree on it (the uint64 cast in
+`_int_not_close` is undefined for negatives and NaN).
 
 ### deep_compare._walk_number
 
@@ -126,14 +134,6 @@ Fraction fallback instead of reporting a mismatch.
 - `10**5000` vs `10**5000 + 1` flips to pass (within the 10^4993 band).
   Its repr-safety purpose is preserved by comparing `10**5000` vs
   `2 * 10**5000`, which fails beyond the band.
-- int64 values above 2^53 are approximate in the array path (float64
-  promotion; ulp about 2048 near 2^63). The divergence from the exact
-  scalar path exists only for non-zero tolerances too small to matter
-  (e.g. `rtol=0, atol=0.5` at `2**62`, where rounding can absorb a
-  difference of 1); at defaults the band is about 9e8 at 2^53 and at
-  least 9e11 near 2^63 — far above the ulp, so the approximation is
-  negligible. Exact needs are covered by the `rtol=atol=0`
-  short-circuit.
 
 ## Testing
 
@@ -144,8 +144,9 @@ Fraction fallback instead of reporting a mismatch.
   difference of 3 fails.
 - Default band: int array values at 10^7 with difference 1 pass at
   defaults; small ints still exact.
-- Exact short-circuit: int64 `2**62 + 1` vs `2**62` with `rtol=0,
-  atol=0` fails (float64 promotion would pass it).
+- Exact integer arrays: int64 `2**62 + 1` vs `2**62` fails at
+  `rtol=0, atol=0` and at `rtol=0, atol=0.5`, passes at `atol=1.0`;
+  int64/uint64 extremes do not wrap.
 - Fraction fallback: `10**5000` vs `10**5000 + 1` passes at defaults; vs
   `2 * 10**5000` fails with a repr-safe message; `10**400` vs `1.0` fails
   without raising.
