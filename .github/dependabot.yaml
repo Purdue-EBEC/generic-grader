@@ -1,7 +1,7 @@
 version: 2
 updates:
-  - package-ecosystem: "pip"
-  # Location of pyproject.toml
+  - package-ecosystem: "uv"
+  # Location of pyproject.toml and uv.lock
     directory: "/"
     schedule:
       interval: "daily"
