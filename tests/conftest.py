@@ -15,6 +15,12 @@ from generic_grader.runtimes.octave import OCTAVE_EXECUTABLE
 os.environ.setdefault("MPLBACKEND", "Agg")
 
 
+@pytest.fixture(autouse=True)
+def _no_sandbox_user(monkeypatch):
+    """Keep tests from dropping privileges when the suite runs as root."""
+    monkeypatch.setenv("GENERIC_GRADER_SANDBOX_USER", "none")
+
+
 @pytest.fixture(scope="function")
 def fix_syspath(tmp_path):
     """

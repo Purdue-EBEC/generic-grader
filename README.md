@@ -272,13 +272,51 @@ Each call runs a fresh Octave subprocess.  What is enforced:
 * a wall-clock `time_limit`, with the whole process group killed on
   every exit path.
 
-What is **not** enforced: there is no filesystem, network, or process
-isolation.  Student `.m` code can run shell commands with `system()` and
-read any file the grader user can read, including the reference solution
-and test files.  Filesystem isolation (`isolate`) is not available on
-Gradescope.  Run the grader as an unprivileged user in a throwaway
-container, and keep the reference solution unreadable by that user where
-possible.
+What is **not** enforced: there is no network or process isolation, and
+no filesystem isolation unless the grader runs as root (see below).
+Without that, student `.m` code can run shell commands with `system()`
+and read any file the grader user can read, including the reference
+solution and test files.
+
+#### Running student code as an unprivileged user
+
+When the grader runs as root, as it does on Gradescope, the student's
+Octave is started as an unprivileged user.  The reference runs as the
+grader, in place.  Gradescope has no sub-containers, but this needs
+none.  Three things must be set up:
+
+1. **A user.**  By default the student runs as `nobody`.  Set
+   `GENERIC_GRADER_SANDBOX_USER` to a name or uid to use another user,
+   or to `none` to turn the feature off.  A user other than `nobody` is
+   taken to be dedicated to the grader, so every process it owns is
+   killed after each run.  That also catches children that escaped the
+   process group with `setsid`.  Do not use an account other services
+   share.  When the grader is not root, nothing changes.
+2. **The submission directory.**  Set `GENERIC_GRADER_SUBMISSION_DIR` to
+   a directory holding only what the student submitted
+   (`/autograder/submission`).  The student runs in a private copy of it
+   (symlinks are skipped), plus the files in `Options.provided_files`
+   (globs, relative to the grader's working directory, for input data
+   the student's code reads).  Nothing else from the grader's directory
+   is visible.
+3. **A locked grader directory.**  The sandbox user must not be able to
+   read the reference solution, so make the directory that holds it
+   unreadable by others.  On Gradescope, put this in `run_autograder`
+   before running the tests:
+
+   ``` bash
+   export GENERIC_GRADER_SUBMISSION_DIR=/autograder/submission
+   chmod 700 /autograder/source /autograder/results
+   ```
+
+The student's private directory is also its `HOME` and `TMPDIR`.  The
+Python interpreter and Octave must be executable by the sandbox user.
+If any of this is missing, the run fails with a message for the
+instructor rather than running the student's code unprotected.  The
+mode bits are checked; ACLs are not.
+
+Student code can still use the network and the CPU of the container,
+and read anything that is world-readable on it.
 
 `Options.obj_name` and the `.m` file stem must be valid Octave
 identifiers (letters, digits, and underscores, not starting with a
