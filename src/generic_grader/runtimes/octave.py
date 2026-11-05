@@ -83,6 +83,7 @@ Design overview
 
 from __future__ import annotations
 
+import json
 import math
 import os
 import re
@@ -93,6 +94,8 @@ import sys
 import tempfile
 from textwrap import dedent
 from unittest import TestCase
+
+import numpy as np
 
 from generic_grader.runtimes.base import (
     RuntimeExecutionError,
@@ -222,6 +225,75 @@ def _format_args(args, kwargs) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Return-value decoding
+# ---------------------------------------------------------------------------
+def _decode_json_value(value):
+    """Convert one ``json.loads`` result into a native Python object.
+
+    The conversion mirrors what a test author expects to compare in
+    :mod:`generic_grader.function.function_return_values_match_reference`
+    and the two random-return test types:
+
+    * Scalars — ``int`` / ``float`` / ``bool`` / ``str`` — are returned
+      unchanged.  Octave's ``jsonencode`` emits doubles for numeric
+      scalars and ``true`` / ``false`` for ``logical`` values, so the
+      ``json.loads`` mapping already produces the right Python types.
+    * ``None`` (``jsonencode`` maps Octave ``[]`` to JSON ``null`` or
+      ``[]``; both round-trip cleanly).  A JSON ``null`` becomes
+      ``None`` — used mainly for the void-function edge case.
+    * Lists — treated as Octave arrays and coerced into a
+      :class:`numpy.ndarray`.  This matches the ``np.ndarray`` branch
+      the ``function_return_values_match_reference`` test already uses
+      for Python callables that return NumPy arrays, so reference and
+      student comparisons keep the same code path.  A 1xN row vector
+      in Octave (e.g. ``1:n``) round-trips through JSON as a plain
+      list and lands here as a 1-D NumPy array — which is what a test
+      author writing an equivalent Python reference would return.
+    """
+    if value is None:
+        return None
+    if isinstance(value, list):
+        # Empty lists become 0-D empty arrays — same shape
+        # ``jsonencode`` would produce for an Octave empty matrix.
+        return np.array(value)
+    # int / float / bool / str fall through — json.loads already produces
+    # the corresponding Python type.
+    return value
+
+
+def _decode_returned_values(payload):
+    """Decode the JSON sidecar the Octave runtime writes for a call.
+
+    ``payload`` is either the raw JSON text or an already-parsed
+    object.  The sidecar always encodes a JSON array of length
+    ``nargout``:
+
+    * length 0 → the callable produced no return value; we return
+      ``None`` to match a Python function with no explicit ``return``.
+    * length 1 → we unwrap the single element; Python's convention is
+      that ``y = f(x)`` yields a bare value, not a 1-tuple.
+    * length ≥ 2 → we return a ``tuple`` of the decoded elements,
+      matching Python's own multiple-return convention.
+
+    Kept as a module-level helper (rather than a method) so unit tests
+    can exercise every branch without spinning up an Octave process.
+    """
+    if isinstance(payload, (str, bytes)):
+        payload = json.loads(payload)
+    if not isinstance(payload, list):
+        raise ValueError(  # noqa: TRY004 — malformed data, not a wrong argument type
+            "Octave return-value sidecar must be a JSON array; got "
+            f"{type(payload).__name__}."
+        )
+    decoded = [_decode_json_value(v) for v in payload]
+    if len(decoded) == 0:
+        return None
+    if len(decoded) == 1:
+        return decoded[0]
+    return tuple(decoded)
+
+
+# ---------------------------------------------------------------------------
 # Runtime
 # ---------------------------------------------------------------------------
 class OctaveRuntime:
@@ -307,23 +379,129 @@ class OctaveRuntime:
                 "absolute path."
             )
 
+        mem_bytes = max(1, int(options.memory_limit_GB * _GB))
+        cpu_seconds = max(1, int(options.time_limit) + 1)
+
+        # Function-mode calls ask Octave to write the return values to a
+        # temp file so we can decode them back into Python.  Script mode
+        # (no args, no kwargs) skips the sidecar entirely — there is no
+        # single value to capture, and the log-based tests are the
+        # ones that consume script-mode output.
+        is_script = not options.args and not options.kwargs
         # Script mode runs in the file's own directory, which puts it on
         # Octave's load path.  Function mode runs from a private copy.
         script_dir = os.path.dirname(handle)
         stem = os.path.splitext(os.path.basename(handle))[0]
-        stage_dir = None
-        source_path = None
+        sidecar_path: str | None = None
+        stage_dir: str | None = None
+        source_path: str | None = None
         try:
-            if options.args or options.kwargs:
+            if not is_script:
                 stage_dir, source_path = self._stage_function_run(options, handle)
                 script_dir = stage_dir
-            return self._launch(
-                options, executable, script_dir, stem, source_path, log, entries
+                # Octave, not Python, writes the file, so it is created
+                # here and the path handed across the process boundary.
+                fd, sidecar_path = tempfile.mkstemp(
+                    prefix="gg_octave_return_", suffix=".json"
+                )
+                os.close(fd)
+
+            eval_expr = self._build_eval_expression(
+                options, stem, sidecar_path, source_path
             )
+            argv = [
+                sys.executable,
+                "-I",
+                "-c",
+                _LAUNCHER,
+                str(mem_bytes),
+                str(cpu_seconds),
+                executable,
+                "--no-gui",
+                "--norc",
+                "--no-init-file",
+                "--quiet",
+                "--eval",
+                eval_expr,
+            ]
+
+            stdin_bytes = self._build_stdin(entries)
+            env = self._safe_env()
+
+            # Child output goes to disk-backed temp files (bounded by
+            # RLIMIT_FSIZE) instead of unbounded in-memory pipes.
+            with (
+                tempfile.TemporaryFile() as out_file,
+                tempfile.TemporaryFile() as err_file,
+            ):
+                try:
+                    proc = subprocess.Popen(
+                        argv,
+                        cwd=script_dir,
+                        stdin=subprocess.PIPE,
+                        stdout=out_file,
+                        stderr=err_file,
+                        env=env,
+                        start_new_session=True,
+                    )
+                except FileNotFoundError as e:
+                    # Race: which() found the executable a moment ago but it
+                    # vanished before exec.  Convert to the same
+                    # not-installed error the up-front check produces.
+                    raise OctaveNotInstalledError(str(e)) from e
+
+                try:
+                    proc.communicate(input=stdin_bytes, timeout=options.time_limit)
+                except subprocess.TimeoutExpired:
+                    self._reap_group(proc)
+                    out_bytes, err_bytes = self._read_captures(out_file, err_file)
+                    self._raise_if_output_overflow(options, out_bytes, err_bytes)
+                    # The timeout error must win over a log-limit error.
+                    try:
+                        self._tee_to_log(out_bytes, log)
+                    except LogLimitExceededError:
+                        pass
+                    raise OctaveTimeoutError(
+                        f"Your `{options.obj_name}` took longer than "
+                        f"{options.time_limit} second(s) and was terminated."
+                    )
+                except Exception:
+                    self._reap_group(proc)
+                    raise
+
+                self._reap_group(proc)
+                out_bytes, err_bytes = self._read_captures(out_file, err_file)
+                self._raise_if_output_overflow(options, out_bytes, err_bytes)
+                self._tee_to_log(out_bytes, log)
+                if proc.returncode != 0:
+                    stderr = err_bytes.decode("utf-8", errors="replace")
+                    if source_path and "nested functions not implemented" in stderr:
+                        stderr += (
+                            "\nEnd every function in the file with `end` or "
+                            "`endfunction` so a subfunction can be called."
+                        )
+                    raise OctaveRuntimeError(
+                        f"Octave exited with code {proc.returncode} while running "
+                        f"`{options.obj_name}`.",
+                        stderr=stderr,
+                    )
+
+                returned = self._read_sidecar(sidecar_path)
+                return RuntimeResult(returned_values=returned)
         finally:
+            # Always try to clean up the sidecar — including on early
+            # exceptions above.  Ignore "already gone" races.
+            if sidecar_path is not None:
+                try:
+                    os.unlink(sidecar_path)
+                except FileNotFoundError:  # pragma: no cover — race
+                    pass
             if stage_dir is not None:
                 shutil.rmtree(stage_dir, ignore_errors=True)
 
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
     @staticmethod
     def _stage_function_run(options: Options, handle: str) -> tuple[str, str | None]:
         """Copy ``handle`` into a fresh directory for a function-mode call.
@@ -369,105 +547,12 @@ class OctaveRuntime:
             shutil.rmtree(stage_dir, ignore_errors=True)
             raise
 
-    def _launch(
-        self,
-        options: Options,
-        executable: str,
-        script_dir: str,
-        stem: str,
-        source_path: str | None,
-        log,
-        entries,
-    ) -> RuntimeResult:
-        """Run Octave in ``script_dir`` and translate its outcome."""
-        eval_expr = self._build_eval_expression(options, stem, source_path)
-        mem_bytes = max(1, int(options.memory_limit_GB * _GB))
-        cpu_seconds = max(1, int(options.time_limit) + 1)
-        argv = [
-            sys.executable,
-            "-I",
-            "-c",
-            _LAUNCHER,
-            str(mem_bytes),
-            str(cpu_seconds),
-            executable,
-            "--no-gui",
-            "--norc",
-            "--no-init-file",
-            "--quiet",
-            "--eval",
-            eval_expr,
-        ]
-
-        stdin_bytes = self._build_stdin(entries)
-        env = self._safe_env()
-
-        # Child output goes to disk-backed temp files (bounded by
-        # RLIMIT_FSIZE) instead of unbounded in-memory pipes.
-        with (
-            tempfile.TemporaryFile() as out_file,
-            tempfile.TemporaryFile() as err_file,
-        ):
-            try:
-                proc = subprocess.Popen(
-                    argv,
-                    cwd=script_dir,
-                    stdin=subprocess.PIPE,
-                    stdout=out_file,
-                    stderr=err_file,
-                    env=env,
-                    start_new_session=True,
-                )
-            except FileNotFoundError as e:
-                # Race: which() found the executable a moment ago but it
-                # vanished before exec.  Convert to the same
-                # not-installed error the up-front check produces.
-                raise OctaveNotInstalledError(str(e)) from e
-
-            try:
-                proc.communicate(input=stdin_bytes, timeout=options.time_limit)
-            except subprocess.TimeoutExpired:
-                self._reap_group(proc)
-                out_bytes, err_bytes = self._read_captures(out_file, err_file)
-                self._raise_if_output_overflow(options, out_bytes, err_bytes)
-                # The timeout error must win over a log-limit error.
-                try:
-                    self._tee_to_log(out_bytes, log)
-                except LogLimitExceededError:
-                    pass
-                raise OctaveTimeoutError(
-                    f"Your `{options.obj_name}` took longer than "
-                    f"{options.time_limit} second(s) and was terminated."
-                )
-            except Exception:
-                self._reap_group(proc)
-                raise
-
-            self._reap_group(proc)
-            out_bytes, err_bytes = self._read_captures(out_file, err_file)
-            self._raise_if_output_overflow(options, out_bytes, err_bytes)
-            self._tee_to_log(out_bytes, log)
-            if proc.returncode != 0:
-                stderr = err_bytes.decode("utf-8", errors="replace")
-                if source_path and "nested functions not implemented" in stderr:
-                    stderr += (
-                        "\nEnd every function in the file with `end` or "
-                        "`endfunction` so a subfunction can be called."
-                    )
-                raise OctaveRuntimeError(
-                    f"Octave exited with code {proc.returncode} while running "
-                    f"`{options.obj_name}`.",
-                    stderr=stderr,
-                )
-
-            return RuntimeResult(returned_values=None)
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
     @staticmethod
     def _build_eval_expression(
-        options: Options, stem: str, source_path: str | None = None
+        options: Options,
+        stem: str,
+        sidecar_path: str | None = None,
+        source_path: str | None = None,
     ) -> str:
         """Construct the ``--eval`` argument for the Octave subprocess.
 
@@ -482,7 +567,11 @@ class OctaveRuntime:
         * **Function mode** (any args or kwargs supplied).  We call
           ``<obj_name>(<serialized args>)``.  When ``source_path`` is
           given, that script is ``source``d first so a subfunction of
-          the file is defined (see :meth:`_stage_function_run`).
+          the file is defined (see :meth:`_stage_function_run`).  When
+          ``sidecar_path`` is supplied, we also ask Octave to introspect
+          the callable's ``nargout``, capture every return value into a
+          cell, and ``jsonencode`` the result to that path so the parent
+          process can decode it.
 
         The file's directory is on Octave's path because ``Popen`` runs
         it with that directory as its cwd.  The ``try / catch`` wrapper
@@ -501,10 +590,39 @@ class OctaveRuntime:
         if is_script:
             body = f"{stem};"
         else:
-            body = f"{options.obj_name}{_format_args(options.args, options.kwargs)};"
-            if source_path:
-                escaped = source_path.replace("'", "''")
-                body = f"source('{escaped}'); {body}"
+            arg_expr = _format_args(options.args, options.kwargs)
+            if sidecar_path is None:
+                # Kept for internal use / tests that don't want a
+                # sidecar; production ``run`` always passes one.
+                body = f"{options.obj_name}{arg_expr};"
+            else:
+                # ``nargout`` returns the fixed output count for named
+                # functions or ``-1`` for varargout — in the latter
+                # case we conservatively capture one output, which is
+                # the overwhelmingly common ``y = f(x)`` shape.  We
+                # single-quote the sidecar path with Octave's
+                # doubled-quote escape rule so paths containing quotes
+                # (rare, but possible in ``TMPDIR``) still parse.
+                escaped_path = sidecar_path.replace("'", "''")
+                body = (
+                    f"gg_nout__ = nargout('{options.obj_name}');\n"
+                    f"              if (gg_nout__ < 0); gg_nout__ = 1; endif\n"
+                    f"              if (gg_nout__ == 0)\n"
+                    f"                {options.obj_name}{arg_expr};\n"
+                    f"                gg_ret__ = {{}};\n"
+                    f"              else\n"
+                    f"                gg_ret__ = cell(1, gg_nout__);\n"
+                    f"                [gg_ret__{{1:gg_nout__}}] = "
+                    f"{options.obj_name}{arg_expr};\n"
+                    f"              endif\n"
+                    f"              gg_fid__ = fopen('{escaped_path}', 'w');\n"
+                    f"              fprintf(gg_fid__, '%s', "
+                    f"jsonencode(gg_ret__));\n"
+                    f"              fclose(gg_fid__);"
+                )
+        if source_path and not is_script:
+            escaped_source = source_path.replace("'", "''")
+            body = f"source('{escaped_source}'); {body}"
         return dedent(
             f"""\
             try
@@ -516,6 +634,36 @@ class OctaveRuntime:
             exit(0);
             """
         )
+
+    @staticmethod
+    def _read_sidecar(sidecar_path: str | None):
+        """Read and decode the return-value sidecar Octave wrote.
+
+        Returns ``None`` when ``sidecar_path`` is ``None`` (script mode)
+        or when the file is missing / empty — the latter is not an
+        error, it simply means the callable didn't produce anything
+        we can capture.  Any other decoding failure surfaces as an
+        :class:`OctaveRuntimeError` so the student sees a clear
+        "return value could not be captured" message instead of a
+        traceback deep inside :mod:`json`.
+        """
+        if sidecar_path is None:
+            return None
+        try:
+            with open(sidecar_path, encoding="utf-8") as handle:
+                text = handle.read()
+        except FileNotFoundError:
+            return None
+        if not text.strip():
+            return None
+        try:
+            return _decode_returned_values(text)
+        except (ValueError, json.JSONDecodeError) as e:
+            raise OctaveRuntimeError(
+                "Could not decode the return value(s) produced by Octave. "
+                f"Raw payload: {text!r}",
+                stderr=str(e),
+            ) from e
 
     @staticmethod
     def _build_stdin(entries) -> bytes:
