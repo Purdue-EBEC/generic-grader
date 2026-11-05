@@ -1,5 +1,6 @@
 """Test attributes of a class."""
 
+import functools
 import inspect
 import textwrap
 import unittest
@@ -7,6 +8,7 @@ import unittest
 from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.reference_test import reference_test
 
@@ -24,6 +26,24 @@ def doc_func(func, num, param):
     return docstring
 
 
+def _guard_language(func):
+    """Wrap ``func`` so the language guard fires before ``@reference_test``.
+
+    Placing the guard here — rather than inside the test body — keeps
+    the Octave subprocess from being spawned by :func:`reference_test`
+    when the grader is misconfigured.
+    """
+
+    @functools.wraps(func)
+    def wrapper(self, options):
+        require_python_language(
+            self, options, "class_.instance_attributes_match_reference"
+        )
+        return func(self, options)
+
+    return wrapper
+
+
 def build(the_options):
     the_params = options_to_params(the_options)
 
@@ -34,6 +54,7 @@ def build(the_options):
 
         @parameterized.expand(the_params, doc_func=doc_func)
         @weighted
+        @_guard_language
         @reference_test
         def test_instance_attributes_match_reference(self, options):
             """Check that the instance attributes defined in the sub_module match

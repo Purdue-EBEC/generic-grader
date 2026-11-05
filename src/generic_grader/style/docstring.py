@@ -9,6 +9,7 @@ from parameterized import parameterized
 
 from generic_grader.utils.decorators import weighted
 from generic_grader.utils.docs import get_wrapper
+from generic_grader.utils.language_guard import require_python_language
 from generic_grader.utils.options import options_to_params
 from generic_grader.utils.safe_equal import safe_assert_equal
 
@@ -64,6 +65,11 @@ def build(the_options):
         wrapper = get_wrapper()
 
         def set_up(self):
+            # ``set_up`` is called by every test method in this class, so
+            # guarding here covers all docstring subtests with a single
+            # check.
+            require_python_language(self, the_options, "style.docstring")
+
             with open(submission) as fo:
                 fail_msg = None
                 try:
