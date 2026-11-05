@@ -28,6 +28,10 @@ class Options:
     sub_module: str = ""
     required_files: tuple = ()
     ignored_files: tuple = ()
+    # Globs, relative to the grader's working directory, of files that a
+    # sandboxed student run may read (e.g. input data).  Without it the run
+    # only sees what the student submitted.  Octave only.
+    provided_files: tuple = ()
     hint: str = ""
     patches: list[dict[str, list[str, Callable]]] = Factory(list)
     """

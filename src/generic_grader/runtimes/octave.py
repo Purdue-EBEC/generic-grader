@@ -29,7 +29,7 @@ Design overview
 
   * *Function mode* (any args or kwargs supplied).  We call
     ``<obj_name>(<args>)``.  Each file runs from a private copy in a
-    temporary directory (see :meth:`OctaveRuntime._stage_function_run`)
+    temporary directory (see :meth:`OctaveRuntime._stage_run`)
     so the reference never shadows, or runs, the student's file.  If
     ``obj_name`` is the stem of ``sub_module`` it names the file's
     primary function, and the reference's primary function is called
@@ -68,11 +68,14 @@ Design overview
   * a wall-clock ``time_limit``, and a ``SIGKILL`` of the whole process
     group on every exit path.
 
-  What is **not** enforced: there is no filesystem, network or process
-  isolation.  Student ``.m`` code can run shell commands with
-  ``system()`` and read any file the grader user can read, including
-  the reference solution and test files.  Run the grader as an
-  unprivileged user in a throwaway container.
+  What is **not** enforced: there is no network or process isolation,
+  and no filesystem isolation unless the grader runs as root.  Then the
+  student's code runs as an unprivileged user in a private copy of the
+  submission (see :mod:`generic_grader.runtimes.sandbox`); the reference
+  and test files must be unreadable by that user.  Otherwise student
+  ``.m`` code can run shell commands with ``system()`` and read any file
+  the grader user can read, including the reference solution and test
+  files.
 
 * **stdin (simulated user input).**  Anything in ``options.entries`` is
   joined with newlines and fed to the child process's stdin.  In
@@ -83,12 +86,15 @@ Design overview
 
 from __future__ import annotations
 
+import errno
+import glob
 import json
 import math
 import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -102,6 +108,13 @@ from generic_grader.runtimes.base import (
     RuntimeResult,
     RuntimeTimeoutError,
     RuntimeUnavailableError,
+)
+from generic_grader.runtimes.sandbox import (
+    Sandbox,
+    can_read,
+    kill_all_processes,
+    resolve_sandbox,
+    submission_dir,
 )
 from generic_grader.utils.docs import get_wrapper
 from generic_grader.utils.exceptions import LogLimitExceededError
@@ -481,8 +494,14 @@ class OctaveRuntime:
         # single value to capture, and the log-based tests are the
         # ones that consume script-mode output.
         is_script = not options.args and not options.kwargs
-        # Script mode runs in the file's own directory, which puts it on
-        # Octave's load path.  Function mode runs from a private copy.
+        sandbox = self._sandbox_for(options, handle)
+        submitted_dir = None
+        if sandbox is not None:
+            submitted_dir = submission_dir()
+            self._require_reference_hidden(sandbox, options)
+        # Without a sandbox, script mode runs in the file's own directory,
+        # which puts it on Octave's load path, and function mode runs from a
+        # private copy.  A sandboxed run always uses a private copy.
         script_dir = os.path.dirname(handle)
         stem = os.path.splitext(os.path.basename(handle))[0]
         sidecar_path: str | None = None
@@ -490,22 +509,33 @@ class OctaveRuntime:
         source_path: str | None = None
         plot_sidecar_path: str | None = None
         try:
-            if not is_script:
-                stage_dir, source_path = self._stage_function_run(options, handle)
+            if sandbox is not None or not is_script:
+                stage_dir, source_path = self._stage_run(
+                    options, handle, is_script=is_script, submitted_dir=submitted_dir
+                )
                 script_dir = stage_dir
+            # Sidecars live in the staging directory of a sandboxed run so
+            # the sandbox user can write them.
+            if not is_script:
                 # Octave, not Python, writes the file, so it is created
                 # here and the path handed across the process boundary.
                 fd, sidecar_path = tempfile.mkstemp(
-                    prefix="gg_octave_return_", suffix=".json"
+                    prefix="gg_octave_return_",
+                    suffix=".json",
+                    dir=stage_dir if sandbox else None,
                 )
                 os.close(fd)
 
             # The harness inside the child writes the plot sidecar after the
             # student code runs, so plot tests need no matplotlib.
             fd, plot_sidecar_path = tempfile.mkstemp(
-                prefix="gg_octave_plot_", suffix=".json"
+                prefix="gg_octave_plot_",
+                suffix=".json",
+                dir=stage_dir if sandbox else None,
             )
             os.close(fd)
+            if sandbox is not None:
+                self._hand_over(sandbox, stage_dir)
 
             eval_expr = self._build_eval_expression(
                 options, stem, sidecar_path, plot_sidecar_path, source_path
@@ -527,7 +557,12 @@ class OctaveRuntime:
             ]
 
             stdin_bytes = self._build_stdin(entries)
-            env = self._safe_env()
+            env = self._safe_env(stage_dir if sandbox else None)
+            identity = (
+                {"user": sandbox.uid, "group": sandbox.gid, "extra_groups": []}
+                if sandbox
+                else {}
+            )
 
             # Child output goes to disk-backed temp files (bounded by
             # RLIMIT_FSIZE) instead of unbounded in-memory pipes.
@@ -544,17 +579,25 @@ class OctaveRuntime:
                         stderr=err_file,
                         env=env,
                         start_new_session=True,
+                        **identity,
                     )
                 except FileNotFoundError as e:
                     # Race: which() found the executable a moment ago but it
                     # vanished before exec.  Convert to the same
                     # not-installed error the up-front check produces.
                     raise OctaveNotInstalledError(str(e)) from e
+                except PermissionError as e:
+                    raise RuntimeUnavailableError(
+                        f"Could not start Octave as uid {identity.get('user')}: "
+                        f"{e}. The Python interpreter and Octave must be "
+                        "executable by that user, and the grader needs "
+                        "permission to switch to it."
+                    ) from e
 
                 try:
                     proc.communicate(input=stdin_bytes, timeout=options.time_limit)
                 except subprocess.TimeoutExpired:
-                    self._reap_group(proc)
+                    self._reap_group(proc, sandbox)
                     out_bytes, err_bytes = self._read_captures(out_file, err_file)
                     self._raise_if_output_overflow(options, out_bytes, err_bytes)
                     # The timeout error must win over a log-limit error.
@@ -567,10 +610,10 @@ class OctaveRuntime:
                         f"{options.time_limit} second(s) and was terminated."
                     )
                 except Exception:
-                    self._reap_group(proc)
+                    self._reap_group(proc, sandbox)
                     raise
 
-                self._reap_group(proc)
+                self._reap_group(proc, sandbox)
                 out_bytes, err_bytes = self._read_captures(out_file, err_file)
                 self._raise_if_output_overflow(options, out_bytes, err_bytes)
                 self._tee_to_log(out_bytes, log)
@@ -613,8 +656,78 @@ class OctaveRuntime:
     # Helpers
     # ------------------------------------------------------------------
     @staticmethod
-    def _stage_function_run(options: Options, handle: str) -> tuple[str, str | None]:
-        """Copy ``handle`` into a fresh directory for a function-mode call.
+    def _sandbox_for(options: Options, handle: str) -> Sandbox | None:
+        """Return the identity to run ``handle`` as, or ``None`` to not drop.
+
+        The reference is trusted and runs as the grader.  Anything not
+        known to be the reference is treated as student code.
+        """
+        reference = os.path.abspath(options.ref_module + ".m")
+        if options.ref_module != options.sub_module and (
+            os.path.abspath(handle) == reference
+        ):
+            return None
+        return resolve_sandbox()
+
+    @staticmethod
+    def _require_reference_hidden(sandbox: Sandbox, options: Options) -> None:
+        """Fail closed if the sandbox user could read the reference file."""
+        reference = os.path.abspath(options.ref_module + ".m")
+        if os.path.exists(reference) and can_read(sandbox, reference):
+            raise RuntimeUnavailableError(
+                f"The sandbox user (uid {sandbox.uid}) can read the reference "
+                f"solution {reference!r}. Make the directory that holds it "
+                "(and the test files) accessible to the grader only, e.g. "
+                "`chmod 700 /autograder/source`."
+            )
+
+    @staticmethod
+    def _hand_over(sandbox: Sandbox, stage_dir: str) -> None:
+        """Make the sandbox user the sole owner of the staging directory."""
+        os.chmod(stage_dir, 0o700)
+        os.lchown(stage_dir, sandbox.uid, sandbox.gid)
+        for root, dirs, files in os.walk(stage_dir):
+            for name in (*dirs, *files):
+                os.lchown(os.path.join(root, name), sandbox.uid, sandbox.gid)
+
+    @staticmethod
+    def _copy_submission(src_dir: str, stage_dir: str, sides: set[str]) -> None:
+        """Copy everything the student submitted into ``stage_dir``.
+
+        Symlinks in the submission are never followed, because the grader
+        reads the files as a privileged user.
+        """
+        for entry in os.scandir(src_dir):
+            if entry.is_symlink():
+                continue
+            target = os.path.join(stage_dir, entry.name)
+            if entry.is_dir():
+                shutil.copytree(entry.path, target, symlinks=True)
+            elif entry.is_file() and not (
+                entry.name.endswith(".m") and entry.name[:-2] in sides
+            ):
+                shutil.copy2(entry.path, target)
+
+    @staticmethod
+    def _copy_provided(options: Options, stage_dir: str) -> None:
+        """Copy the grader-supplied input files the student's code may read."""
+        for pattern in options.provided_files:
+            for path in glob.glob(pattern):
+                target = os.path.join(stage_dir, os.path.basename(path))
+                if os.path.isdir(path):
+                    shutil.copytree(path, target, dirs_exist_ok=True)
+                else:
+                    shutil.copy2(path, target)
+
+    @staticmethod
+    def _stage_run(
+        options: Options,
+        handle: str,
+        *,
+        is_script: bool,
+        submitted_dir: str | None = None,
+    ) -> tuple[str, str | None]:
+        """Copy ``handle`` into a fresh directory to run it from.
 
         Octave resolves ``foo(...)`` by file name, so the reference
         (``ref_foo.m``) and student (``foo.m``) files would shadow each
@@ -622,27 +735,39 @@ class OctaveRuntime:
         files from the submission directory, except the two sides' own
         files, so helper functions are still found.
 
+        With ``submitted_dir`` (a sandboxed student run) the directory
+        instead holds everything the student submitted plus
+        ``options.provided_files``, and nothing else from the grader's
+        directory.
+
         Returns ``(stage_dir, source_path)``.  ``source_path`` is ``None``
-        when ``obj_name`` is the file's primary function: the file is
-        staged as ``<obj_name>.m`` and called directly.  Otherwise it is
-        the staged copy to ``source`` as a script, which is the only way
-        to call a subfunction from outside its file.
+        unless ``obj_name`` names a subfunction.  Otherwise it is the staged
+        copy to ``source`` as a script, which is the only way to call a
+        subfunction from outside its file.  A script is staged under its own
+        name.
         """
-        src_dir = os.path.dirname(handle)
         handle_stem = os.path.splitext(os.path.basename(handle))[0]
         sub_stem = os.path.basename(options.sub_module)
         sides = {handle_stem, sub_stem, os.path.basename(options.ref_module)}
 
         stage_dir = tempfile.mkdtemp(prefix="gg_octave_run_")
         try:
-            for name in os.listdir(src_dir):
-                path = os.path.join(src_dir, name)
-                if (
-                    name.endswith(".m")
-                    and name[:-2] not in sides
-                    and os.path.isfile(path)
-                ):
-                    shutil.copy2(path, stage_dir)
+            if submitted_dir is not None:
+                OctaveRuntime._copy_submission(submitted_dir, stage_dir, sides)
+                OctaveRuntime._copy_provided(options, stage_dir)
+            else:
+                src_dir = os.path.dirname(handle)
+                for name in os.listdir(src_dir):
+                    path = os.path.join(src_dir, name)
+                    if (
+                        name.endswith(".m")
+                        and name[:-2] not in sides
+                        and os.path.isfile(path)
+                    ):
+                        shutil.copy2(path, stage_dir)
+            if is_script:
+                shutil.copy2(handle, os.path.join(stage_dir, handle_stem + ".m"))
+                return stage_dir, None
             if options.obj_name in (sub_stem, handle_stem):
                 shutil.copy2(handle, os.path.join(stage_dir, options.obj_name + ".m"))
                 return stage_dir, None
@@ -678,7 +803,7 @@ class OctaveRuntime:
         * **Function mode** (any args or kwargs supplied).  We call
           ``<obj_name>(<serialized args>)``.  When ``source_path`` is
           given, that script is ``source``d first so a subfunction of
-          the file is defined (see :meth:`_stage_function_run`).  When
+          the file is defined (see :meth:`_stage_run`).  When
           ``sidecar_path`` is supplied, we also ask Octave to introspect
           the callable's ``nargout``, capture every return value into a
           cell, and ``jsonencode`` the result to that path so the parent
@@ -766,6 +891,23 @@ class OctaveRuntime:
         )
 
     @staticmethod
+    def _read_text_nofollow(path: str) -> str | None:
+        """Read a file that student code may have replaced.
+
+        Returns ``None`` if it is missing.  Raises :class:`OSError` if it
+        is not a regular file, e.g. a symlink to a file only the grader can
+        read, or a FIFO that would block the read.
+        """
+        try:
+            fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK)
+        except FileNotFoundError:
+            return None
+        with os.fdopen(fd, encoding="utf-8", errors="replace") as handle:
+            if not stat.S_ISREG(os.fstat(handle.fileno()).st_mode):
+                raise OSError(errno.EINVAL, "Not a regular file", path)
+            return handle.read()
+
+    @staticmethod
     def _read_plot_sidecar(plot_sidecar_path: str):
         """Read the JSON sidecar the plot-capture harness wrote.
 
@@ -777,11 +919,10 @@ class OctaveRuntime:
         message from the test rather than blowing up the run.
         """
         try:
-            with open(plot_sidecar_path, encoding="utf-8") as handle:
-                text = handle.read()
-        except FileNotFoundError:
+            text = OctaveRuntime._read_text_nofollow(plot_sidecar_path)
+        except OSError:
             return None
-        if not text.strip():
+        if text is None or not text.strip():
             return None
         try:
             return json.loads(text)
@@ -803,11 +944,13 @@ class OctaveRuntime:
         if sidecar_path is None:
             return None
         try:
-            with open(sidecar_path, encoding="utf-8") as handle:
-                text = handle.read()
-        except FileNotFoundError:
-            return None
-        if not text.strip():
+            text = OctaveRuntime._read_text_nofollow(sidecar_path)
+        except OSError as e:
+            raise OctaveRuntimeError(
+                "Could not read the return value(s) produced by Octave.",
+                stderr=str(e),
+            ) from e
+        if text is None or not text.strip():
             return None
         try:
             return _decode_returned_values(text)
@@ -833,7 +976,7 @@ class OctaveRuntime:
         return ("\n".join(str(e) for e in materialized) + "\n").encode("utf-8")
 
     @staticmethod
-    def _safe_env() -> dict[str, str]:
+    def _safe_env(scratch_dir: str | None = None) -> dict[str, str]:
         """Return a minimal, scrubbed environment for the Octave subprocess.
 
         We only forward variables Octave actually needs to start —
@@ -853,15 +996,19 @@ class OctaveRuntime:
         # OpenBLAS spawns one thread per core, which aborts under RLIMIT_AS.
         env["OPENBLAS_NUM_THREADS"] = "1"
         env["OMP_NUM_THREADS"] = "1"
+        if scratch_dir is not None:
+            # The sandbox user cannot write the grader's HOME or TMPDIR.
+            env["HOME"] = env["TMPDIR"] = scratch_dir
         return env
 
     @staticmethod
-    def _reap_group(proc) -> None:
+    def _reap_group(proc, sandbox: Sandbox | None = None) -> None:
         """SIGKILL the child's process group and reap the child.
 
         Called on every exit path (normal, nonzero, timeout,
         exception) so grandchildren backgrounded via ``system()``
-        cannot outlive the run.
+        cannot outlive the run.  A dedicated sandbox user also loses every
+        process it owns, which catches children that left the group.
         """
         pid = getattr(proc, "pid", None)
         # killpg(1, sig) is kill(-1, sig): it signals every process we may
@@ -875,6 +1022,8 @@ class OctaveRuntime:
             proc.wait(timeout=1)
         except subprocess.TimeoutExpired:
             pass
+        if sandbox is not None and sandbox.dedicated:
+            kill_all_processes(sandbox)
 
     @staticmethod
     def _read_captures(out_file, err_file) -> tuple[bytes, bytes]:
