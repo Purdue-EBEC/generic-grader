@@ -220,6 +220,12 @@ class TestTrustedReferenceRun:
         kwargs, _ = _run(layout, options=options)
         assert kwargs["user"] == 4242
 
+    def test_function_mode_reference_gets_the_provided_files(self, layout, sandboxed):
+        (layout.grader / "Sucrose_Data.csv").write_text("0,1\n")
+        options = _opts(args=(1,), provided_files=("Sucrose_Data.csv",))
+        _, seen = _run(layout, handle=layout.reference, options=options)
+        assert "Sucrose_Data.csv" in seen["files"]
+
     def test_does_not_even_look_up_a_sandbox_for_the_reference(
         self, layout, sandboxed, monkeypatch
     ):
