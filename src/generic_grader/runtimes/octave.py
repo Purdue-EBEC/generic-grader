@@ -733,7 +733,8 @@ class OctaveRuntime:
         (``ref_foo.m``) and student (``foo.m``) files would shadow each
         other if run side by side.  The directory holds the other ``.m``
         files from the submission directory, except the two sides' own
-        files, so helper functions are still found.
+        files, so helper functions are still found, plus
+        ``options.provided_files``.
 
         With ``submitted_dir`` (a sandboxed student run) the directory
         instead holds everything the student submitted plus
@@ -765,6 +766,7 @@ class OctaveRuntime:
                         and os.path.isfile(path)
                     ):
                         shutil.copy2(path, stage_dir)
+                OctaveRuntime._copy_provided(options, stage_dir)
             if is_script:
                 shutil.copy2(handle, os.path.join(stage_dir, handle_stem + ".m"))
                 return stage_dir, None
