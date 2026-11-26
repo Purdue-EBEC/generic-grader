@@ -96,7 +96,7 @@ logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdou
 
    ``` bash
    cd generic-grader
-   python3.12 -m venv .env3.12
+   python3.15 -m venv .env3.15
    ```
 
 3. Activate the virtual environment.  If you are using VS Code, there may be a
@@ -105,13 +105,13 @@ logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdou
    - Linux/macOS
 
       ``` bash
-      source .env3.12/bin/activate
+      source .env3.15/bin/activate
       ```
 
    - Windows
 
      ``` bash
-     .env3.12\Scripts\activate
+     .env3.15\Scripts\activate
      ```
 
 4. Install tesseract-ocr
@@ -158,8 +158,17 @@ logging.getLogger("generic_grader").addHandler(logging.StreamHandler(sys.__stdou
    uv sync --extra dev
    ```
 
+   The committed `uv.lock` uses lockfile format revision 5, so it must be
+   created or updated with uv 0.13 or newer.  Older uv versions can still
+   install from it with `uv sync` or `uv sync --frozen`, but running `uv lock`
+   with uv older than 0.13 rewrites the lockfile to an older revision.
+
 7. Install the pre-commit hooks. The `commit-msg` hook type is what enforces
-   conventional commit messages locally, so install it explicitly.
+   conventional commit messages locally, so install it explicitly.  Run these
+   with the `pre-commit` from the activated virtual environment: the
+   `check-ast` and `debug-statements` hooks parse the source with that
+   interpreter, and a Python older than 3.14 rejects the `except A, B:` syntax
+   used in this code base.
 
    ``` bash
    pre-commit install

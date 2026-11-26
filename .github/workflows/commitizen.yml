@@ -15,7 +15,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12.8"
+          python-version: "3.15.2"
       - name: Install commitizen
         # Keep this pin in sync with the dev extra in pyproject.toml and the
         # pre-commit hook rev in .pre-commit-config.yaml.

@@ -227,7 +227,7 @@ def _in_trusted_dirs(filename):
     """Return True if `filename` lives in a trusted directory."""
     try:
         real = os.path.realpath(filename)
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return False
     return any(real.startswith(d + os.sep) for d in _TRUSTED_IMPORT_DIRS)
 

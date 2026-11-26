@@ -139,7 +139,7 @@ def _num_repr(value):
         magnitude = getattr(value, "numerator", value)
         try:
             return f"<{type(value).__name__} with {magnitude.bit_length()} bits>"
-        except (AttributeError, ValueError):
+        except AttributeError, ValueError:
             return f"<{type(value).__name__}>"
 ```
 

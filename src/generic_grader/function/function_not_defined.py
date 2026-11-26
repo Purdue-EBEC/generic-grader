@@ -37,7 +37,7 @@ def build(the_options):
             msg = None
             try:
                 self.student_user = SubUser(self, o)
-            except (ImportError, AttributeError):
+            except ImportError, AttributeError:
                 pass  # The expected result.
             else:
                 msg = (

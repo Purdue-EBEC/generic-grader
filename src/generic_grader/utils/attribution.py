@@ -123,7 +123,7 @@ def _library_origin(e):
             continue
         try:
             real = os.path.realpath(filename)
-        except (OSError, ValueError):
+        except OSError, ValueError:
             return None
         # Grader machinery is transparent even when installed in site-packages,
         # so a blocked call made by grader code itself is blamed on the caller.
