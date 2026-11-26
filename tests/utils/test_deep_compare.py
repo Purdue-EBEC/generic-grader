@@ -307,7 +307,8 @@ def test_multiline_string_mismatch_shows_differing_line_from_both_sides():
     assert "+ line 6 value 67" in details
 
 
-def test_very_long_string_mismatch_reports_without_diff():
+def test_very_long_string_mismatch_reports_without_diff(monkeypatch):
+    monkeypatch.setattr("generic_grader.utils.safe_equal._MAX_PFORMAT_CHARS", 2000)
     actual = "x" * 1500 + "a" + "y" * 1500
     expected = "x" * 1500 + "b" + "y" * 1500
     equal, details = deep_compare(actual, expected)

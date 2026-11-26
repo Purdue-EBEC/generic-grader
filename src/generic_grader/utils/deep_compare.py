@@ -52,9 +52,8 @@ def _num_repr(value):
             except OverflowError:
                 return f"<Fraction with {value.numerator.bit_length()} bits>"
     if isinstance(value, int):
-        # Probe repr() directly: reprlib raises ValueError past
-        # sys.int_max_str_digits on Python <= 3.13 but returns a
-        # memory-address placeholder on 3.14.
+        # Probe repr() directly: reprlib returns a memory-address placeholder
+        # instead of raising past sys.int_max_str_digits.
         try:
             repr(value)
         except ValueError:

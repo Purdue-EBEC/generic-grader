@@ -1,0 +1,209 @@
+You are a member of the Unladened Swallow Society, tasked with cracking
+the notorious Holy Grail lock. This lock secures a vault containing all
+the EBEC grades, locked away by IU. To retrieve your grades, you'll need
+to break through this lock. Fortunately, the creators at IU made an error
+when building it, so the lock will provide hints about the code. However,
+you don't know the passcode length and only have 10 guesses. Use them
+wisely--if you fail, you could be turned into a newt, the grades might be
+destroyed, or, even worse, you might have to rewrite the time calculator!
+
+Will you be able to break this lock before your grades are lost forever?
+
+Menu:
+--------------------------------------------------------------------------
+   1: Rules
+   2: New Game
+   3: Load Game
+   4: Quit
+Choice: 2
+
+New Game:
+--------------------------------------------------------------------------
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 0123
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 1234
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 2345
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 3450
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 4501
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 5012
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    5  0  1  2  o  o | 0 4  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 0000
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    0  0  0  0  o  o | 1 0  
+    5  0  1  2  o  o | 0 4  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 1111
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    o  o  o  o  o  o | 0 0  
+    1  1  1  1  o  o | 1 0  
+    0  0  0  0  o  o | 1 0  
+    5  0  1  2  o  o | 0 4  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 2222
+   ==================+=====
+    o  o  o  o  o  o | R W  
+   ==================+=====
+    o  o  o  o  o  o | 0 0  
+    2  2  2  2  o  o | 1 0  
+    1  1  1  1  o  o | 1 0  
+    0  0  0  0  o  o | 1 0  
+    5  0  1  2  o  o | 0 4  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+What is your guess (q to quit, s to save and quit): 3333
+   ==================+=====
+    0  1  2  3  4  5 | R W  
+   ==================+=====
+    3  3  3  3  o  o | 1 0  
+    2  2  2  2  o  o | 1 0  
+    1  1  1  1  o  o | 1 0  
+    0  0  0  0  o  o | 1 0  
+    5  0  1  2  o  o | 0 4  
+    4  5  0  1  o  o | 0 4  
+    3  4  5  0  o  o | 0 4  
+    2  3  4  5  o  o | 0 4  
+    1  2  3  4  o  o | 0 4  
+    0  1  2  3  o  o | 4 0  
+   ==================+=====
+You hear a machine yell OUT OF TRIES!
+  ...
+Is that burning you smell?
+  ...
+OH, NO! It looks like IU has destroyed all the EBEC grades!
+
+
+Menu:
+--------------------------------------------------------------------------
+   1: Rules
+   2: New Game
+   3: Load Game
+   4: Quit
+Choice: q
+Please enter 1, 2, 3, or 4.
+
+Menu:
+--------------------------------------------------------------------------
+   1: Rules
+   2: New Game
+   3: Load Game
+   4: Quit
+Choice: 4
+Goodbye

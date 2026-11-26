@@ -286,6 +286,28 @@ def case_test_method(request, fix_syspath):
     return case, test_method
 
 
+def test_diff_not_computed_when_ratio_check_passes(fix_syspath, monkeypatch):
+    """A passing similarity check must not pay for building a diff."""
+    case = cases[5]
+    (fix_syspath / "submission.py").write_text(case["submission"])
+    (fix_syspath / "reference.py").write_text(case["reference"])
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("make_diff called on a passing test")
+
+    monkeypatch.setattr(
+        "generic_grader.output.output_lines_match_reference.make_diff", fail_if_called
+    )
+    built_class = build(case["options"])
+    test_method = built_class(
+        methodName="test_output_lines_match_reference_0"
+    ).test_output_lines_match_reference_0
+
+    test_method()
+
+    assert test_method.__score__ == case["score"]
+
+
 def test_output_lines_match_reference(case_test_method):
     """Test response of test_submitted_files function."""
     case, test_method = case_test_method

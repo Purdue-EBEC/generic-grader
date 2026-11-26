@@ -59,23 +59,24 @@ def build(the_options):
                 # in the ratio calculation).
                 similarity = normalized_similarity(actual, expected)
 
-                diff = make_diff(actual, expected)
-
-                message = (
-                    ("\n" + diff if diff else "")
-                    + "\n\nHint:\n"
-                    + self.wrapper.fill(
-                        "Your output is not sufficiently similar to the"
-                        " expected output."
-                        f"  Double check the formatting of output {line_range}"
-                        f" of your `{o.obj_name}` function when called as"
-                        f" `{call_str}`"
-                        + (o.entries and f" with entries={o.entries}." or ".")
-                        + (o.hint and f"  {o.hint}" or "")
+                if similarity < o.ratio:
+                    # Only a failing test pays for building the diff.
+                    diff = make_diff(actual, expected)
+                    message = (
+                        ("\n" + diff if diff else "")
+                        + "\n\nHint:\n"
+                        + self.wrapper.fill(
+                            "Your output is not sufficiently similar to the"
+                            " expected output."
+                            f"  Double check the formatting of output {line_range}"
+                            f" of your `{o.obj_name}` function when called as"
+                            f" `{call_str}`"
+                            + (o.entries and f" with entries={o.entries}." or ".")
+                            + (o.hint and f"  {o.hint}" or "")
+                        )
+                        + f"{self.student_user.format_log()}"
                     )
-                    + f"{self.student_user.format_log()}"
-                )
-                self.assertGreaterEqual(similarity, o.ratio, msg=message)
+                    self.assertGreaterEqual(similarity, o.ratio, msg=message)
             else:
                 # Exact match (default).
                 message = (
