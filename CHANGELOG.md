@@ -9,6 +9,20 @@ while commitizen-generated sections use its type names
 (`Feat`/`Fix`/`Refactor`/`Perf`). Version headings use the `v`-prefixed tag
 form (`## v0.2.10`) to match commitizen's generated sections.
 
+## v0.5.0 (2026-11-26)
+
+### BREAKING CHANGE
+
+- requires-python is now ">=3.14".  Autograders and
+environments pinned to an older Python can no longer install this package.
+
+### Fix
+
+- **utils**: show full diffs for long string mismatches
+
+
+- require Python 3.14+ and add 3.15 to the test matrix
+
 ## v0.4.0 (2026-11-04)
 
 ### BREAKING CHANGE
