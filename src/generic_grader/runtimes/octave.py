@@ -182,6 +182,54 @@ class OctaveTimeoutError(RuntimeTimeoutError):
 # ---------------------------------------------------------------------------
 # Argument serialization
 # ---------------------------------------------------------------------------
+def _format_list(value: list) -> str:
+    """Render a Python list as an Octave matrix literal.
+
+    * A flat list of numbers/bools becomes a row vector: ``[10, 12]``;
+      an empty list becomes ``[]``.
+    * A list of equal-length lists becomes a matrix: ``[1, 2; 3, 4]``
+      (so a column vector is ``[[1], [2]]`` → ``[1; 2]``).
+
+    Ragged rows, deeper nesting and strings inside a list raise
+    ``TypeError`` — cell arrays are out of scope for this release.
+    """
+    if not value:
+        return "[]"
+    if all(type(item) is list for item in value):
+        # Matrix form: every row must be a flat list of scalars, and
+        # all rows must have the same length.
+        for row in value:
+            if any(type(cell) is list for cell in row):
+                raise TypeError(
+                    "Cannot serialize argument: lists nested deeper than "
+                    "two levels are not supported."
+                )
+            if any(type(cell) is str for cell in row):
+                raise TypeError(
+                    "Cannot serialize argument: strings inside a list "
+                    "would require a cell array, which is not supported."
+                )
+        widths = {len(row) for row in value}
+        if len(widths) != 1:
+            raise TypeError(
+                "Cannot serialize argument: list rows must be "
+                "equal-length (ragged rows are not supported)."
+            )
+        rows = (", ".join(_format_scalar(cell) for cell in row) for row in value)
+        return "[" + "; ".join(rows) + "]"
+    if any(type(item) is list for item in value):
+        raise TypeError(
+            "Cannot serialize argument: cannot mix nested lists with "
+            "scalars in one list."
+        )
+    if any(type(item) is str for item in value):
+        raise TypeError(
+            "Cannot serialize argument: strings inside a list would "
+            "require a cell array, which is not supported."
+        )
+    return "[" + ", ".join(_format_scalar(item) for item in value) + "]"
+
+
 def _format_scalar(value) -> str:
     """Render a Python scalar as an Octave expression.
 
@@ -192,6 +240,8 @@ def _format_scalar(value) -> str:
     tests are cleaner when the mapping is obvious.
     """
     t = type(value)
+    if t is list:
+        return _format_list(value)
     if t is bool:
         return "true" if value else "false"
     if t is int:
@@ -210,7 +260,8 @@ def _format_scalar(value) -> str:
         return "'" + value.replace("'", "''") + "'"
     raise TypeError(
         f"Cannot serialize argument of type {t.__name__!r} to Octave. "
-        "Only bool, int, float, and str are supported in this release."
+        "Only bool, int, float, str, and flat/nested lists of "
+        "numbers or bools are supported in this release."
     )
 
 

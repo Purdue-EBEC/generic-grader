@@ -101,11 +101,14 @@ class TestFormatScalar:
         assert _format_scalar("") == "''"
 
     def test_unsupported_type_raises_typeerror(self):
-        # Lists, dicts, tuples, numpy arrays, etc. are intentionally
-        # left out of this PR — supporting them requires an Octave
-        # cell/struct/array construction story we haven't scoped yet.
+        # Dicts, tuples, numpy arrays, etc. are intentionally left out —
+        # supporting them requires an Octave cell/struct construction
+        # story we haven't scoped yet.  Lists ARE supported (see the
+        # list tests below).
         with pytest.raises(TypeError, match="Cannot serialize"):
-            _format_scalar([1, 2, 3])
+            _format_scalar({"a": 1})
+        with pytest.raises(TypeError, match="Cannot serialize"):
+            _format_scalar((1, 2))
 
     def test_bool_is_not_treated_as_int(self):
         """``bool`` subclasses ``int``; the mapping uses ``type(...)``
@@ -113,6 +116,60 @@ class TestFormatScalar:
         test locks that in."""
         assert _format_scalar(True) == "true"
         assert _format_scalar(False) == "false"
+
+
+# ---------------------------------------------------------------------------
+# _format_scalar — list arguments
+# ---------------------------------------------------------------------------
+class TestFormatScalarList:
+    """A flat list of numbers/bools becomes an Octave row vector, a list
+    of equal-length lists becomes a matrix.  Anything else (ragged rows,
+    deeper nesting, strings) is a TypeError — cell arrays are out of
+    scope for this release."""
+
+    def test_empty_list(self):
+        assert _format_scalar([]) == "[]"
+
+    def test_flat_int_list_becomes_row_vector(self):
+        assert _format_scalar([10, 12]) == "[10, 12]"
+
+    def test_flat_float_list(self):
+        assert _format_scalar([1.5, -2.0]) == f"[{1.5!r}, {-2.0!r}]"
+
+    def test_flat_bool_list_keeps_exact_types(self):
+        # ``True`` stays ``true``, not ``1`` — the exact-type rule
+        # applies inside lists too.
+        assert _format_scalar([True, False, 3]) == "[true, false, 3]"
+
+    def test_list_of_lists_becomes_matrix(self):
+        assert _format_scalar([[1, 2], [3, 4]]) == "[1, 2; 3, 4]"
+
+    def test_column_vector(self):
+        # A column vector is a list of equal-length singletons.
+        assert _format_scalar([[1], [2]]) == "[1; 2]"
+
+    def test_ragged_rows_raise_typeerror(self):
+        with pytest.raises(TypeError, match="Cannot serialize"):
+            _format_scalar([[1, 2], [3]])
+
+    def test_deeply_nested_list_raises_typeerror(self):
+        with pytest.raises(TypeError, match="Cannot serialize"):
+            _format_scalar([[[1]]])
+
+    def test_strings_inside_list_raise_typeerror(self):
+        # Strings would need cell arrays in Octave — out of scope.
+        with pytest.raises(TypeError, match="Cannot serialize"):
+            _format_scalar(["a", "b"])
+        with pytest.raises(TypeError, match="Cannot serialize"):
+            _format_scalar([["a"]])
+
+    def test_list_inside_format_args(self):
+        # The list path must be reachable through the normal call
+        # serialization entry point, not just _format_scalar directly.
+        assert _format_args(([10, 12],), {}) == "([10, 12])"
+
+    def test_list_as_kwarg_value(self):
+        assert _format_args((), {"widths": [1, 2]}) == "('widths', [1, 2])"
 
 
 # ---------------------------------------------------------------------------
