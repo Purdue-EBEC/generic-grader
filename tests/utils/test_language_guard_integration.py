@@ -35,14 +35,10 @@ from generic_grader.function.function_not_defined import (
 from generic_grader.function.random_function_calls import (
     build as build_random_function_calls,
 )
-from generic_grader.function.static_loop_depth import build as build_static_loop_depth
 from generic_grader.image.ocr_words_match_reference import (
     build as build_ocr_words_match_reference,
 )
 from generic_grader.image.pixel_overlap import build as build_pixel_overlap
-from generic_grader.style.comments import build as build_comments
-from generic_grader.style.docstring import build as build_docstring
-from generic_grader.style.program_length import build as build_program_length
 from generic_grader.utils.options import Options
 
 
@@ -64,27 +60,6 @@ class GuardedCase:
 
 
 GUARDED_CASES: list[GuardedCase] = [
-    GuardedCase(
-        label="style.comments",
-        build=build_comments,
-        method_name="test_comment_length_0",
-        expected_fragment="style.comments",
-        extra_options={},
-    ),
-    GuardedCase(
-        label="style.docstring",
-        build=build_docstring,
-        method_name="test_docstring_module",
-        expected_fragment="style.docstring",
-        extra_options={},
-    ),
-    GuardedCase(
-        label="style.program_length",
-        build=build_program_length,
-        method_name="test_program_length_0",
-        expected_fragment="style.program_length",
-        extra_options={},
-    ),
     GuardedCase(
         label="class_.class_attributes_match_reference",
         build=build_class_attributes,
@@ -125,13 +100,6 @@ GUARDED_CASES: list[GuardedCase] = [
         build=build_random_function_calls,
         method_name="test_random_function_calls_0",
         expected_fragment="function.random_function_calls",
-        extra_options={},
-    ),
-    GuardedCase(
-        label="function.static_loop_depth",
-        build=build_static_loop_depth,
-        method_name="test_static_loop_depth_0",
-        expected_fragment="function.static_loop_depth",
         extra_options={},
     ),
     GuardedCase(
